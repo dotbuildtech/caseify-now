@@ -23,6 +23,8 @@ app.use('/api/inventory', require('./routes/inventoryRoutes'));
 app.use('/api/accounting', require('./routes/accountingRoutes'));
 app.use('/api/automation', require('./routes/automationRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
+app.use('/api/invoices', require('./routes/invoiceRoutes'));
 
 app.get('/', (req, res) => res.send('Phone Cover Platform API is running...'));
 

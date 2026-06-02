@@ -126,3 +126,17 @@ exports.verifyOTP = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// @desc    Get all users
+// @route   GET /api/auth/users
+// @access  Private/Admin
+exports.getUsers = async (req, res) => {
+    try {
+        const users = await User.findAll({
+            attributes: ['id', 'name', 'email', 'role', 'isVerified', 'createdAt']
+        });
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -99,6 +99,23 @@ exports.updateOrderToPaid = async (req, res) => {
             };
 
             const updatedOrder = await order.save();
+
+            // Create Invoice
+            const Invoice = require('../models/Invoice');
+            const lastInvoice = await Invoice.findOne({ order: [['invoiceNumber', 'DESC']] });
+            const lastNum = lastInvoice ? parseInt(lastInvoice.invoiceNumber.split('-')[1]) : 0;
+            const newInvoiceNumber = `INV-${(lastNum + 1).toString().padStart(6, '0')}`;
+
+            await Invoice.create({
+                invoiceNumber: newInvoiceNumber,
+                subTotal: order.totalPrice - order.taxPrice,
+                gstTotal: order.taxPrice,
+                grandTotal: order.totalPrice,
+                status: 'Paid',
+                OrderId: order.id,
+                UserId: order.UserId
+            });
+
             res.json(updatedOrder);
         } else {
             res.status(404).json({ message: 'Order not found' });
