@@ -14,17 +14,33 @@ exports.createCampaign = async (req, res) => {
     }
 };
 
-// @desc    WhatsApp notification mock
+const axios = require('axios');
+const aisensy = require('../config/aisensy');
+
+// @desc    WhatsApp notification via Aisensy
 // @route   POST /api/automation/whatsapp/notify
 // @access  Private/Admin
 exports.sendWhatsAppNotification = async (req, res) => {
-    const { phoneNumber, message } = req.body;
+    const { phoneNumber, message, templateName, userName } = req.body;
     try {
-        // Mocking WhatsApp API call
-        console.log(`WhatsApp message sent to ${phoneNumber}: ${message}`);
-        res.json({ success: true, message: 'WhatsApp notification sent (mocked)' });
+        const url = `https://backend.aisensy.com/campaign/external/v1/projects/${aisensy.projectId}/template`;
+        
+        const response = await axios.post(url, {
+            apiKey: aisensy.apiKey,
+            campaignName: templateName || 'common_notification',
+            destination: phoneNumber,
+            userName: userName || 'Customer',
+            templateParams: [message],
+            source: 'API'
+        });
+
+        res.json({ success: true, data: response.data });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error('Aisensy Error:', error.response ? error.response.data : error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: error.response ? error.response.data.message : error.message 
+        });
     }
 };
 
