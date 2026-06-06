@@ -1,4 +1,7 @@
 const { Sequelize } = require('sequelize');
+const validateEnv = require('../utils/validateEnv');
+
+validateEnv();
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
@@ -9,12 +12,15 @@ const connectDB = async () => {
     try {
         await sequelize.authenticate();
         console.log('PostgreSQL Connected...');
-        
-        // Sync models
-        await sequelize.sync({ alter: true });
-        console.log('Database synced');
+
+        if (process.env.NODE_ENV === 'production') {
+            console.log('Production: skipping automatic schema sync (use migrations)');
+        } else {
+            await sequelize.sync({ alter: true });
+            console.log('Database synced (alter mode - dev only)');
+        }
     } catch (error) {
-        console.error(`Error: ${error.message}`);
+        console.error(`Database error: ${error.message}`);
         process.exit(1);
     }
 };

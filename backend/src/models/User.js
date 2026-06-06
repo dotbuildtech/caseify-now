@@ -15,6 +15,10 @@ const User = sequelize.define('User', {
             isEmail: true
         }
     },
+    phone: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     password: {
         type: DataTypes.STRING,
         allowNull: false
@@ -32,8 +36,37 @@ const User = sequelize.define('User', {
     isVerified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
+    },
+    resetPasswordToken: {
+        type: DataTypes.STRING
+    },
+    resetPasswordExpiry: {
+        type: DataTypes.DATE
+    },
+    failedLoginAttempts: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+        allowNull: false
+    },
+    lockoutUntil: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    lastLoginAt: {
+        type: DataTypes.DATE,
+        allowNull: true
+    },
+    lastLoginIp: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 }, {
+    indexes: [
+        { fields: ['email'], unique: true },
+        { fields: ['resetPasswordToken'] },
+        { fields: ['otpCode'] },
+        { fields: ['phone'] }
+    ],
     hooks: {
         beforeSave: async (user) => {
             if (user.changed('password')) {
@@ -44,8 +77,34 @@ const User = sequelize.define('User', {
     }
 });
 
-User.prototype.comparePassword = async function(enteredPassword) {
+User.prototype.comparePassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
+
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+User.prototype.isLocked = function () {
+    return this.lockoutUntil && this.lockoutUntil > new Date();
+};
+
+User.prototype.recordFailedLogin = async function () {
+    this.failedLoginAttempts = (this.failedLoginAttempts || 0) + 1;
+    if (this.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+        this.lockoutUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+    }
+    await this.save();
+};
+
+User.prototype.recordSuccessfulLogin = async function (ip) {
+    this.failedLoginAttempts = 0;
+    this.lockoutUntil = null;
+    this.lastLoginAt = new Date();
+    this.lastLoginIp = ip || null;
+    await this.save();
+};
+
+User.MAX_FAILED_ATTEMPTS = MAX_FAILED_ATTEMPTS;
+User.LOCKOUT_DURATION_MS = LOCKOUT_DURATION_MS;
 
 module.exports = User;
