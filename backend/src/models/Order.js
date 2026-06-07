@@ -32,6 +32,15 @@ const Order = sequelize.define('Order', {
     paidAt: {
         type: DataTypes.DATE
     },
+    razorpayOrderId: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true
+    },
+    razorpayPaymentId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     isDelivered: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
@@ -48,20 +57,8 @@ const Order = sequelize.define('Order', {
 const OrderItem = sequelize.define('OrderItem', {
     name: { type: DataTypes.STRING, allowNull: false },
     qty: { type: DataTypes.INTEGER, allowNull: false },
-    image: { type: DataTypes.STRING, allowNull: false },
+    image: { type: DataTypes.STRING, allowNull: true },
     price: { type: DataTypes.FLOAT, allowNull: false }
 });
-
-// Associations
-const User = require('./User');
-const Product = require('./Product');
-
-Order.belongsTo(User);
-User.hasMany(Order);
-
-Order.hasMany(OrderItem);
-OrderItem.belongsTo(Order);
-
-OrderItem.belongsTo(Product);
 
 module.exports = { Order, OrderItem };

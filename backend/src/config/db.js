@@ -13,6 +13,8 @@ const connectDB = async () => {
         await sequelize.authenticate();
         console.log('PostgreSQL Connected...');
 
+        require('../models/associations');
+
         if (process.env.NODE_ENV === 'production') {
             console.log('Production: skipping automatic schema sync (use migrations)');
         } else {

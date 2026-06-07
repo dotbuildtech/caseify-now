@@ -1,26 +1,58 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 
-const Cart = sequelize.define('Cart', {});
+const Cart = sequelize.define('Cart', {
+    lastActivityAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    }
+}, {
+    tableName: 'Carts',
+    timestamps: true,
+    indexes: [
+        { fields: ['UserId'], unique: true }
+    ]
+});
 
 const CartItem = sequelize.define('CartItem', {
     quantity: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: 1
+        defaultValue: 1,
+        validate: { min: 1 }
+    },
+    priceAtAdd: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: false,
+        get() {
+            const v = this.getDataValue('priceAtAdd');
+            return v == null ? null : Number(v);
+        },
+        validate: { min: 0 }
+    },
+    nameAtAdd: {
+        type: DataTypes.STRING(200),
+        allowNull: false
+    },
+    imageAtAdd: {
+        type: DataTypes.STRING(500),
+        allowNull: true
+    },
+    variantLabel: {
+        type: DataTypes.STRING(200),
+        allowNull: true
     }
+}, {
+    tableName: 'CartItems',
+    timestamps: true,
+    paranoid: true,
+    indexes: [
+        { fields: ['CartId'] },
+        { fields: ['ProductId'] },
+        { fields: ['ProductVariantId'] },
+        { fields: ['CartId', 'ProductId', 'ProductVariantId'], unique: true }
+    ]
 });
-
-// Associations
-const User = require('./User');
-const Product = require('./Product');
-
-Cart.belongsTo(User);
-User.hasOne(Cart);
-
-Cart.hasMany(CartItem);
-CartItem.belongsTo(Cart);
-
-CartItem.belongsTo(Product);
 
 module.exports = { Cart, CartItem };

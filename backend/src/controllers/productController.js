@@ -1,95 +1,311 @@
+const { z } = require('zod');
+const { Op } = require('sequelize');
+const asyncHandler = require('../utils/asyncHandler');
+const { audit } = require('../utils/securityLog');
 const Product = require('../models/Product');
+const ProductVariant = require('../models/ProductVariant');
 
-// @desc    Get all products
-// @route   GET /api/products
-// @access  Public
-exports.getProducts = async (req, res) => {
-    try {
-        const products = await Product.findAll();
-        res.json(products);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+const ALLOWED_SORT = new Set([
+    'createdAt', '-createdAt',
+    'updatedAt', '-updatedAt',
+    'name', '-name',
+    'price', '-price',
+    'stock', '-stock'
+]);
+
+const variantSchema = z.object({
+    name: z.string().min(1).max(200),
+    sku: z.string().min(1).max(64).optional(),
+    price: z.number().nonnegative().optional(),
+    stock: z.number().int().nonnegative().default(0),
+    image: z.string().url().max(500).optional(),
+    attributes: z.record(z.any()).default({}),
+    isActive: z.boolean().default(true),
+    sortOrder: z.number().int().default(0)
+});
+
+const productCreateSchema = z.object({
+    name: z.string().min(1).max(200),
+    slug: z.string().min(1).max(220).optional(),
+    sku: z.string().min(1).max(64).optional(),
+    description: z.string().min(1),
+    price: z.number().nonnegative(),
+    compareAtPrice: z.number().nonnegative().optional(),
+    category: z.string().min(1).max(80),
+    phoneModel: z.string().max(80).optional(),
+    brand: z.string().max(80).optional(),
+    image: z.string().url().max(500).optional(),
+    images: z.array(z.string().url().max(500)).default([]),
+    stock: z.number().int().nonnegative().default(0),
+    lowStockThreshold: z.number().int().nonnegative().default(5),
+    isActive: z.boolean().default(true),
+    isFeatured: z.boolean().default(false),
+    tags: z.array(z.string().max(40)).default([]),
+    attributes: z.record(z.any()).default({}),
+    variants: z.array(variantSchema).optional()
+});
+
+const productUpdateSchema = productCreateSchema.partial().extend({
+    variants: z.array(variantSchema).optional()
+});
+
+const productBulkUpdateSchema = z.object({
+    ids: z.array(z.number().int().positive()).min(1),
+    updates: productUpdateSchema
+});
+
+const productQuerySchema = z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    sort: z.string().default('-createdAt'),
+    q: z.string().trim().optional(),
+    category: z.string().optional(),
+    brand: z.string().optional(),
+    phoneModel: z.string().optional(),
+    priceMin: z.coerce.number().nonnegative().optional(),
+    priceMax: z.coerce.number().nonnegative().optional(),
+    tags: z.string().optional(),
+    isActive: z.coerce.boolean().optional(),
+    isFeatured: z.coerce.boolean().optional(),
+    includeInactive: z.coerce.boolean().default(false),
+    includeVariants: z.coerce.boolean().default(false),
+    inStock: z.coerce.boolean().optional()
+});
+
+const buildProductWhere = (q, isAdmin) => {
+    const where = {};
+    if (!isAdmin && !q.includeInactive) {
+        where.isActive = true;
+    } else if (q.isActive !== undefined) {
+        where.isActive = q.isActive;
     }
+    if (q.category) where.category = q.category;
+    if (q.brand) where.brand = q.brand;
+    if (q.phoneModel) where.phoneModel = q.phoneModel;
+    if (q.priceMin != null || q.priceMax != null) {
+        where.price = {};
+        if (q.priceMin != null) where.price[Op.gte] = q.priceMin;
+        if (q.priceMax != null) where.price[Op.lte] = q.priceMax;
+    }
+    if (q.inStock === true) where.stock = { [Op.gt]: 0 };
+    if (q.inStock === false) where.stock = 0;
+    if (q.isFeatured !== undefined) where.isFeatured = q.isFeatured;
+    if (q.tags) {
+        const list = q.tags.split(',').map((t) => t.trim()).filter(Boolean);
+        if (list.length) where.tags = { [Op.overlap]: list };
+    }
+    if (q.q) {
+        const term = q.q;
+        where[Op.or] = [
+            { name: { [Op.iLike]: `%${term}%` } },
+            { description: { [Op.iLike]: `%${term}%` } },
+            { sku: { [Op.iLike]: `%${term}%` } },
+            { tags: { [Op.overlap]: [term] } }
+        ];
+    }
+    return where;
 };
 
-// @desc    Get single product
-// @route   GET /api/products/:id
-// @access  Public
-exports.getProductById = async (req, res) => {
-    try {
-        const product = await Product.findByPk(req.params.id);
-        if (product) {
-            res.json(product);
-        } else {
-            res.status(404).json({ message: 'Product not found' });
+const parseSort = (sort) => {
+    if (!ALLOWED_SORT.has(sort)) return [['createdAt', 'DESC']];
+    if (sort.startsWith('-')) return [[sort.slice(1), 'DESC']];
+    return [[sort, 'ASC']];
+};
+
+const isAdmin = (req) => req.user && req.user.role === 'admin';
+
+exports.getProducts = asyncHandler(async (req, res) => {
+    const q = req.validatedQuery;
+    const where = buildProductWhere(q, isAdmin(req));
+    const order = parseSort(q.sort);
+    const offset = (q.page - 1) * q.limit;
+
+    const include = [];
+    if (q.includeVariants) {
+        include.push({ model: ProductVariant, as: 'variants' });
+    }
+
+    const { count, rows } = await Product.findAndCountAll({
+        where,
+        order,
+        limit: q.limit,
+        offset,
+        include,
+        distinct: true
+    });
+
+    res.json({
+        data: rows,
+        pagination: {
+            page: q.page,
+            limit: q.limit,
+            total: count,
+            totalPages: Math.max(1, Math.ceil(count / q.limit)),
+            hasNext: offset + rows.length < count,
+            hasPrev: q.page > 1
         }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    });
+});
+
+exports.getProductById = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const isNumeric = /^\d+$/.test(id);
+    const where = isNumeric ? { id } : { slug: id };
+    if (!isAdmin(req)) where.isActive = true;
+
+    const product = await Product.findOne({
+        where,
+        include: [{ model: ProductVariant, as: 'variants' }]
+    });
+
+    if (!product) {
+        res.status(404);
+        throw new Error('Product not found');
     }
-};
+    res.json(product);
+});
 
-// @desc    Create a product
-// @route   POST /api/products
-// @access  Private/Admin
-exports.createProduct = async (req, res) => {
-    const { name, price, description, image, category, stock } = req.body;
-
-    try {
-        const product = await Product.create({
-            name,
-            price,
-            description,
-            image,
-            category,
-            stock
-        });
-        res.status(201).json(product);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+exports.createProduct = asyncHandler(async (req, res) => {
+    const data = req.body;
+    const { variants, ...productData } = data;
+    const product = await Product.create(productData);
+    if (Array.isArray(variants) && variants.length) {
+        await ProductVariant.bulkCreate(
+            variants.map((v) => ({ ...v, ProductId: product.id }))
+        );
     }
-};
+    audit(req, 'product.create', `Product:${product.id}`, { name: product.name });
+    const full = await Product.findByPk(product.id, {
+        include: [{ model: ProductVariant, as: 'variants' }]
+    });
+    res.status(201).json(full);
+});
 
-// @desc    Update a product
-// @route   PUT /api/products/:id
-// @access  Private/Admin
-exports.updateProduct = async (req, res) => {
-    const { name, price, description, image, category, stock } = req.body;
+exports.updateProduct = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = req.body;
+    const { variants, ...productData } = data;
 
-    try {
-        const product = await Product.findByPk(req.params.id);
+    const product = await Product.findByPk(id);
+    if (!product) {
+        res.status(404);
+        throw new Error('Product not found');
+    }
 
-        if (product) {
-            product.name = name || product.name;
-            product.price = price || product.price;
-            product.description = description || product.description;
-            product.image = image || product.image;
-            product.category = category || product.category;
-            product.stock = stock || product.stock;
+    const before = product.toJSON();
+    await product.update(productData);
 
-            const updatedProduct = await product.save();
-            res.json(updatedProduct);
-        } else {
-            res.status(404).json({ message: 'Product not found' });
+    if (Array.isArray(variants)) {
+        await ProductVariant.destroy({ where: { ProductId: product.id }, force: false });
+        if (variants.length) {
+            await ProductVariant.bulkCreate(
+                variants.map((v) => ({ ...v, ProductId: product.id }))
+            );
         }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
     }
-};
 
-// @desc    Delete a product
-// @route   DELETE /api/products/:id
-// @access  Private/Admin
-exports.deleteProduct = async (req, res) => {
-    try {
-        const product = await Product.findByPk(req.params.id);
+    audit(req, 'product.update', `Product:${product.id}`, {
+        changedFields: Object.keys(productData),
+        before: { price: before.price, stock: before.stock, isActive: before.isActive }
+    });
 
-        if (product) {
-            await product.destroy();
-            res.json({ message: 'Product removed' });
-        } else {
-            res.status(404).json({ message: 'Product not found' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    const full = await Product.findByPk(product.id, {
+        include: [{ model: ProductVariant, as: 'variants' }]
+    });
+    res.json(full);
+});
+
+exports.deleteProduct = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const force = req.query.force === 'true';
+    const product = await Product.findByPk(id);
+    if (!product) {
+        res.status(404);
+        throw new Error('Product not found');
     }
+    await product.destroy({ force });
+    audit(req, force ? 'product.hardDelete' : 'product.softDelete', `Product:${id}`);
+    res.json({ message: force ? 'Product permanently deleted' : 'Product archived' });
+});
+
+exports.bulkCreateProducts = asyncHandler(async (req, res) => {
+    const items = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+        res.status(400);
+        throw new Error('Body must be a non-empty array of products');
+    }
+    const created = await Product.bulkCreate(items, { validate: true });
+    audit(req, 'product.bulkCreate', null, { count: created.length, ids: created.map((p) => p.id) });
+    res.status(201).json({ count: created.length, data: created });
+});
+
+exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
+    const { ids, updates } = req.body;
+    const [count] = await Product.update(updates, { where: { id: { [Op.in]: ids } } });
+    const updated = await Product.findAll({ where: { id: { [Op.in]: ids } } });
+    audit(req, 'product.bulkUpdate', null, { ids, changedFields: Object.keys(updates) });
+    res.json({ count, data: updated });
+});
+
+exports.bulkDeleteProducts = asyncHandler(async (req, res) => {
+    const { ids } = req.body;
+    const force = req.query.force === 'true';
+    const count = await Product.destroy({ where: { id: { [Op.in]: ids } }, force });
+    audit(req, force ? 'product.bulkHardDelete' : 'product.bulkSoftDelete', null, { ids, count });
+    res.json({ count, message: `Deleted ${count} product(s)` });
+});
+
+exports.addProductImage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { url } = req.body;
+    try { new URL(url); } catch { res.status(400); throw new Error('url must be a valid URL'); }
+
+    const product = await Product.findByPk(id);
+    if (!product) { res.status(404); throw new Error('Product not found'); }
+
+    const images = [...(product.images || []), url];
+    await product.update({ images });
+    res.json(product);
+});
+
+exports.removeProductImage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const imageUrl = req.query.url;
+    if (!imageUrl) {
+        res.status(400);
+        throw new Error('url query parameter is required');
+    }
+    const decoded = decodeURIComponent(String(imageUrl));
+    const product = await Product.findByPk(id);
+    if (!product) { res.status(404); throw new Error('Product not found'); }
+
+    const images = (product.images || []).filter((u) => u !== decoded);
+    await product.update({ images });
+    res.json(product);
+});
+
+exports.getLowStockProducts = asyncHandler(async (req, res) => {
+    const products = await Product.findAll({
+        where: {
+            isActive: true,
+            stock: { [Op.lte]: Product.sequelize.col('lowStockThreshold') }
+        },
+        order: [['stock', 'ASC']]
+    });
+    res.json({ count: products.length, data: products });
+});
+
+exports.searchProducts = asyncHandler(async (req, res) => {
+    const q = req.validatedQuery;
+    const where = buildProductWhere({ ...q, page: 1, limit: 10 }, isAdmin(req));
+    const products = await Product.findAll({ where, limit: 10 });
+    res.json({ data: products });
+});
+
+exports.productSchemas = {
+    list: productQuerySchema,
+    create: productCreateSchema,
+    update: productUpdateSchema,
+    bulkUpdate: productBulkUpdateSchema,
+    search: productQuerySchema.pick({ q: true, category: true, brand: true })
 };

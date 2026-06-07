@@ -43,8 +43,4 @@ const RefreshToken = sequelize.define('RefreshToken', {
     ]
 });
 
-const User = require('./User');
-RefreshToken.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(RefreshToken, { foreignKey: 'userId' });
-
 module.exports = RefreshToken;
