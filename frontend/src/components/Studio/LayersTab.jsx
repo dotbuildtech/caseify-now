@@ -20,76 +20,76 @@ export default function LayersTab() {
     const selected = layers.find((l) => l.id === selectedLayerId);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-fadeIn">
             <div className="flex items-center justify-between">
-                <h3 className="label-luxe">Layers · {layers.length}</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Layers · {layers.length}</p>
                 {layers.length > 0 && (
-                    <button onClick={clearAll} className="text-[10px] font-medium uppercase tracking-[0.18em] text-error hover:underline">
+                    <button onClick={clearAll} className="text-[10px] font-medium uppercase tracking-[0.15em] text-red-500 hover:text-red-600">
                         Clear all
                     </button>
                 )}
             </div>
 
             {layers.length === 0 ? (
-                <p className="border border-dashed border-border bg-background-light p-6 text-center text-xs text-text-light">
-                    No layers yet. Add elements from the other tabs.
-                </p>
+                <div className="rounded-xl border-2 border-dashed border-stone-200 bg-stone-50 p-6 text-center">
+                    <p className="text-[11px] text-stone-400">No layers yet. Add elements from the other tabs.</p>
+                </div>
             ) : (
                 <ul className="space-y-1">
                     {[...layers].reverse().map((layer) => (
                         <li
                             key={layer.id}
                             onClick={() => setSelectedLayerId(layer.id)}
-                            className={`flex cursor-pointer items-center gap-2 border px-2 py-2 ${selectedLayerId === layer.id ? 'border-ink bg-ink text-cream' : 'border-border bg-background-light hover:border-ink'}`}
+                            className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 transition-all duration-200 ${selectedLayerId === layer.id ? 'border-stone-900 bg-stone-900 text-white shadow-md' : 'border-stone-200 bg-white text-stone-700 hover:border-stone-400'}`}
                         >
                             <LayerIcon type={layer.type} emoji={layer.emoji} />
-                            <div className="flex-1 text-xs">
+                            <div className="flex-1 min-w-0 text-xs">
                                 <LayerName layer={layer} />
                             </div>
-                            <button onClick={(e) => { e.stopPropagation(); moveLayer(layer.id, 'up'); }} className="p-1 hover:opacity-70" aria-label="Move up"><ChevronUp className="h-3 w-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); moveLayer(layer.id, 'down'); }} className="p-1 hover:opacity-70" aria-label="Move down"><ChevronDown className="h-3 w-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }} className="p-1 hover:opacity-70" aria-label="Duplicate"><Copy className="h-3 w-3" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }} className="p-1 hover:opacity-70" aria-label="Delete"><Trash2 className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); moveLayer(layer.id, 'up'); }} className={`p-1 rounded transition-colors ${selectedLayerId === layer.id ? 'hover:bg-white/20' : 'hover:bg-stone-100'}`} aria-label="Move up"><ChevronUp className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); moveLayer(layer.id, 'down'); }} className={`p-1 rounded transition-colors ${selectedLayerId === layer.id ? 'hover:bg-white/20' : 'hover:bg-stone-100'}`} aria-label="Move down"><ChevronDown className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }} className={`p-1 rounded transition-colors ${selectedLayerId === layer.id ? 'hover:bg-white/20' : 'hover:bg-stone-100'}`} aria-label="Duplicate"><Copy className="h-3 w-3" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); removeLayer(layer.id); }} className={`p-1 rounded transition-colors ${selectedLayerId === layer.id ? 'hover:bg-white/20' : 'hover:bg-red-300'}`} aria-label="Delete"><Trash2 className="h-3 w-3" /></button>
                         </li>
                     ))}
                 </ul>
             )}
 
             {selected && (
-                <div className="mt-4 space-y-3 border-t border-border pt-4">
-                    <h3 className="label-luxe">Selected layer</h3>
+                <div className="mt-4 space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Selected layer</p>
 
                     {selected.type === 'text' && (
                         <>
                             <input
                                 value={selected.text}
                                 onChange={(e) => updateLayer(selected.id, { text: e.target.value })}
-                                className="input-luxe"
+                                className="input-luxe rounded-xl border-stone-200 bg-white text-sm focus:border-stone-400"
                             />
                             <div>
-                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Size · {selected.size}px</label>
-                                <input type="range" min={16} max={120} value={selected.size} onChange={(e) => updateLayer(selected.id, { size: Number(e.target.value) })} className="mt-1 w-full" />
+                                <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Size · {selected.size}px</label>
+                                <input type="range" min={16} max={120} value={selected.size} onChange={(e) => updateLayer(selected.id, { size: Number(e.target.value) })} className="mt-1 w-full accent-stone-900" />
                             </div>
                             <div>
-                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Color</label>
-                                <input type="color" value={selected.color} onChange={(e) => updateLayer(selected.id, { color: e.target.value })} className="mt-1 h-10 w-full cursor-pointer border border-border" />
+                                <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Color</label>
+                                <input type="color" value={selected.color} onChange={(e) => updateLayer(selected.id, { color: e.target.value })} className="mt-1 h-10 w-full cursor-pointer rounded-xl border border-stone-200" />
                             </div>
                         </>
                     )}
 
                     {(selected.type === 'sticker' || selected.type === 'image') && (
                         <div>
-                            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Size</label>
-                            <input type="range" min={30} max={200} value={selected.size || 60} onChange={(e) => updateLayer(selected.id, { size: Number(e.target.value) })} className="mt-1 w-full" />
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Size</label>
+                            <input type="range" min={30} max={200} value={selected.size || 60} onChange={(e) => updateLayer(selected.id, { size: Number(e.target.value) })} className="mt-1 w-full accent-stone-900" />
                         </div>
                     )}
 
                     <div>
-                        <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Opacity · {Math.round((selected.opacity ?? 1) * 100)}%</label>
-                        <input type="range" min={0.1} max={1} step={0.05} value={selected.opacity ?? 1} onChange={(e) => updateLayer(selected.id, { opacity: Number(e.target.value) })} className="mt-1 w-full" />
+                        <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Opacity · {Math.round((selected.opacity ?? 1) * 100)}%</label>
+                        <input type="range" min={0.1} max={1} step={0.05} value={selected.opacity ?? 1} onChange={(e) => updateLayer(selected.id, { opacity: Number(e.target.value) })} className="mt-1 w-full accent-stone-900" />
                     </div>
 
-                    <button onClick={() => removeLayer(selected.id)} className="flex w-full items-center justify-center gap-2 border border-error bg-error/5 py-2 text-xs font-medium uppercase tracking-[0.18em] text-error hover:bg-error hover:text-cream">
+                    <button onClick={() => removeLayer(selected.id)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-red-500 transition-all duration-200 hover:bg-red-500 hover:text-white">
                         <Trash2 className="h-3 w-3" /> Delete layer
                     </button>
                 </div>

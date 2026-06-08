@@ -21,15 +21,15 @@ export default function TextTab() {
     };
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-5 animate-fadeIn">
             <div>
-                <h3 className="label-luxe">Quick add</h3>
-                <div className="mt-2 flex flex-wrap gap-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Quick add</p>
+                <div className="flex flex-wrap gap-1.5">
                     {SAMPLE_TEXTS.map((s) => (
                         <button
                             key={s}
                             onClick={() => setText(s)}
-                            className="border border-border bg-background-light px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light hover:border-ink hover:text-ink"
+                            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-[10px] font-medium text-stone-500 transition-all duration-200 hover:border-stone-400 hover:text-stone-800"
                         >
                             {s}
                         </button>
@@ -38,24 +38,25 @@ export default function TextTab() {
             </div>
 
             <div>
-                <h3 className="label-luxe">Custom text</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Custom text</p>
                 <input
                     value={text}
                     onChange={(e) => setText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
                     placeholder="Type something..."
-                    className="input-luxe mt-2"
+                    className="input-luxe rounded-xl border-stone-200 bg-stone-50 text-sm focus:border-stone-400 focus:bg-white"
                 />
             </div>
 
             <div>
-                <h3 className="label-luxe">Font</h3>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Font</p>
+                <div className="grid grid-cols-3 gap-2">
                     {FONTS.map((f) => (
                         <button
                             key={f.id}
                             onClick={() => setFont(f.id)}
                             style={{ fontFamily: f.family }}
-                            className={`border px-3 py-2 text-sm ${font === f.id ? 'border-ink bg-ink text-cream' : 'border-border hover:border-ink'}`}
+                            className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 ${font === f.id ? 'border-stone-900 bg-stone-900 text-white shadow-md' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400'}`}
                         >
                             {f.label}
                         </button>
@@ -64,14 +65,14 @@ export default function TextTab() {
             </div>
 
             <div>
-                <h3 className="label-luxe">Color</h3>
-                <div className="mt-2 grid grid-cols-9 gap-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Color</p>
+                <div className="grid grid-cols-9 gap-1.5">
                     {COLOR_PALETTE.map((c) => (
                         <button
                             key={c}
                             onClick={() => setColor(c)}
                             style={{ background: c }}
-                            className={`aspect-square border ${color === c ? 'border-ink ring-2 ring-ink ring-offset-1' : 'border-border'}`}
+                            className={`aspect-square rounded-lg border transition-all duration-200 ${color === c ? 'border-stone-900 ring-2 ring-stone-900 ring-offset-2' : 'border-stone-200 hover:scale-110'}`}
                             aria-label={c}
                         />
                     ))}
@@ -79,20 +80,20 @@ export default function TextTab() {
             </div>
 
             <div>
-                <h3 className="label-luxe">Size · {size}px</h3>
-                <input type="range" min={20} max={120} value={size} onChange={(e) => setSize(Number(e.target.value))} className="mt-2 w-full" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Size · {size}px</p>
+                <input type="range" min={20} max={120} value={size} onChange={(e) => setSize(Number(e.target.value))} className="w-full accent-stone-900" />
             </div>
 
             <div className="flex gap-2">
                 <button
                     onClick={() => setUppercase(!uppercase)}
-                    className={`flex-1 border px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] ${uppercase ? 'border-ink bg-ink text-cream' : 'border-border'}`}
+                    className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] transition-all duration-200 ${uppercase ? 'border-stone-900 bg-stone-900 text-white shadow-md' : 'border-stone-200 text-stone-500 hover:border-stone-400'}`}
                 >
                     AA
                 </button>
                 <button
                     onClick={() => setBold(!bold)}
-                    className={`flex-1 border px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] ${bold ? 'border-ink bg-ink text-cream' : 'border-border'}`}
+                    className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-bold uppercase tracking-[0.15em] transition-all duration-200 ${bold ? 'border-stone-900 bg-stone-900 text-white shadow-md' : 'border-stone-200 text-stone-500 hover:border-stone-400'}`}
                 >
                     B
                 </button>
@@ -100,7 +101,7 @@ export default function TextTab() {
 
             <button
                 onClick={handleAdd}
-                className="btn-primary w-full"
+                className="w-full rounded-xl bg-stone-900 py-3 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:bg-stone-800 hover:shadow-xl active:scale-[0.98]"
             >
                 Add Text Layer
             </button>

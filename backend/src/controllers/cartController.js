@@ -14,7 +14,8 @@ const CART_IDLE_DAYS = Math.max(1, parseInt(process.env.CART_IDLE_DAYS, 10) || 3
 const addItemSchema = z.object({
     productId: z.number().int().positive(),
     productVariantId: z.number().int().positive().optional(),
-    quantity: z.number().int().positive().max(MAX_QTY)
+    quantity: z.number().int().positive().max(MAX_QTY),
+    designMeta: z.record(z.any()).optional()
 });
 
 const updateItemSchema = z.object({
@@ -90,7 +91,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 });
 
 exports.addItemToCart = asyncHandler(async (req, res) => {
-    const { productId, productVariantId, quantity } = req.body;
+    const { productId, productVariantId, quantity, designMeta } = req.body;
 
     const result = await sequelize.transaction(async (transaction) => {
         const product = await Product.findByPk(productId, { transaction });
@@ -144,7 +145,8 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
                 priceAtAdd: unitPrice,
                 nameAtAdd,
                 imageAtAdd,
-                variantLabel
+                variantLabel,
+                designMeta: designMeta || null
             },
             transaction
         });

@@ -53,7 +53,7 @@ export function StudioProvider({ children }) {
 
     const phone = useMemo(() => getPhoneById(phoneId), [phoneId]);
     const material = useMemo(() => getMaterialById(materialId), [materialId]);
-    const totalPrice = useMemo(() => Math.max(BASE_PRICE, material.price), [material]);
+    const totalPrice = useMemo(() => material.price, [material]);
 
     const updateForm = useCallback((patch) => {
         setForm((f) => ({ ...f, ...patch }));

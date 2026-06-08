@@ -51,8 +51,8 @@ export function CartProvider({ children }) {
 
     useEffect(() => { load(); }, [load]);
 
-    const addItem = async (productId, quantity = 1) => {
-        const data = await apiAdd(productId, quantity);
+    const addItem = async (productId, quantity = 1, designMeta = null) => {
+        const data = await apiAdd(productId, quantity, designMeta);
         await load();
         return data;
     };

@@ -36,12 +36,17 @@ const CartItem = sequelize.define('CartItem', {
         allowNull: false
     },
     imageAtAdd: {
-        type: DataTypes.STRING(500),
+        type: DataTypes.TEXT,
         allowNull: true
     },
     variantLabel: {
         type: DataTypes.STRING(200),
         allowNull: true
+    },
+    designMeta: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null
     }
 }, {
     tableName: 'CartItems',

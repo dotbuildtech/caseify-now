@@ -12,8 +12,10 @@ export const fetchCartCount = async () => {
     return unwrap(r);
 };
 
-export const addToCart = async (productId, quantity = 1) => {
-    const r = await api.post('/cart', { productId, quantity });
+export const addToCart = async (productId, quantity = 1, designMeta = null) => {
+    const body = { productId, quantity };
+    if (designMeta) body.designMeta = designMeta;
+    const r = await api.post('/cart', body);
     return unwrap(r);
 };
 
