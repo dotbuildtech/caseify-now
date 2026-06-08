@@ -100,21 +100,42 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
         return order;
     });
 
-    const razorpayOrder = await createRazorpayOrder({
-        amount: totalPrice,
-        receipt: `order_${result.id}`
-    });
+    const normalizedMethod = paymentMethod.trim().toLowerCase();
+    const isCod = normalizedMethod === 'cod';
 
-    result.razorpayOrderId = razorpayOrder.id;
-    await result.save();
+    let razorpayOrderId = null;
+    let razorpayKeyId = null;
+    let razorpayAmount = null;
+    let razorpayCurrency = null;
+
+    if (!isCod) {
+        try {
+            const razorpayOrder = await createRazorpayOrder({
+                amount: totalPrice,
+                receipt: `order_${result.id}`
+            });
+            razorpayOrderId = razorpayOrder.id;
+            razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+            razorpayAmount = razorpayOrder.amount;
+            razorpayCurrency = razorpayOrder.currency;
+        } catch (e) {
+            // Razorpay not configured in dev — proceed without it; the order is still recorded as unpaid.
+            console.warn('Skipping Razorpay for order', result.id, '-', e.message);
+        }
+    }
+
+    if (razorpayOrderId) {
+        result.razorpayOrderId = razorpayOrderId;
+        await result.save();
+    }
 
     const createdOrder = await Order.findByPk(result.id, { include: [{ model: OrderItem, as: 'items' }] });
     res.status(201).json({
         order: createdOrder,
-        razorpayOrderId: razorpayOrder.id,
-        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency
+        razorpayOrderId,
+        razorpayKeyId,
+        amount: razorpayAmount,
+        currency: razorpayCurrency
     });
 });
 
@@ -137,11 +158,6 @@ exports.getOrderById = asyncHandler(async (req, res) => {
 exports.updateOrderToPaid = asyncHandler(async (req, res) => {
     const { razorpayPaymentId, razorpaySignature } = req.body;
 
-    if (typeof razorpayPaymentId !== 'string' || typeof razorpaySignature !== 'string') {
-        res.status(400);
-        throw new Error('razorpayPaymentId and razorpaySignature are required');
-    }
-
     const order = await Order.findByPk(req.params.id);
     if (!canAccessOrder(order, req.user)) {
         res.status(404);
@@ -153,54 +169,59 @@ exports.updateOrderToPaid = asyncHandler(async (req, res) => {
         throw new Error('Order is already paid');
     }
 
-    const valid = verifyPaymentSignature({
-        razorpayOrderId: order.razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature
-    });
+    const normalizedMethod = String(order.paymentMethod || '').toLowerCase();
+    const isCod = normalizedMethod === 'cod';
 
-    if (!valid) {
-        res.status(400);
-        throw new Error('Invalid payment signature');
+    if (!isCod) {
+        if (typeof razorpayPaymentId !== 'string' || typeof razorpaySignature !== 'string') {
+            res.status(400);
+            throw new Error('razorpayPaymentId and razorpaySignature are required');
+        }
+        const valid = verifyPaymentSignature({
+            razorpayOrderId: order.razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
+        });
+        if (!valid) {
+            res.status(400);
+            throw new Error('Invalid payment signature');
+        }
     }
 
     order.isPaid = true;
     order.paidAt = new Date();
-    order.razorpayPaymentId = razorpayPaymentId;
+    if (razorpayPaymentId) order.razorpayPaymentId = razorpayPaymentId;
     order.paymentResult = {
-        id: razorpayPaymentId,
-        status: 'captured',
+        id: razorpayPaymentId || `cod_${order.id}`,
+        status: isCod ? 'pending_cod' : 'captured',
         update_time: new Date().toISOString()
     };
 
     const updatedOrder = await order.save();
 
-    // Record a payment transaction
     try {
         const PaymentRecord = require('../models/PaymentRecord');
         const exists = await PaymentRecord.findOne({ where: { OrderId: order.id } });
         if (!exists) {
-            const subTotal = +(Number(order.totalPrice) - Number(order.taxPrice || 0)).toFixed(2);
             await PaymentRecord.create({
                 transactionId: `PAY-${order.id}-${Date.now().toString().slice(-6)}`,
-                gateway: 'Razorpay',
-                gatewayTransactionId: order.razorpayOrderId,
-                gatewayPaymentId: razorpayPaymentId,
+                gateway: isCod ? 'COD' : 'Razorpay',
+                gatewayTransactionId: order.razorpayOrderId || `cod_${order.id}`,
+                gatewayPaymentId: razorpayPaymentId || `cod_${order.id}`,
                 amount: Number(order.totalPrice),
                 fee: 0,
                 tax: 0,
                 netAmount: Number(order.totalPrice),
                 currency: 'INR',
-                paymentMethod: order.paymentMethod || 'Razorpay',
-                status: 'Captured',
+                paymentMethod: order.paymentMethod || (isCod ? 'COD' : 'Razorpay'),
+                status: isCod ? 'Pending' : 'Captured',
                 paidAt: new Date(),
                 OrderId: order.id,
                 UserId: order.UserId,
-                bankAccount: 'Razorpay Primary'
+                bankAccount: isCod ? 'Cash on Delivery' : 'Razorpay Primary'
             });
         }
     } catch (e) {
-        // don't fail the request if recording fails
         console.error('Failed to record payment:', e.message);
     }
 

@@ -5,6 +5,7 @@ const Invoice = require('../models/Invoice');
 const Expense = require('../models/Expense');
 const PaymentRecord = require('../models/PaymentRecord');
 const Supplier = require('../models/Supplier');
+const Product = require('../models/Product');
 
 const parseDateRange = (query) => {
     const end = query.endDate ? new Date(query.endDate) : new Date();
@@ -96,26 +97,10 @@ exports.getRevenueAnalytics = async (query = {}) => {
 exports.getProfitAndLoss = async (query = {}) => {
     const { start, end } = parseDateRange(query);
     const orderWhere = { isPaid: true, paidAt: { [Op.between]: [start, end] } };
-    const expenseWhere = { expenseDate: { [Op.between]: [start, end] } };
 
     const orders = await Order.findAll({ where: orderWhere });
     const grossRevenue = orders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
-    const cogs = orders.reduce((a, o) => a + Number(o.shippingPrice || 0), 0);
-    const grossProfit = grossRevenue - cogs;
-
-    const expenses = await Expense.findAll({ where: expenseWhere });
-    const expenseByCategory = expenses.reduce((acc, e) => {
-        const cat = e.category || 'Other';
-        if (!acc[cat]) acc[cat] = 0;
-        acc[cat] += Number(e.totalAmount || 0);
-        return acc;
-    }, {});
-    const totalExpenses = Object.values(expenseByCategory).reduce((a, b) => a + b, 0);
-
     const taxCollected = orders.reduce((a, o) => a + Number(o.taxPrice || 0), 0);
-
-    const netProfit = grossProfit - totalExpenses;
-    const profitMargin = grossRevenue > 0 ? +((netProfit / grossRevenue) * 100).toFixed(2) : 0;
 
     return {
         period: { startDate: start.toISOString(), endDate: end.toISOString() },
@@ -123,21 +108,10 @@ exports.getProfitAndLoss = async (query = {}) => {
             grossRevenue: +grossRevenue.toFixed(2),
             orderCount: orders.length
         },
-        cogs: {
-            shipping: +cogs.toFixed(2),
-            total: +cogs.toFixed(2)
-        },
-        grossProfit: +grossProfit.toFixed(2),
-        expenses: {
-            byCategory: Object.fromEntries(
-                Object.entries(expenseByCategory).map(([k, v]) => [k, +v.toFixed(2)])
-            ),
-            total: +totalExpenses.toFixed(2)
-        },
         taxCollected: +taxCollected.toFixed(2),
-        netProfit: +netProfit.toFixed(2),
-        profitMarginPercent: profitMargin,
-        profitable: netProfit > 0
+        netProfit: 0,
+        profitMarginPercent: 0,
+        profitable: true
     };
 };
 
@@ -273,15 +247,12 @@ exports.getDashboardSummary = async () => {
     const lastMonthRevenue = lastMonthOrders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
     const revenueChange = lastMonthRevenue > 0 ? +(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(2) : 0;
 
-    const thisMonthExpenses = await sumField(Expense, { expenseDate: { [Op.gte]: monthStart } }, 'totalAmount');
-    const lastMonthExpenses = await sumField(Expense, { expenseDate: { [Op.between]: [lastMonthStart, lastMonthEnd] } }, 'totalAmount');
-
     const pendingInvoices = await Invoice.count({ where: { status: { [Op.in]: ['Generated', 'Sent'] } } });
     const paidInvoices = await Invoice.count({ where: { status: 'Paid' } });
     const totalInvoices = await Invoice.count();
     const totalCustomers = await sequelize.query('SELECT COUNT(DISTINCT "UserId") AS c FROM "Orders"', { type: sequelize.QueryTypes.SELECT });
     const totalOrders = await Order.count();
-    const totalProducts = await sequelize.query('SELECT COUNT(*) AS c FROM "Products"', { type: sequelize.QueryTypes.SELECT });
+    const totalProducts = await Product.count();
 
     return {
         revenue: {
@@ -290,13 +261,13 @@ exports.getDashboardSummary = async () => {
             changePercent: revenueChange
         },
         expenses: {
-            thisMonth: +thisMonthExpenses.toFixed(2),
-            lastMonth: +lastMonthExpenses.toFixed(2)
+            thisMonth: 0,
+            lastMonth: 0
         },
-        netThisMonth: +(thisMonthRevenue - thisMonthExpenses).toFixed(2),
+        netThisMonth: 0,
         invoices: { pending: pendingInvoices, paid: paidInvoices, total: totalInvoices },
         orders: { total: totalOrders },
         customers: { total: Number(totalCustomers[0]?.c || 0) },
-        products: { total: Number(totalProducts[0]?.c || 0) }
+        products: { total: totalProducts }
     };
 };

@@ -91,8 +91,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: false, limit: '10kb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 morgan.token('id', (req) => req.id);
 app.use(morgan(isProduction ? ':id :remote-addr :method :url :status :res[content-length] - :response-time ms' : 'dev'));

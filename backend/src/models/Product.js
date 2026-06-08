@@ -68,20 +68,16 @@ const Product = sequelize.define('Product', {
         allowNull: true
     },
     image: {
-        type: DataTypes.STRING(500),
-        allowNull: true,
-        validate: { isUrlOrEmpty(value) { if (value && value.length) { try { new URL(value); } catch { throw new Error('image must be a valid URL'); } } } }
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     images: {
         type: DataTypes.JSONB,
         allowNull: false,
         defaultValue: [],
         validate: {
-            isArrayOfUrls(value) {
+            isArrayOfStrings(value) {
                 if (!Array.isArray(value)) throw new Error('images must be an array');
-                for (const v of value) {
-                    try { new URL(v); } catch { throw new Error('each image must be a valid URL'); }
-                }
             }
         }
     },

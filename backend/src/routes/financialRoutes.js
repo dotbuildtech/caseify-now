@@ -27,7 +27,9 @@ router.get('/bank-comparison', protect, admin, c.getBankComparison);
 router.get('/supplier-balances', protect, admin, c.getSupplierBalances);
 
 // ============ INVOICE GENERATION ============
+router.get('/invoices/by-order/:orderId', protect, admin, c.getInvoiceByOrder);
 router.post('/invoices', protect, admin, c.generateInvoice);
+router.get('/invoices/:id/download', protect, admin, c.adminDownloadInvoicePDF);
 
 // ============ SUPPLIERS ============
 router.get('/suppliers', protect, admin, validate({ query: c.financialSchemas.suppliersQuery }), c.listSuppliers);
