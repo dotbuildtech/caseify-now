@@ -143,7 +143,6 @@ export default function ProductPage({ params }) {
                     {isDeviceSpecificCategory(product.category) && (
                         <p className="mt-2 text-[11px] text-text-light/60 italic">This product is designed for specific devices. Please ensure compatibility before purchasing.</p>
                     )}
-                </div>
 
                     <div className="mt-6 flex items-baseline gap-3">
                         <span className="font-display text-3xl font-semibold tabular-nums">{formatINR(sale)}</span>
