@@ -99,6 +99,13 @@ app.use(morgan(isProduction ? ':id :remote-addr :method :url :status :res[conten
 
 app.use(originCheck);
 
+app.set('etag', false);
+
+app.use('/api', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
