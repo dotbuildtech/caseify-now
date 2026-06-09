@@ -70,16 +70,20 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const [models, setModels] = useState([]);
 
     useEffect(() => {
-        adminListBrands().then(setBrands).catch(() => {});
-    }, []);
+        const p = { isActive: 'true' };
+        if (form.category) p.category = form.category;
+        adminListBrands(p).then(setBrands).catch(() => {});
+    }, [form.category]);
 
     useEffect(() => {
         if (!form.brand) { setModels([]); return; }
         const found = brands.find((b) => b.name === form.brand || String(b.id) === form.brand);
         if (found) {
-            api.get(`/brands/${found.id}/models`).then((r) => setModels(r.data?.data || [])).catch(() => setModels([]));
+            const p = {};
+            if (form.category) p.category = form.category;
+            api.get(`/brands/${found.id}/models`, { params: p }).then((r) => setModels(r.data?.data || [])).catch(() => setModels([]));
         }
-    }, [form.brand, brands]);
+    }, [form.brand, brands, form.category]);
 
     const set = (k) => (e) => {
         const v = e?.target?.type === 'checkbox' ? e.target.checked : e?.target?.value ?? e;
@@ -193,7 +197,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <Field label="Category *" error={errors.category} hint={categoryGroup ? `Section: ${categoryGroup}` : 'Select the product category'}>
                         <SearchableSelect
                             value={form.category}
-                            onChange={set('category')}
+                            onChange={(v) => setForm((f) => ({ ...f, category: v, brand: '', phoneModel: '' }))}
                             options={ALL_CATEGORY_NAMES}
                             placeholder="Select category"
                         />

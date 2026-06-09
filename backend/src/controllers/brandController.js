@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const Brand = require('../models/Brand');
 const DeviceModel = require('../models/DeviceModel');
+const Product = require('../models/Product');
 
 exports.listBrands = asyncHandler(async (req, res) => {
     const where = {};
@@ -9,7 +10,18 @@ exports.listBrands = asyncHandler(async (req, res) => {
     if (req.query.q) {
         where.name = { [Op.iLike]: `%${req.query.q}%` };
     }
-    const brands = await Brand.findAll({ where, order: [['name', 'ASC']] });
+    let brands = await Brand.findAll({ where, order: [['name', 'ASC']] });
+    if (req.query.category) {
+        const productBrands = await Product.findAll({
+            attributes: ['brand'],
+            where: { category: req.query.category, brand: { [Op.ne]: null, [Op.ne]: '' } },
+            group: ['brand']
+        });
+        const activeNames = new Set(productBrands.map((p) => p.brand));
+        if (activeNames.size > 0) {
+            brands = brands.filter((b) => activeNames.has(b.name));
+        }
+    }
     res.json({ data: brands });
 });
 
@@ -51,6 +63,21 @@ exports.getBrandModels = asyncHandler(async (req, res) => {
     if (!brand) { res.status(404); throw new Error('Brand not found'); }
     const where = { BrandId: brand.id };
     if (req.query.deviceType) where.deviceType = req.query.deviceType;
-    const models = await DeviceModel.findAll({ where, order: [['name', 'ASC']] });
+    let models = await DeviceModel.findAll({ where, order: [['name', 'ASC']] });
+    if (req.query.category) {
+        const productModels = await Product.findAll({
+            attributes: ['phoneModel'],
+            where: {
+                category: req.query.category,
+                brand: brand.name,
+                phoneModel: { [Op.ne]: null, [Op.ne]: '' }
+            },
+            group: ['phoneModel']
+        });
+        const activeNames = new Set(productModels.map((p) => p.phoneModel));
+        if (activeNames.size > 0) {
+            models = models.filter((m) => activeNames.has(m.name));
+        }
+    }
     res.json({ data: models });
 });

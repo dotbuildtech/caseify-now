@@ -72,16 +72,20 @@ export default function ShopPage() {
     const filterDefs = catConfig?.filters || [];
 
     useEffect(() => {
-        api.get('/brands', { params: { isActive: 'true' } }).then((r) => setBrands(r.data?.data || [])).catch(() => {});
-    }, []);
+        const p = { isActive: 'true' };
+        if (category) p.category = category;
+        api.get('/brands', { params: p }).then((r) => setBrands(r.data?.data || [])).catch(() => {});
+    }, [category]);
 
     useEffect(() => {
         if (!brand) { setModels([]); setPhoneModel(''); return; }
         setModelsLoading(true);
         const found = brands.find((b) => b.name === brand || String(b.id) === brand);
         const brandId = found?.id || brand;
-        api.get(`/brands/${brandId}/models`).then((r) => setModels(r.data?.data || [])).catch(() => setModels([])).finally(() => setModelsLoading(false));
-    }, [brand, brands]);
+        const p = {};
+        if (category) p.category = category;
+        api.get(`/brands/${brandId}/models`, { params: p }).then((r) => setModels(r.data?.data || [])).catch(() => setModels([])).finally(() => setModelsLoading(false));
+    }, [brand, brands, category]);
 
     const filterParams = useMemo(() => {
         const p = { limit: 50 };
@@ -130,6 +134,12 @@ export default function ShopPage() {
         }, 500);
         return () => clearTimeout(t);
     }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort]);
+
+    const handleCategoryChange = (cat) => {
+        setCategory(cat);
+        setBrand('');
+        setPhoneModel('');
+    };
 
     const clearFilters = () => {
         setQ(''); setCategory(''); setBrand(''); setPhoneModel('');
@@ -240,14 +250,14 @@ export default function ShopPage() {
 
                 <div className="overflow-x-auto -mx-4 px-4 mb-8 scrollbar-hide">
                     <div className="flex gap-2 min-w-max pb-2">
-                        <button onClick={() => setCategory('')}
+                        <button onClick={() => handleCategoryChange('')}
                             className={`whitespace-nowrap px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] border transition-colors ${!category ? 'bg-ink text-cream border-ink' : 'bg-surface text-text-light border-border hover:border-ink'}`}>
                             All
                         </button>
                         {CATEGORIES.map((c) => {
                             const IconComp = ICON_MAP[c.icon];
                             return (
-                                <button key={c.id} onClick={() => setCategory(c.name)}
+                                <button key={c.id} onClick={() => handleCategoryChange(c.name)}
                                     className={`whitespace-nowrap px-4 py-2 text-xs font-medium uppercase tracking-[0.12em] border transition-colors flex items-center gap-2 ${category === c.name ? 'bg-ink text-cream border-ink' : 'bg-surface text-text-light border-border hover:border-ink'}`}>
                                     {IconComp && <IconComp className="h-3.5 w-3.5" strokeWidth={1.5} />}
                                     {c.name}
