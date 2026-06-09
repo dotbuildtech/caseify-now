@@ -122,6 +122,9 @@ app.use('/api/financial', require('./routes/financialRoutes'));
 app.use('/api/studio', require('./routes/studioRoutes'));
 app.use('/api/brands', require('./routes/brandRoutes'));
 app.use('/api/device-models', require('./routes/deviceModelRoutes'));
+app.use('/api/hero-slides', require('./routes/heroSlideRoutes'));
+
+app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => res.send('Phone Cover Platform API is running...'));
 

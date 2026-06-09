@@ -2,27 +2,35 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { HERO_SLIDES } from '@/utils/constants';
+import { HERO_SLIDES as FALLBACK_SLIDES } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
+import api from '@/services/api';
 
 export default function HeroSlider() {
+    const [slides, setSlides] = useState(FALLBACK_SLIDES);
     const [i, setI] = useState(0);
 
-    const next = useCallback(() => setI((p) => (p + 1) % HERO_SLIDES.length), []);
-    const prev = useCallback(() => setI((p) => (p - 1 + HERO_SLIDES.length) % HERO_SLIDES.length), []);
+    useEffect(() => {
+        api.get('/hero-slides')
+            .then((r) => { const d = r.data?.data; if (Array.isArray(d) && d.length) setSlides(d); })
+            .catch(() => {});
+    }, []);
+
+    const next = useCallback(() => setI((p) => (p + 1) % slides.length), [slides.length]);
+    const prev = useCallback(() => setI((p) => (p - 1 + slides.length) % slides.length), [slides.length]);
 
     useEffect(() => {
         const t = setInterval(next, 6000);
         return () => clearInterval(t);
     }, [next]);
 
-    const slide = HERO_SLIDES[i];
+    const slide = slides[i];
 
     return (
         <section className="relative h-[80vh] min-h-[600px] w-full overflow-hidden bg-ink text-cream">
-            {HERO_SLIDES.map((s, idx) => (
+            {slides.map((s, idx) => (
                 <div
-                    key={idx}
+                    key={s.id || idx}
                     className="absolute inset-0 transition-opacity duration-1000"
                     style={{ opacity: idx === i ? 1 : 0 }}
                 >
@@ -67,7 +75,7 @@ export default function HeroSlider() {
             </div>
 
             <div className="absolute bottom-8 left-5 z-20 flex items-center gap-2 sm:left-8">
-                {HERO_SLIDES.map((_, idx) => (
+                {slides.map((_, idx) => (
                     <button
                         key={idx}
                         onClick={() => setI(idx)}

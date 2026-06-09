@@ -68,6 +68,7 @@ PaymentRecord.belongsTo(Order, { foreignKey: 'OrderId' });
 const MaterialDesign = require('./MaterialDesign');
 const Brand = require('./Brand');
 const DeviceModel = require('./DeviceModel');
+const HeroSlide = require('./HeroSlide');
 
 Brand.hasMany(DeviceModel, { foreignKey: 'BrandId', as: 'models' });
 DeviceModel.belongsTo(Brand, { foreignKey: 'BrandId' });
@@ -94,5 +95,6 @@ module.exports = {
     PaymentRecord,
     MaterialDesign,
     Brand,
-    DeviceModel
+    DeviceModel,
+    HeroSlide
 };
