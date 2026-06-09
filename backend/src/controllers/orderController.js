@@ -48,6 +48,9 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
     for (const item of orderItems) {
         const product = productMap.get(item.product);
         if (!product) {
+            if (item.product === 9999 && item.designMeta) {
+                continue;
+            }
             res.status(404);
             throw new Error(`Product ${item.product} not found`);
         }
@@ -56,7 +59,11 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
     let itemsPrice = 0;
     for (const item of orderItems) {
         const product = productMap.get(item.product);
-        itemsPrice += product.price * item.qty;
+        if (!product && item.product === 9999) {
+            itemsPrice += (item.designMeta?.totalPrice || item.designMeta?.materialPrice || 399) * item.qty;
+        } else {
+            itemsPrice += product.price * item.qty;
+        }
     }
     const taxPrice = +(itemsPrice * TAX_RATE).toFixed(2);
     const shippingPrice = itemsPrice > 0 ? SHIPPING_FEE : 0;
@@ -75,6 +82,18 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
 
         for (const item of orderItems) {
             const product = productMap.get(item.product);
+
+            if (!product && item.product === 9999) {
+                await OrderItem.create({
+                    OrderId: order.id,
+                    ProductId: item.product,
+                    name: item.designMeta?.materialLabel ? `${item.designMeta.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                    qty: item.qty,
+                    image: item.designMeta?.thumbnail || '',
+                    price: item.designMeta?.totalPrice || item.designMeta?.materialPrice || 399
+                }, { transaction: t });
+                continue;
+            }
 
             const [affected] = await Product.decrement('stock', {
                 by: item.qty,

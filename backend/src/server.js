@@ -119,6 +119,9 @@ app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/invoices', require('./routes/invoiceRoutes'));
 app.use('/api/financial', require('./routes/financialRoutes'));
+app.use('/api/studio', require('./routes/studioRoutes'));
+app.use('/api/brands', require('./routes/brandRoutes'));
+app.use('/api/device-models', require('./routes/deviceModelRoutes'));
 
 app.get('/', (req, res) => res.send('Phone Cover Platform API is running...'));
 

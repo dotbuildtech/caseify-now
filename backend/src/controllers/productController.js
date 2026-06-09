@@ -69,7 +69,14 @@ const productQuerySchema = z.object({
     isFeatured: z.coerce.boolean().optional(),
     includeInactive: z.coerce.boolean().default(false),
     includeVariants: z.coerce.boolean().default(false),
-    inStock: z.coerce.boolean().optional()
+    inStock: z.coerce.boolean().optional(),
+    material: z.string().optional(),
+    device_type: z.string().optional(),
+    port_type: z.string().optional(),
+    wattage: z.string().optional(),
+    capacity: z.string().optional(),
+    cable_type: z.string().optional(),
+    length: z.string().optional()
 });
 
 const buildProductWhere = (q, isAdmin) => {
@@ -102,6 +109,12 @@ const buildProductWhere = (q, isAdmin) => {
             { sku: { [Op.iLike]: `%${term}%` } },
             { tags: { [Op.overlap]: [term] } }
         ];
+    }
+    const attrFields = ['material', 'device_type', 'port_type', 'wattage', 'capacity', 'cable_type', 'length'];
+    for (const field of attrFields) {
+        if (q[field]) {
+            where.attributes = { ...where.attributes, [field]: q[field] };
+        }
     }
     return where;
 };

@@ -73,7 +73,8 @@ export default function CheckoutPage() {
             setSubmitting(true);
             const orderItems = items.map((i) => ({
                 product: getItemProductId(i),
-                qty: getItemQty(i)
+                qty: getItemQty(i),
+                designMeta: i.designMeta || null
             }));
             const order = await createOrder({
                 orderItems,

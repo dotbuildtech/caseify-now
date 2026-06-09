@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { getMaterialById, getPhoneById, BASE_PRICE } from '@/utils/studio';
+import { fetchBrands, fetchModelsByBrand, fetchMaterials, calculatePrice } from '@/services/studioApi';
 
 const StudioContext = createContext(null);
 
@@ -9,7 +9,7 @@ const nextId = () => `layer_${Date.now()}_${++layerIdCounter}`;
 
 const initialFormState = {
     text: 'Your Story',
-    font: 'serif',
+    font: 'sans',
     color: '#0A0A0A',
     bgColor: '#F4F4F5',
     bgImage: null,
@@ -27,10 +27,7 @@ const SAVED_KEY = 'dotbuild_saved_designs';
 
 const loadSaved = () => {
     if (typeof window === 'undefined') return [];
-    try {
-        const raw = localStorage.getItem(SAVED_KEY);
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+    try { const raw = localStorage.getItem(SAVED_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
 };
 
 const persistSaved = (list) => {
@@ -39,29 +36,80 @@ const persistSaved = (list) => {
 };
 
 export function StudioProvider({ children }) {
-    const [phoneId, setPhoneId] = useState(PHONE_MODELS_INIT.phoneId);
-    const [materialId, setMaterialId] = useState(MATERIALS_INIT.materialId);
+    const [brand, setBrand] = useState('Apple');
+    const [modelId, setModelId] = useState('iphone-16-pro');
+    const [materialId, setMaterialId] = useState('matte-hard');
     const [form, setForm] = useState(initialFormState);
     const [layers, setLayers] = useState([]);
     const [selectedLayerId, setSelectedLayerId] = useState(null);
     const [previewImage, setPreviewImage] = useState(null);
     const [savedDesigns, setSavedDesigns] = useState([]);
 
+    const [brands, setBrands] = useState(['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Nothing']);
+    const [models, setModels] = useState([]);
+    const [materials, setMaterials] = useState([]);
+    const [brandsLoading, setBrandsLoading] = useState(false);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [materialsLoading, setMaterialsLoading] = useState(false);
+    const [totalPrice, setTotalPrice] = useState(399);
+
+    useEffect(() => { setSavedDesigns(loadSaved()); }, []);
+
     useEffect(() => {
-        setSavedDesigns(loadSaved());
+        let mounted = true;
+        setBrandsLoading(true);
+        fetchBrands().then((data) => { if (mounted) { setBrands(data); setBrandsLoading(false); } }).catch(() => { if (mounted) setBrandsLoading(false); });
+        return () => { mounted = false; };
     }, []);
 
-    const phone = useMemo(() => getPhoneById(phoneId), [phoneId]);
-    const material = useMemo(() => getMaterialById(materialId), [materialId]);
-    const totalPrice = useMemo(() => material.price, [material]);
+    useEffect(() => {
+        if (!brand) return;
+        let mounted = true;
+        setModelsLoading(true);
+        fetchModelsByBrand(brand).then((data) => {
+            if (!mounted) return;
+            setModels(data);
+            setModelsLoading(false);
+            if (data.length > 0 && !data.find((m) => m.id === modelId)) {
+                setModelId(data[0].id);
+            }
+        }).catch(() => { if (mounted) setModelsLoading(false); });
+        return () => { mounted = false; };
+    }, [brand]);
 
-    const updateForm = useCallback((patch) => {
-        setForm((f) => ({ ...f, ...patch }));
-    }, []);
+    useEffect(() => {
+        if (!modelId) return;
+        let mounted = true;
+        setMaterialsLoading(true);
+        fetchMaterials(modelId).then((data) => {
+            if (!mounted) return;
+            setMaterials(data);
+            setMaterialsLoading(false);
+            if (data.length > 0 && !data.find((m) => m.id === materialId)) {
+                setMaterialId(data[0].id);
+            }
+        }).catch(() => { if (mounted) setMaterialsLoading(false); });
+        return () => { mounted = false; };
+    }, [modelId]);
+
+    useEffect(() => {
+        let mounted = true;
+        const hasImage = layers.some((l) => l.type === 'image');
+        const hasText = layers.some((l) => l.type === 'text');
+        calculatePrice({ modelId, materialId, layerCount: layers.length, hasText, hasImage }).then((price) => {
+            if (mounted) setTotalPrice(price);
+        }).catch(() => {});
+        return () => { mounted = false; };
+    }, [modelId, materialId, layers]);
+
+    const model = useMemo(() => models.find((m) => m.id === modelId) || null, [models, modelId]);
+    const material = useMemo(() => materials.find((m) => m.id === materialId) || null, [materials, materialId]);
+
+    const updateForm = useCallback((patch) => { setForm((f) => ({ ...f, ...patch })); }, []);
 
     const addTextLayer = useCallback((text) => {
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 50, y: 50, size: 32, color: '#0A0A0A', font: 'serif', rotation: 0, scale: 1, opacity: 1 }]);
+        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 50, y: 50, size: 32, color: '#0A0A0A', font: 'sans', rotation: 0, scale: 1, opacity: 1 }]);
         setSelectedLayerId(id);
         return id;
     }, []);
@@ -75,7 +123,7 @@ export function StudioProvider({ children }) {
 
     const addImageLayer = useCallback((url) => {
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'image', url, x: 50, y: 50, width: 60, rotation: 0, scale: 1, opacity: 1 }]);
+        setLayers((l) => [...l, { id, type: 'image', url, x: 50, y: 50, width: 60, rotation: 0, scale: 1, opacity: 1, filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0 } }]);
         setSelectedLayerId(id);
         return id;
     }, []);
@@ -117,12 +165,18 @@ export function StudioProvider({ children }) {
         setForm((f) => ({ ...f, bgImage: null, imageUrl: null, aiPrompt: '' }));
     }, []);
 
+    const applyTemplate = useCallback((template) => {
+        setLayers(template.layers?.map((l) => ({ ...l, id: nextId() })) || []);
+        if (template.bgColor) updateForm({ bgColor: template.bgColor, bgImage: null });
+        if (template.bgImage) updateForm({ bgColor: null, bgImage: template.bgImage });
+        setSelectedLayerId(null);
+    }, [updateForm]);
+
     const saveDesign = useCallback((thumbnail) => {
         const design = {
             id: `design_${Date.now()}`,
             createdAt: new Date().toISOString(),
-            phoneId,
-            materialId,
+            brand, modelId, materialId,
             form: { ...form, layers },
             thumbnail: thumbnail || null
         };
@@ -130,11 +184,12 @@ export function StudioProvider({ children }) {
         setSavedDesigns(next);
         persistSaved(next);
         return design;
-    }, [phoneId, materialId, form, layers, savedDesigns]);
+    }, [brand, modelId, materialId, form, layers, savedDesigns]);
 
     const loadDesign = useCallback((design) => {
-        setPhoneId(design.phoneId);
-        setMaterialId(design.materialId);
+        if (design.brand) setBrand(design.brand);
+        if (design.modelId) setModelId(design.modelId);
+        if (design.materialId) setMaterialId(design.materialId);
         setLayers(design.form.layers || []);
         setForm({ ...initialFormState, ...design.form });
         setSelectedLayerId(null);
@@ -146,23 +201,33 @@ export function StudioProvider({ children }) {
         persistSaved(next);
     }, [savedDesigns]);
 
+    const selectedLayer = useMemo(() => layers.find((l) => l.id === selectedLayerId) || null, [layers, selectedLayerId]);
+
     const value = useMemo(() => ({
-        phoneId, setPhoneId, phone,
+        brand, setBrand, modelId, setModelId, model,
         materialId, setMaterialId, material,
-        form, updateForm,
+        brands, models, materials,
+        brandsLoading, modelsLoading, materialsLoading,
+        form, updateForm, totalPrice,
         layers, setLayers, addTextLayer, addStickerLayer, addImageLayer,
         updateLayer, removeLayer, duplicateLayer, moveLayer, clearAll,
-        selectedLayerId, setSelectedLayerId,
+        selectedLayerId, setSelectedLayerId, selectedLayer,
         previewImage, setPreviewImage,
         savedDesigns, saveDesign, loadDesign, deleteDesign,
-        totalPrice
-    }), [phoneId, phone, materialId, material, form, layers, selectedLayerId, previewImage, savedDesigns, totalPrice, updateForm, addTextLayer, addStickerLayer, addImageLayer, updateLayer, removeLayer, duplicateLayer, moveLayer, clearAll, saveDesign, loadDesign, deleteDesign]);
+        applyTemplate
+    }), [
+        brand, modelId, model, materialId, material,
+        brands, models, materials,
+        brandsLoading, modelsLoading, materialsLoading,
+        form, totalPrice, layers, selectedLayerId, selectedLayer,
+        previewImage, savedDesigns,
+        updateForm, addTextLayer, addStickerLayer, addImageLayer,
+        updateLayer, removeLayer, duplicateLayer, moveLayer, clearAll,
+        saveDesign, loadDesign, deleteDesign, applyTemplate
+    ]);
 
     return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;
 }
-
-const PHONE_MODELS_INIT = { phoneId: 'iphone-16-pro' };
-const MATERIALS_INIT = { materialId: 'impact-matte' };
 
 export const useStudio = () => {
     const ctx = useContext(StudioContext);

@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const NAV = [
@@ -11,6 +11,8 @@ const NAV = [
     { href: '/admin/orders', label: 'Orders', Icon: ShoppingBag },
     { href: '/admin/inventory', label: 'Inventory', Icon: Boxes },
     { href: '/admin/users', label: 'Users', Icon: Users },
+    { href: '/admin/brands', label: 'Brands', Icon: Tag },
+    { href: '/admin/models', label: 'Models', Icon: Smartphone },
     { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 }
 ];
 

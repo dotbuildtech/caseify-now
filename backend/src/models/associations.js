@@ -65,6 +65,16 @@ PaymentRecord.belongsTo(User, { foreignKey: 'UserId' });
 Order.hasOne(PaymentRecord, { foreignKey: 'OrderId', as: 'paymentRecord' });
 PaymentRecord.belongsTo(Order, { foreignKey: 'OrderId' });
 
+const MaterialDesign = require('./MaterialDesign');
+const Brand = require('./Brand');
+const DeviceModel = require('./DeviceModel');
+
+Brand.hasMany(DeviceModel, { foreignKey: 'BrandId', as: 'models' });
+DeviceModel.belongsTo(Brand, { foreignKey: 'BrandId' });
+
+Product.belongsTo(Brand, { foreignKey: 'BrandId', constraints: false });
+Product.belongsTo(DeviceModel, { foreignKey: 'DeviceModelId', constraints: false });
+
 module.exports = {
     sequelize,
     User,
@@ -81,5 +91,8 @@ module.exports = {
     RefreshToken,
     Supplier,
     Expense,
-    PaymentRecord
+    PaymentRecord,
+    MaterialDesign,
+    Brand,
+    DeviceModel
 };

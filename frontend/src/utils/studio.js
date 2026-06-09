@@ -1,51 +1,3 @@
-export const PHONE_MODELS = [
-    { id: 'iphone-16-pro', label: 'iPhone 16 Pro', size: '6.3"', magSafe: true },
-    { id: 'iphone-16', label: 'iPhone 16', size: '6.1"', magSafe: true },
-    { id: 'iphone-15-pro', label: 'iPhone 15 Pro', size: '6.1"', magSafe: true },
-    { id: 'iphone-15', label: 'iPhone 15', size: '6.1"', magSafe: true },
-    { id: 'iphone-14', label: 'iPhone 14', size: '6.1"', magSafe: true },
-    { id: 'iphone-se', label: 'iPhone SE', size: '4.7"', magSafe: false },
-    { id: 'samsung-s25', label: 'Galaxy S25', size: '6.2"', magSafe: false },
-    { id: 'samsung-s24', label: 'Galaxy S24', size: '6.2"', magSafe: false },
-    { id: 'pixel-9-pro', label: 'Pixel 9 Pro', size: '6.3"', magSafe: true },
-    { id: 'pixel-9', label: 'Pixel 9', size: '6.3"', magSafe: true },
-    { id: 'oneplus-13', label: 'OnePlus 13', size: '6.82"', magSafe: false },
-    { id: 'xiaomi-14', label: 'Xiaomi 14', size: '6.36"', magSafe: false }
-];
-
-export const MATERIALS = [
-    {
-        id: 'impact-matte',
-        label: 'Impact — Matte',
-        price: 39,
-        swatch: '#1f1f23',
-        description: 'Soft-touch, military-grade drop protection'
-    },
-    {
-        id: 'glossy-hardshell',
-        label: 'Glossy Hardshell',
-        price: 34,
-        swatch: '#0a0a0a',
-        description: 'Sleek, slim, vibrant color reproduction'
-    },
-    {
-        id: 'saffiano-leather',
-        label: 'Saffiano Leather',
-        price: 64,
-        swatch: '#7a3b2e',
-        description: 'Italian textured leather, premium feel'
-    },
-    {
-        id: 'aurora-translucent',
-        label: 'Aurora Translucent',
-        price: 49,
-        swatch: '#9ad7ff',
-        description: 'Frosted translucent with iridescent sheen'
-    }
-];
-
-export const BASE_PRICE = 39;
-
 export const STICKERS = [
     { id: 'star', label: '★ Star', emoji: '⭐' },
     { id: 'heart', label: 'Heart', emoji: '❤️' },
@@ -58,7 +10,11 @@ export const STICKERS = [
     { id: 'rainbow', label: 'Rainbow', emoji: '🌈' },
     { id: 'moon', label: 'Moon', emoji: '🌙' },
     { id: 'cat', label: 'Cat', emoji: '🐱' },
-    { id: 'dog', label: 'Dog', emoji: '🐶' }
+    { id: 'dog', label: 'Dog', emoji: '🐶' },
+    { id: 'crown', label: 'Crown', emoji: '👑' },
+    { id: 'skull', label: 'Skull', emoji: '💀' },
+    { id: 'rocket', label: 'Rocket', emoji: '🚀' },
+    { id: 'butterfly', label: 'Butterfly', emoji: '🦋' }
 ];
 
 export const PHOTO_PRESETS = [
@@ -84,6 +40,4 @@ export const COLOR_PALETTE = [
     '#F472B6', '#FCA5A5', '#FED7AA', '#FDE68A', '#A7F3D0', '#A5F3FC'
 ];
 
-export const getMaterialById = (id) => MATERIALS.find((m) => m.id === id) || MATERIALS[0];
-export const getPhoneById = (id) => PHONE_MODELS.find((p) => p.id === id) || PHONE_MODELS[0];
 export const getStickerById = (id) => STICKERS.find((s) => s.id === id);

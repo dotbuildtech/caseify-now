@@ -1,12 +1,13 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, X, Trash2, ImagePlus } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 import SearchableSelect from '@/components/ui/SearchableSelect';
-import { adminCreateProduct, adminUpdateProduct } from '@/services/adminApi';
-import { PRODUCT_CATEGORIES } from '@/utils/constants';
+import { adminCreateProduct, adminUpdateProduct, adminListBrands } from '@/services/adminApi';
+import { CATEGORIES, CATEGORY_NAMES, SUBCATEGORY_NAMES, ALL_CATEGORY_NAMES, isDeviceSpecificCategory, getCategoryConfig } from '@/utils/constants';
+import api from '@/services/api';
 
 const blank = {
     name: '',
@@ -65,6 +66,20 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const fileRef = useRef(null);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
+    const [brands, setBrands] = useState([]);
+    const [models, setModels] = useState([]);
+
+    useEffect(() => {
+        adminListBrands().then(setBrands).catch(() => {});
+    }, []);
+
+    useEffect(() => {
+        if (!form.brand) { setModels([]); return; }
+        const found = brands.find((b) => b.name === form.brand || String(b.id) === form.brand);
+        if (found) {
+            api.get(`/brands/${found.id}/models`).then((r) => setModels(r.data?.data || [])).catch(() => setModels([]));
+        }
+    }, [form.brand, brands]);
 
     const set = (k) => (e) => {
         const v = e?.target?.type === 'checkbox' ? e.target.checked : e?.target?.value ?? e;
@@ -161,6 +176,9 @@ export default function ProductForm({ initial, mode = 'create' }) {
         }
     };
 
+    const isDeviceCategory = form.category && isDeviceSpecificCategory(form.category);
+    const categoryGroup = form.category ? getCategoryConfig(form.category)?.name || getCategoryConfig(form.category)?.name : null;
+
     return (
         <form onSubmit={submit} className="space-y-6">
             <div className="border border-border bg-surface p-5 md:p-6">
@@ -172,20 +190,30 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <Field label="SKU" hint="Auto-generated from name if blank" error={errors.sku}>
                         <input value={form.sku} onChange={set('sku')} className="input-luxe" />
                     </Field>
-                    <Field label="Category *" error={errors.category}>
+                    <Field label="Category *" error={errors.category} hint={categoryGroup ? `Section: ${categoryGroup}` : 'Select the product category'}>
                         <SearchableSelect
                             value={form.category}
                             onChange={set('category')}
-                            options={PRODUCT_CATEGORIES}
+                            options={ALL_CATEGORY_NAMES}
                             placeholder="Select category"
                         />
                     </Field>
-                    <Field label="Brand" error={errors.brand}>
-                        <input value={form.brand} onChange={set('brand')} className="input-luxe" />
-                    </Field>
-                    <Field label="Phone Model" hint="e.g. iPhone 15 Pro" error={errors.phoneModel}>
-                        <input value={form.phoneModel} onChange={set('phoneModel')} className="input-luxe" />
-                    </Field>
+                    {isDeviceCategory && (
+                        <>
+                            <Field label="Brand" hint="Device brand" error={errors.brand}>
+                                <select value={form.brand} onChange={set('brand')} className="input-luxe">
+                                    <option value="">Select brand…</option>
+                                    {brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Compatible Model" hint="Specific device model" error={errors.phoneModel}>
+                                <select value={form.phoneModel} onChange={set('phoneModel')} className="input-luxe" disabled={!form.brand}>
+                                    <option value="">{form.brand ? 'Select model…' : 'Select brand first'}</option>
+                                    {models.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                                </select>
+                            </Field>
+                        </>
+                    )}
                     <Field label="Tags" hint="Comma-separated">
                         <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="input-luxe" placeholder="bestseller, slim, matte" />
                     </Field>

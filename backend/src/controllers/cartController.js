@@ -95,6 +95,36 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
 
     const result = await sequelize.transaction(async (transaction) => {
         const product = await Product.findByPk(productId, { transaction });
+
+        if (designMeta && !product) {
+            const cart = await getOrCreateCart(req.user.id, transaction);
+
+            const [cartItem] = await CartItem.findOrCreate({
+                where: { CartId: cart.id, ProductId: productId },
+                defaults: {
+                    CartId: cart.id,
+                    ProductId: productId,
+                    ProductVariantId: null,
+                    quantity,
+                    priceAtAdd: designMeta.totalPrice || designMeta.materialPrice || 399,
+                    nameAtAdd: `${designMeta.materialLabel || 'Custom'} Phone Case · ${designMeta.modelLabel || ''}`,
+                    imageAtAdd: designMeta.thumbnail || null,
+                    variantLabel: `${designMeta.modelLabel || ''} · ${designMeta.materialLabel || ''}`,
+                    designMeta: designMeta || null
+                },
+                transaction
+            });
+
+            if (!cartItem) {
+                const err = new Error('Failed to add custom item');
+                err.status = 500;
+                throw err;
+            }
+
+            await cart.update({ lastActivityAt: new Date() }, { transaction });
+            return cart.id;
+        }
+
         if (!product || !product.isActive) {
             const err = new Error('Product not available');
             err.status = 404;

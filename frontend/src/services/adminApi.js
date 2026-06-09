@@ -66,6 +66,41 @@ export const adminSalesAnalytics = () => api.get('/analytics/sales').then((r) =>
 
 export const adminCustomerAnalytics = () => api.get('/analytics/customers').then((r) => r.data);
 
+// ---------- Brands (admin) ----------
+export const adminListBrands = (params = {}) =>
+    api.get('/brands', { params }).then((r) => r.data?.data || []);
+
+export const adminGetBrand = (id) =>
+    api.get(`/brands/${id}`).then((r) => r.data);
+
+export const adminCreateBrand = (payload) =>
+    api.post('/brands', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminUpdateBrand = (id, payload) =>
+    api.put(`/brands/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminDeleteBrand = (id) =>
+    api.delete(`/brands/${id}`).then((r) => { clearApiCache(); return r.data; });
+
+export const adminGetBrandModels = (brandId) =>
+    api.get(`/brands/${brandId}/models`).then((r) => r.data?.data || []);
+
+// ---------- Device Models (admin) ----------
+export const adminListDeviceModels = (params = {}) =>
+    api.get('/device-models', { params }).then((r) => r.data?.data || []);
+
+export const adminGetDeviceModel = (id) =>
+    api.get(`/device-models/${id}`).then((r) => r.data);
+
+export const adminCreateDeviceModel = (payload) =>
+    api.post('/device-models', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminUpdateDeviceModel = (id, payload) =>
+    api.put(`/device-models/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminDeleteDeviceModel = (id) =>
+    api.delete(`/device-models/${id}`).then((r) => { clearApiCache(); return r.data; });
+
 // ---------- Financial dashboard (admin) ----------
 export const adminFinancialDashboard = (params = {}) =>
     api.get('/financial/dashboard', { params }).then((r) => r.data);

@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatINR } from '@/utils/format';
 import ProductCard, { getProductImage, getProductPrice, getProductOriginalPrice } from '@/components/product/ProductCard';
+import { isDeviceSpecificCategory } from '@/utils/constants';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 
@@ -131,7 +132,18 @@ export default function ProductPage({ params }) {
                 <div>
                     <span className="eyebrow">{product.category}</span>
                     <h1 className="mt-4 font-display text-4xl leading-tight md:text-5xl">{product.name}</h1>
-                    {product.brand && <p className="mt-2 text-sm text-text-light">by {product.brand}</p>}
+                    {(product.brand || product.phoneModel) && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-text-light">
+                            {product.brand && <span className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium">{product.brand}</span>}
+                            {product.phoneModel && <span className="flex items-center gap-1 text-[11px]">
+                                <span className="text-text-light/60">Compatible:</span> {product.phoneModel}
+                            </span>}
+                        </div>
+                    )}
+                    {isDeviceSpecificCategory(product.category) && (
+                        <p className="mt-2 text-[11px] text-text-light/60 italic">This product is designed for specific devices. Please ensure compatibility before purchasing.</p>
+                    )}
+                </div>
 
                     <div className="mt-6 flex items-baseline gap-3">
                         <span className="font-display text-3xl font-semibold tabular-nums">{formatINR(sale)}</span>
