@@ -1,10 +1,10 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { fetchProducts } from '@/services/productApi';
 import ProductCard from '@/components/product/ProductCard';
-import { CATEGORIES, CATEGORY_NAMES, getCategoryConfig } from '@/utils/constants';
-import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor, Search, SlidersHorizontal, X, ChevronDown, RotateCcw } from 'lucide-react';
+import { CATEGORIES, getCategoryConfig } from '@/utils/constants';
+import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor, Search, SlidersHorizontal, X, RotateCcw } from 'lucide-react';
 import api from '@/services/api';
 
 const ICON_MAP = { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor };
@@ -48,7 +48,6 @@ function ActiveFilters({ filters, onRemove, onClear }) {
 
 export default function ShopPage() {
     const params = useSearchParams();
-    const router = useRouter();
 
     const [q, setQ] = useState(params.get('q') || '');
     const [category, setCategory] = useState(params.get('category') || '');
@@ -114,21 +113,23 @@ export default function ShopPage() {
         return () => clearTimeout(t);
     }, [load]);
 
-    const updateURL = useCallback(() => {
-        const sp = new URLSearchParams();
-        if (q) sp.set('q', q);
-        if (category) sp.set('category', category);
-        if (brand) sp.set('brand', brand);
-        if (phoneModel) sp.set('phoneModel', phoneModel);
-        if (priceMin) sp.set('priceMin', priceMin);
-        if (priceMax) sp.set('priceMax', priceMax);
-        if (inStock) sp.set('inStock', 'true');
-        if (sort && sort !== 'featured') sp.set('sort', sort);
-        const qs = sp.toString();
-        router.replace(qs ? `/shop?${qs}` : '/shop', { scroll: false });
-    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, router]);
-
-    useEffect(() => { updateURL(); }, [updateURL]);
+    useEffect(() => {
+        const t = setTimeout(() => {
+            const sp = new URLSearchParams();
+            if (q) sp.set('q', q);
+            if (category) sp.set('category', category);
+            if (brand) sp.set('brand', brand);
+            if (phoneModel) sp.set('phoneModel', phoneModel);
+            if (priceMin) sp.set('priceMin', priceMin);
+            if (priceMax) sp.set('priceMax', priceMax);
+            if (inStock) sp.set('inStock', 'true');
+            if (sort && sort !== 'featured') sp.set('sort', sort);
+            const qs = sp.toString();
+            const url = qs ? `/shop?${qs}` : '/shop';
+            window.history.replaceState(null, '', url);
+        }, 500);
+        return () => clearTimeout(t);
+    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort]);
 
     const clearFilters = () => {
         setQ(''); setCategory(''); setBrand(''); setPhoneModel('');
