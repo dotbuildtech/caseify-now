@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { sequelize, connectDB } = require('./src/config/db');
 const Brand = require('./src/models/Brand');
 const DeviceModel = require('./src/models/DeviceModel');
@@ -421,7 +422,7 @@ async function seed() {
                 for (const [deviceType, names] of Object.entries(devices)) {
                     if (!Array.isArray(names)) continue;
                     for (const name of names) {
-                        const modelSlug = `${slug}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+                        const modelSlug = `${slug}-${name.toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
                         modelRows.push({
                             name,
                             slug: modelSlug,
