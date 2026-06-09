@@ -225,28 +225,6 @@ export default function ShopPage() {
         return null;
     };
 
-    const FilterSidebar = () => (
-        <div className="space-y-4">
-            <div className="pb-4 border-b border-border">
-                <input value={q} onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search products..."
-                    className="input-luxe text-sm" />
-            </div>
-            <div className="pb-4 border-b border-border">
-                <label className="flex cursor-pointer items-center gap-2 text-xs">
-                    <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} className="h-4 w-4 accent-ink" />
-                    <span>In stock only</span>
-                </label>
-            </div>
-            {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
-            {hasActiveFilters && (
-                <button onClick={clearFilters} className="w-full btn-ghost text-xs">
-                    <RotateCcw className="h-3 w-3" /> Clear all filters
-                </button>
-            )}
-        </div>
-    );
-
     return (
         <div className="min-h-screen bg-background-light/30">
             <div className="container-luxe py-8 md:py-12">
@@ -283,7 +261,8 @@ export default function ShopPage() {
                     <div className="flex items-center gap-3">
                         <div className="flex-1 flex items-center border border-border bg-surface px-3 py-2.5 focus-within:border-ink">
                             <Search className="h-4 w-4 text-text-light shrink-0" />
-                            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className="w-full bg-transparent px-2 text-sm outline-none placeholder:text-text-light" />
+                            <input value={q} onChange={(e) => setQ(e.target.value)}
+                                placeholder="Search…" className="w-full bg-transparent px-2 text-sm outline-none placeholder:text-text-light" />
                         </div>
                         <button onClick={() => setMobileFilterOpen(true)} className="btn-ghost !px-3 !py-2.5 flex items-center gap-2 text-xs">
                             <SlidersHorizontal className="h-4 w-4" /> Filters
@@ -292,15 +271,34 @@ export default function ShopPage() {
                 </div>
 
                 {mobileFilterOpen && (
-                    <div className="fixed inset-0 z-50 md:hidden">
-                        <div className="absolute inset-0 bg-ink/30" onClick={() => setMobileFilterOpen(false)} />
-                        <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-surface border-l border-border overflow-y-auto">
+                    <div className="fixed inset-0 z-50 md:hidden" onClick={() => setMobileFilterOpen(false)}>
+                        <div className="absolute inset-0 bg-ink/30" />
+                        <div className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-surface border-l border-border overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-between p-4 border-b border-border">
                                 <h3 className="text-xs font-semibold uppercase tracking-[0.18em]">Filters</h3>
                                 <button onClick={() => setMobileFilterOpen(false)} className="p-1"><X className="h-5 w-5" /></button>
                             </div>
-                            <div className="p-4">
-                                <FilterSidebar />
+                            <div className="p-4 space-y-4">
+                                <div className="pb-4 border-b border-border">
+                                    <div className="flex items-center border border-border bg-surface px-3 focus-within:border-ink">
+                                        <Search className="h-4 w-4 text-text-light shrink-0" />
+                                        <input value={q} onChange={(e) => setQ(e.target.value)}
+                                            placeholder="Search products..."
+                                            className="w-full bg-transparent px-2 py-3 text-sm outline-none placeholder:text-text-light" />
+                                    </div>
+                                </div>
+                                <div className="pb-4 border-b border-border">
+                                    <label className="flex cursor-pointer items-center gap-2 text-xs">
+                                        <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} className="h-4 w-4 accent-ink" />
+                                        <span>In stock only</span>
+                                    </label>
+                                </div>
+                                {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
+                                {hasActiveFilters && (
+                                    <button onClick={clearFilters} className="w-full btn-ghost text-xs">
+                                        <RotateCcw className="h-3 w-3" /> Clear all filters
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -309,7 +307,28 @@ export default function ShopPage() {
                 <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
                     <aside className="hidden md:block">
                         <div className="sticky top-28 border border-border bg-surface p-5 max-h-[calc(100vh-8rem)] overflow-y-auto">
-                            <FilterSidebar />
+                            <div className="space-y-4">
+                                <div className="pb-4 border-b border-border">
+                                    <div className="flex items-center border border-border bg-surface px-3 focus-within:border-ink">
+                                        <Search className="h-4 w-4 text-text-light shrink-0" />
+                                        <input value={q} onChange={(e) => setQ(e.target.value)}
+                                            placeholder="Search products..."
+                                            className="w-full bg-transparent px-2 py-3 text-sm outline-none placeholder:text-text-light" />
+                                    </div>
+                                </div>
+                                <div className="pb-4 border-b border-border">
+                                    <label className="flex cursor-pointer items-center gap-2 text-xs">
+                                        <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} className="h-4 w-4 accent-ink" />
+                                        <span>In stock only</span>
+                                    </label>
+                                </div>
+                                {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
+                                {hasActiveFilters && (
+                                    <button onClick={clearFilters} className="w-full btn-ghost text-xs">
+                                        <RotateCcw className="h-3 w-3" /> Clear all filters
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </aside>
 
