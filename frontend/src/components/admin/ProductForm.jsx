@@ -25,7 +25,8 @@ const blank = {
     isActive: true,
     isFeatured: false,
     isDeviceSpecific: false,
-    tags: []
+    tags: [],
+    materials: []
 };
 
 const normalize = (p) => {
@@ -37,7 +38,8 @@ const normalize = (p) => {
         ...blank,
         ...p,
         images: imgs,
-        tags: Array.isArray(p.tags) ? p.tags : []
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        materials: Array.isArray(p.materials) ? p.materials : []
     };
 };
 
@@ -69,11 +71,21 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const [errors, setErrors] = useState({});
     const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
+    const [availableMaterials, setAvailableMaterials] = useState([]);
 
     useEffect(() => {
         const p = { isActive: 'true' };
         if (form.category) p.category = form.category;
         adminListBrands(p).then(setBrands).catch(() => {});
+    }, [form.category]);
+
+    useEffect(() => {
+        if (form.category) {
+            api.get(`/category-materials/${encodeURIComponent(form.category)}`)
+                .then((r) => setAvailableMaterials(r.data?.data || [])).catch(() => setAvailableMaterials([]));
+        } else {
+            setAvailableMaterials([]);
+        }
     }, [form.category]);
 
     useEffect(() => {
@@ -154,6 +166,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
             isActive: !!form.isActive,
             isFeatured: !!form.isFeatured,
             isDeviceSpecific: !!form.isDeviceSpecific,
+            materials: Array.isArray(form.materials) ? form.materials : [],
             tags
         };
 
@@ -234,6 +247,30 @@ export default function ProductForm({ initial, mode = 'create' }) {
                                 </select>
                             </Field>
                         </>
+                    )}
+                    {form.category && availableMaterials.length > 0 && (
+                        <Field label="Materials" hint="Select one or more materials" error={errors.materials}>
+                            <div className="flex flex-wrap gap-1.5">
+                                {availableMaterials.map((m) => {
+                                    const selected = form.materials?.includes(m.name);
+                                    return (
+                                        <button key={m.id} type="button" onClick={() => {
+                                            setForm((f) => ({
+                                                ...f,
+                                                materials: selected
+                                                    ? f.materials.filter((x) => x !== m.name)
+                                                    : [...(f.materials || []), m.name]
+                                            }));
+                                        }}
+                                            className={`px-3 py-1.5 text-xs border transition-colors ${
+                                                selected ? 'bg-ink text-cream border-ink' : 'border-border bg-cream text-ink hover:border-ink'
+                                            }`}>
+                                            {m.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </Field>
                     )}
                     <Field label="Tags" hint="Comma-separated">
                         <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="input-luxe" placeholder="bestseller, slim, matte" />

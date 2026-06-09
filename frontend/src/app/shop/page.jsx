@@ -67,6 +67,8 @@ export default function ShopPage() {
     const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
     const [modelsLoading, setModelsLoading] = useState(false);
+    const [availableMaterials, setAvailableMaterials] = useState([]);
+    const [selectedMaterials, setSelectedMaterials] = useState([]);
 
     const catConfig = useMemo(() => getCategoryConfig(category), [category]);
     const isDeviceSpecific = catConfig?.deviceSpecific ?? false;
@@ -76,6 +78,15 @@ export default function ShopPage() {
         const p = { isActive: 'true' };
         if (category) p.category = category;
         api.get('/brands', { params: p }).then((r) => setBrands(r.data?.data || [])).catch(() => {});
+    }, [category]);
+
+    useEffect(() => {
+        if (category) {
+            api.get(`/category-materials/${encodeURIComponent(category)}`)
+                .then((r) => setAvailableMaterials(r.data?.data || [])).catch(() => setAvailableMaterials([]));
+        } else {
+            setAvailableMaterials([]);
+        }
     }, [category]);
 
     useEffect(() => {
@@ -100,8 +111,9 @@ export default function ShopPage() {
         const s = SORTS.find((x) => x.v === sort);
         if (s) p.sort = s.sort;
         Object.entries(attrFilters).forEach(([k, v]) => { if (v) p[k] = v; });
+        if (selectedMaterials.length > 0) p.materials = selectedMaterials.join(',');
         return p;
-    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, attrFilters]);
+    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, attrFilters, selectedMaterials]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -128,6 +140,7 @@ export default function ShopPage() {
             if (priceMin) sp.set('priceMin', priceMin);
             if (priceMax) sp.set('priceMax', priceMax);
             if (inStock) sp.set('inStock', 'true');
+            if (selectedMaterials.length > 0) sp.set('materials', selectedMaterials.join(','));
             if (sort && sort !== 'featured') sp.set('sort', sort);
             const qs = sp.toString();
             const url = qs ? `/shop?${qs}` : '/shop';
@@ -144,7 +157,7 @@ export default function ShopPage() {
 
     const clearFilters = () => {
         setQ(''); setCategory(''); setBrand(''); setPhoneModel('');
-        setPriceMin(''); setPriceMax(''); setInStock(false); setSort('featured'); setAttrFilters({});
+        setPriceMin(''); setPriceMax(''); setInStock(false); setSort('featured'); setAttrFilters({}); setSelectedMaterials([]);
     };
 
     const removeFilter = (key) => {
@@ -154,6 +167,7 @@ export default function ShopPage() {
         else if (key === 'phoneModel') setPhoneModel('');
         else if (key === 'price_range') { setPriceMin(''); setPriceMax(''); }
         else if (key === 'inStock') setInStock(false);
+        else if (key === 'materials') setSelectedMaterials([]);
         else if (key === 'sort') setSort('featured');
         else setAttrFilters((prev) => { const n = { ...prev }; delete n[key]; return n; });
     };
@@ -352,6 +366,26 @@ export default function ShopPage() {
                                     </label>
                                 </div>
                                 {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
+                                {availableMaterials.length > 0 && (
+                                    <div className="pb-4 border-b border-border">
+                                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Material</h4>
+                                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                                            {availableMaterials.map((m) => (
+                                                <label key={m.id} className="flex items-center gap-2 cursor-pointer text-xs py-0.5 hover:text-ink transition-colors">
+                                                    <input type="checkbox"
+                                                        checked={selectedMaterials.includes(m.name)}
+                                                        onChange={(e) => {
+                                                            setSelectedMaterials((prev) =>
+                                                                e.target.checked ? [...prev, m.name] : prev.filter((x) => x !== m.name)
+                                                            );
+                                                        }}
+                                                        className="h-3.5 w-3.5 accent-ink" />
+                                                    {m.name}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="w-full btn-ghost text-xs">
                                         <RotateCcw className="h-3 w-3" /> Clear all filters
@@ -376,6 +410,26 @@ export default function ShopPage() {
                                     </label>
                                 </div>
                                 {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
+                                {availableMaterials.length > 0 && (
+                                    <div className="pb-4 border-b border-border last:border-0">
+                                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Material</h4>
+                                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                                            {availableMaterials.map((m) => (
+                                                <label key={m.id} className="flex items-center gap-2 cursor-pointer text-xs py-0.5 hover:text-ink transition-colors">
+                                                    <input type="checkbox"
+                                                        checked={selectedMaterials.includes(m.name)}
+                                                        onChange={(e) => {
+                                                            setSelectedMaterials((prev) =>
+                                                                e.target.checked ? [...prev, m.name] : prev.filter((x) => x !== m.name)
+                                                            );
+                                                        }}
+                                                        className="h-3.5 w-3.5 accent-ink" />
+                                                    {m.name}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="w-full btn-ghost text-xs">
                                         <RotateCcw className="h-3 w-3" /> Clear all filters

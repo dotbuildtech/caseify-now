@@ -70,12 +70,17 @@ const Brand = require('./Brand');
 const DeviceModel = require('./DeviceModel');
 const HeroSlide = require('./HeroSlide');
 const CategoryBrand = require('./CategoryBrand');
+const Material = require('./Material');
+const CategoryMaterial = require('./CategoryMaterial');
 
 Brand.hasMany(DeviceModel, { foreignKey: 'BrandId', as: 'models' });
 DeviceModel.belongsTo(Brand, { foreignKey: 'BrandId' });
 
 Brand.hasMany(CategoryBrand, { foreignKey: 'BrandId', as: 'categoryBrands' });
 CategoryBrand.belongsTo(Brand, { foreignKey: 'BrandId' });
+
+Material.hasMany(CategoryMaterial, { foreignKey: 'MaterialId', as: 'categoryMaterials' });
+CategoryMaterial.belongsTo(Material, { foreignKey: 'MaterialId' });
 
 Product.belongsTo(Brand, { foreignKey: 'BrandId', constraints: false });
 Product.belongsTo(DeviceModel, { foreignKey: 'DeviceModelId', constraints: false });
@@ -101,5 +106,7 @@ module.exports = {
     Brand,
     DeviceModel,
     HeroSlide,
-    CategoryBrand
+    CategoryBrand,
+    Material,
+    CategoryMaterial
 };

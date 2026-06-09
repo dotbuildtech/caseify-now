@@ -131,6 +131,8 @@ app.use('/api/brands', require('./routes/brandRoutes'));
 app.use('/api/device-models', require('./routes/deviceModelRoutes'));
 app.use('/api/hero-slides', require('./routes/heroSlideRoutes'));
 app.use('/api/category-brands', require('./routes/categoryBrandRoutes'));
+app.use('/api/materials', require('./routes/materialRoutes'));
+app.use('/api/category-materials', require('./routes/categoryMaterialRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

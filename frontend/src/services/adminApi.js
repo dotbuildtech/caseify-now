@@ -128,3 +128,30 @@ export const adminAddCategoryBrand = (categoryName, BrandId) =>
 
 export const adminRemoveCategoryBrand = (id) =>
     api.delete(`/category-brands/${id}`).then((r) => { clearApiCache(); return r.data; });
+
+// ---------- Materials (admin) ----------
+export const adminListMaterials = (params = {}) =>
+    api.get('/materials', { params }).then((r) => r.data?.data || []);
+
+export const adminGetMaterial = (id) =>
+    api.get(`/materials/${id}`).then((r) => r.data);
+
+export const adminCreateMaterial = (payload) =>
+    api.post('/materials', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminUpdateMaterial = (id, payload) =>
+    api.put(`/materials/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminDeleteMaterial = (id) =>
+    api.delete(`/materials/${id}`).then((r) => { clearApiCache(); return r.data; });
+
+// ---------- Category-Material associations (admin) ----------
+export const adminListCategoryMaterials = () =>
+    api.get('/category-materials').then((r) => r.data?.data || []);
+
+export const adminGetCategoryMaterials = (categoryName) =>
+    api.get(`/category-materials/${encodeURIComponent(categoryName)}`).then((r) => r.data?.data || []);
+
+export const adminSetCategoryMaterials = (categoryName, materialIds) =>
+    api.post('/category-materials/bulk', { categoryName, materialIds })
+        .then((r) => { clearApiCache(); return r.data?.data || []; });

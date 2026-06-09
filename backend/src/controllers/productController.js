@@ -42,6 +42,7 @@ const productCreateSchema = z.object({
     isFeatured: z.boolean().default(false),
     isDeviceSpecific: z.boolean().default(false),
     tags: z.array(z.string().max(40)).default([]),
+    materials: z.array(z.string().max(80)).default([]),
     attributes: z.record(z.any()).default({}),
     variants: z.array(variantSchema).optional()
 });
@@ -72,6 +73,7 @@ const productQuerySchema = z.object({
     includeVariants: z.coerce.boolean().default(false),
     inStock: z.coerce.boolean().optional(),
     material: z.string().optional(),
+    materials: z.string().optional(),
     device_type: z.string().optional(),
     port_type: z.string().optional(),
     wattage: z.string().optional(),
@@ -98,6 +100,10 @@ const buildProductWhere = (q, isAdmin) => {
     if (q.inStock === true) where.stock = { [Op.gt]: 0 };
     if (q.inStock === false) where.stock = 0;
     if (q.isFeatured !== undefined) where.isFeatured = q.isFeatured;
+    if (q.materials) {
+        const list = q.materials.split(',').map((m) => m.trim()).filter(Boolean);
+        if (list.length) where.materials = { [Op.overlap]: list };
+    }
     if (q.tags) {
         const list = q.tags.split(',').map((t) => t.trim()).filter(Boolean);
         if (list.length) where.tags = { [Op.overlap]: list };

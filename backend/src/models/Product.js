@@ -113,6 +113,11 @@ const Product = sequelize.define('Product', {
         allowNull: false,
         defaultValue: []
     },
+    materials: {
+        type: DataTypes.JSONB,
+        allowNull: false,
+        defaultValue: []
+    },
     attributes: {
         type: DataTypes.JSONB,
         allowNull: false,

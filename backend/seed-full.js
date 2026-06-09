@@ -4,6 +4,8 @@ const Brand = require('./src/models/Brand');
 const DeviceModel = require('./src/models/DeviceModel');
 const CategoryBrand = require('./src/models/CategoryBrand');
 const HeroSlide = require('./src/models/HeroSlide');
+const Material = require('./src/models/Material');
+const CategoryMaterial = require('./src/models/CategoryMaterial');
 
 // ── Brands ──────────────────────────────────────────────
 const BRANDS = [
@@ -342,6 +344,54 @@ const MODELS_BY_BRAND = {
     },
 };
 
+// ── Materials ─────────────────────────────────────────────
+const MATERIALS = [
+    'Silicone', 'TPU', 'Polycarbonate', 'Leather', 'Wood',
+    'Carbon Fiber', 'Metal', 'Fabric', 'Transparent', 'Hybrid',
+    'Rubber', 'Plastic', 'Aluminum', 'Stainless Steel', 'Glass',
+    'Ceramic', 'Acrylic', 'Velvet', 'Denim', 'Canvas',
+    'Suede', 'Liquid Silicone', 'Frosted', 'Clear', 'Matte',
+    'Glossy', 'Bumper', 'Aramid Fiber', 'Kevlar', 'Thermoplastic'
+];
+
+// ── Category → Materials mapping ──────────────────────────
+const CATEGORY_MATERIALS = {
+    'Mobile Back Covers': [
+        'Silicone', 'TPU', 'Polycarbonate', 'Leather', 'Wood',
+        'Carbon Fiber', 'Metal', 'Fabric', 'Transparent', 'Hybrid',
+        'Rubber', 'Liquid Silicone', 'Frosted', 'Clear', 'Matte',
+        'Glossy', 'Bumper', 'Aramid Fiber', 'Kevlar', 'Thermoplastic'
+    ],
+    'Screen Protectors': [
+        'Glass', 'TPU', 'Plastic', 'Matte', 'Clear', 'Ceramic',
+        'Privacy', 'Anti-Glare', 'Frosted'
+    ],
+    'Chargers': [
+        'Plastic', 'Aluminum', 'Polycarbonate', 'Rubber', 'Metal',
+        'Carbon Fiber', 'Silicone', 'Fabric'
+    ],
+    'Earphones & Earbuds': [
+        'Plastic', 'Silicone', 'Metal', 'Aluminum', 'Leather',
+        'Fabric', 'Rubber', 'Memory Foam'
+    ],
+    'Power Banks': [
+        'Plastic', 'Aluminum', 'Polycarbonate', 'Rubber', 'Metal',
+        'Silicone', 'Leather'
+    ],
+    'Cables': [
+        'Rubber', 'Fabric', 'TPU', 'Plastic', 'Aluminum',
+        'Nylon Braided', 'Silicone', 'Kevlar'
+    ],
+    'Smart Watches': [
+        'Silicone', 'Leather', 'Metal', 'Stainless Steel', 'Fabric',
+        'Plastic', 'Rubber', 'Ceramic', 'Wood', 'Nylon'
+    ],
+    'Laptop Accessories': [
+        'Plastic', 'Aluminum', 'Polycarbonate', 'Fabric', 'Leather',
+        'Rubber', 'Metal', 'Carbon Fiber', 'Canvas', 'Neoprene'
+    ]
+};
+
 // ── Category → Brand mapping ────────────────────────────
 const CATEGORY_BRANDS = {
     'Mobile Back Covers': [
@@ -457,6 +507,45 @@ async function seed() {
             }
             await CategoryBrand.bulkCreate(links);
             console.log(`Seeded ${links.length} category-brand links`);
+        }
+
+        // ── Materials ────────────────────────────────────
+        const existingMaterials = await Material.count();
+        let materialRows = [];
+        if (existingMaterials > 0) {
+            console.log(`${existingMaterials} materials exist, skipping.`);
+            materialRows = await Material.findAll();
+        } else {
+            materialRows = await Material.bulkCreate(
+                MATERIALS.map((name) => ({
+                    name,
+                    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                    isActive: true
+                })),
+                { returning: true }
+            );
+            console.log(`Seeded ${materialRows.length} materials`);
+        }
+
+        const materialMap = {};
+        materialRows.forEach((m) => { materialMap[m.name] = m; });
+
+        // ── Category-Material Links ──────────────────────
+        const existingCatMat = await CategoryMaterial.count();
+        if (existingCatMat > 0) {
+            console.log(`${existingCatMat} category-material links exist, skipping.`);
+        } else {
+            const links = [];
+            for (const [cat, names] of Object.entries(CATEGORY_MATERIALS)) {
+                for (const name of names) {
+                    const mat = materialMap[name];
+                    if (mat) {
+                        links.push({ categoryName: cat, MaterialId: mat.id });
+                    }
+                }
+            }
+            await CategoryMaterial.bulkCreate(links);
+            console.log(`Seeded ${links.length} category-material links`);
         }
 
         // ── Hero Slides ─────────────────────────────────
