@@ -110,3 +110,21 @@ export const adminRevenueAnalytics = (params = {}) =>
 
 export const adminProfitLoss = (params = {}) =>
     api.get('/financial/profit-loss', { params }).then((r) => r.data);
+
+// ---------- Category-Brand associations (admin) ----------
+export const adminListCategoryBrands = () =>
+    api.get('/category-brands').then((r) => r.data?.data || []);
+
+export const adminGetCategoryBrands = (categoryName) =>
+    api.get(`/category-brands/${encodeURIComponent(categoryName)}`).then((r) => r.data?.data || []);
+
+export const adminSetCategoryBrands = (categoryName, brandIds) =>
+    api.post('/category-brands/bulk', { categoryName, brandIds })
+        .then((r) => { clearApiCache(); return r.data?.data || []; });
+
+export const adminAddCategoryBrand = (categoryName, BrandId) =>
+    api.post('/category-brands', { categoryName, BrandId })
+        .then((r) => { clearApiCache(); return r.data; });
+
+export const adminRemoveCategoryBrand = (id) =>
+    api.delete(`/category-brands/${id}`).then((r) => { clearApiCache(); return r.data; });

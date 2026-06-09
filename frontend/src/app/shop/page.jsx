@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { fetchProducts } from '@/services/productApi';
 import ProductCard from '@/components/product/ProductCard';
+import SearchBar from '@/components/shop/SearchBar';
 import { CATEGORIES, getCategoryConfig } from '@/utils/constants';
-import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor, Search, SlidersHorizontal, X, RotateCcw } from 'lucide-react';
+import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor, Search, SlidersHorizontal, X, RotateCcw, ChevronDown } from 'lucide-react';
 import api from '@/services/api';
 
 const ICON_MAP = { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor };
@@ -159,6 +160,22 @@ export default function ShopPage() {
 
     const hasActiveFilters = q || category || brand || phoneModel || priceMin || priceMax || inStock || Object.values(attrFilters).some(Boolean);
 
+    const [brandSearch, setBrandSearch] = useState('');
+    const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
+    const brandRef = useRef(null);
+
+    useEffect(() => {
+        const handle = (e) => { if (brandRef.current && !brandRef.current.contains(e.target)) setBrandDropdownOpen(false); };
+        document.addEventListener('mousedown', handle);
+        return () => document.removeEventListener('mousedown', handle);
+    }, []);
+
+    const filteredBrands = useMemo(() => {
+        if (!brandSearch) return brands;
+        const s = brandSearch.toLowerCase();
+        return brands.filter((b) => b.name.toLowerCase().includes(s));
+    }, [brands, brandSearch]);
+
     const renderFilter = (fdef, idx) => {
         if (fdef.type === 'range') {
             return (
@@ -204,10 +221,46 @@ export default function ShopPage() {
             let loading = false;
 
             if (fdef.source === 'brands') {
-                options = brands.map((b) => b.name);
                 value = brand;
-                onChange = (v) => { setBrand(v); setPhoneModel(''); };
-                placeholder = 'All Brands';
+                placeholder = value || 'All Brands';
+                const selectedBrand = brands.find((b) => b.name === value);
+                return (
+                    <div key={fdef.key} className="pb-4 border-b border-border last:border-0">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{fdef.label}</h4>
+                        <div ref={brandRef} className="relative">
+                            <button onClick={() => setBrandDropdownOpen(!brandDropdownOpen)}
+                                className="input-luxe text-xs flex items-center justify-between w-full">
+                                <span className={value ? '' : 'text-text-light'}>{placeholder}</span>
+                                <ChevronDown className={`h-3 w-3 transition-transform ${brandDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+                            {brandDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 z-50 mt-1 border border-border bg-surface shadow-lg max-h-56 overflow-hidden">
+                                    <div className="p-2 border-b border-border">
+                                        <input value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)}
+                                            placeholder="Search brands…"
+                                            className="w-full border border-border bg-background-light px-2 py-1.5 text-xs outline-none"
+                                            autoFocus />
+                                    </div>
+                                    <div className="max-h-40 overflow-y-auto">
+                                        <button onClick={() => { setBrand(''); setPhoneModel(''); setBrandDropdownOpen(false); setBrandSearch(''); }}
+                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${!value ? 'bg-ink text-cream' : ''}`}>
+                                            All Brands
+                                        </button>
+                                        {filteredBrands.map((b) => (
+                                            <button key={b.id} onClick={() => { setBrand(b.name); setPhoneModel(''); setBrandDropdownOpen(false); setBrandSearch(''); }}
+                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${value === b.name ? 'bg-ink text-cream' : ''}`}>
+                                                {b.name}
+                                            </button>
+                                        ))}
+                                        {filteredBrands.length === 0 && (
+                                            <p className="px-3 py-2 text-xs text-text-light">No brands found</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
             } else if (fdef.source === 'models') {
                 options = models.map((m) => m.name);
                 value = phoneModel;
@@ -290,12 +343,7 @@ export default function ShopPage() {
                             </div>
                             <div className="p-4 space-y-4">
                                 <div className="pb-4 border-b border-border">
-                                    <div className="flex items-center border border-border bg-surface px-3 focus-within:border-ink">
-                                        <Search className="h-4 w-4 text-text-light shrink-0" />
-                                        <input value={q} onChange={(e) => setQ(e.target.value)}
-                                            placeholder="Search products..."
-                                            className="w-full bg-transparent px-2 py-3 text-sm outline-none placeholder:text-text-light" />
-                                    </div>
+                                    <SearchBar value={q} onChange={setQ} />
                                 </div>
                                 <div className="pb-4 border-b border-border">
                                     <label className="flex cursor-pointer items-center gap-2 text-xs">
@@ -319,12 +367,7 @@ export default function ShopPage() {
                         <div className="sticky top-28 border border-border bg-surface p-5 max-h-[calc(100vh-8rem)] overflow-y-auto">
                             <div className="space-y-4">
                                 <div className="pb-4 border-b border-border">
-                                    <div className="flex items-center border border-border bg-surface px-3 focus-within:border-ink">
-                                        <Search className="h-4 w-4 text-text-light shrink-0" />
-                                        <input value={q} onChange={(e) => setQ(e.target.value)}
-                                            placeholder="Search products..."
-                                            className="w-full bg-transparent px-2 py-3 text-sm outline-none placeholder:text-text-light" />
-                                    </div>
+                                    <SearchBar value={q} onChange={setQ} />
                                 </div>
                                 <div className="pb-4 border-b border-border">
                                     <label className="flex cursor-pointer items-center gap-2 text-xs">

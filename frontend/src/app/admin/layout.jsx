@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
     { href: '/admin/users', label: 'Users', Icon: Users },
     { href: '/admin/brands', label: 'Brands', Icon: Tag },
     { href: '/admin/models', label: 'Models', Icon: Smartphone },
+    { href: '/admin/category-brands', label: 'Category Brands', Icon: Link2 },
     { href: '/admin/hero-slides', label: 'Hero Slides', Icon: Image },
     { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 }
 ];

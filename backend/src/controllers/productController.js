@@ -40,6 +40,7 @@ const productCreateSchema = z.object({
     lowStockThreshold: z.number().int().nonnegative().default(5),
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
+    isDeviceSpecific: z.boolean().default(false),
     tags: z.array(z.string().max(40)).default([]),
     attributes: z.record(z.any()).default({}),
     variants: z.array(variantSchema).optional()

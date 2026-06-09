@@ -1,7 +1,7 @@
 'use client';
 import { memo } from 'react';
 import Link from 'next/link';
-import { ShoppingBag } from 'lucide-react';
+import { ShoppingBag, Package } from 'lucide-react';
 import { formatINR } from '@/utils/format';
 import SmartImage from '@/components/ui/SmartImage';
 
@@ -31,9 +31,10 @@ export default memo(function ProductCard({ p }) {
     const original = getProductOriginalPrice(p);
     const discount = original ? Math.round((1 - sale / original) * 100) : null;
     const img = getProductImage(p);
+    const outOfStock = p.stock != null && p.stock <= 0;
     return (
         <Link href={`/product/${p.slug || p.id}`} className="group block">
-            <div className="relative aspect-[3/4] overflow-hidden bg-background-light">
+            <div className="relative aspect-[3/4] overflow-hidden bg-background-light border border-border">
                 <SmartImage
                     src={img}
                     alt={p.name}
@@ -44,16 +45,28 @@ export default memo(function ProductCard({ p }) {
                         -{discount}%
                     </span>
                 )}
-                <div className="absolute right-3 top-3 z-10 flex h-9 w-9 translate-x-12 items-center justify-center bg-cream text-ink opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100">
-                    <ShoppingBag className="h-4 w-4" />
+                {outOfStock && (
+                    <span className="absolute left-3 bottom-3 z-10 bg-ink/80 px-2 py-1 text-[10px] font-medium text-cream">
+                        Out of Stock
+                    </span>
+                )}
+                {p.brand && (
+                    <span className="absolute right-3 bottom-3 z-10 bg-cream/90 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-ink font-medium">
+                        {p.brand}
+                    </span>
+                )}
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/0 opacity-0 transition-all duration-500 group-hover:bg-ink/10 group-hover:opacity-100">
+                    <span className="flex h-10 w-10 items-center justify-center bg-cream text-ink shadow-sm">
+                        <ShoppingBag className="h-4 w-4" />
+                    </span>
                 </div>
             </div>
-            <div className="mt-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                    <h3 className="truncate text-sm font-medium leading-tight text-ink group-hover:text-bronze">{p.name}</h3>
-                    <p className="mt-1 text-xs text-text-light">{p.category}</p>
+            <div className="mt-3 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-medium leading-tight text-ink group-hover:text-bronze transition-colors">{p.name}</h3>
+                    <p className="mt-0.5 truncate text-[11px] text-text-light">{p.category}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                     <p className="text-sm font-semibold tabular-nums text-ink">{formatINR(sale)}</p>
                     {original && (
                         <p className="text-xs text-text-light line-through tabular-nums">{formatINR(original)}</p>

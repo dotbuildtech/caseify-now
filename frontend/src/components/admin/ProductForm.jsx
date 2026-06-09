@@ -24,6 +24,7 @@ const blank = {
     lowStockThreshold: 5,
     isActive: true,
     isFeatured: false,
+    isDeviceSpecific: false,
     tags: []
 };
 
@@ -152,6 +153,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
             lowStockThreshold: numOrUndefined(form.lowStockThreshold) ?? 5,
             isActive: !!form.isActive,
             isFeatured: !!form.isFeatured,
+            isDeviceSpecific: !!form.isDeviceSpecific,
             tags
         };
 
@@ -180,8 +182,10 @@ export default function ProductForm({ initial, mode = 'create' }) {
         }
     };
 
+    const categoryConfig = form.category ? getCategoryConfig(form.category) : null;
     const isDeviceCategory = form.category && isDeviceSpecificCategory(form.category);
-    const categoryGroup = form.category ? getCategoryConfig(form.category)?.name || getCategoryConfig(form.category)?.name : null;
+    const categoryGroup = categoryConfig?.name || null;
+    const showDeviceFields = form.isDeviceSpecific && isDeviceCategory;
 
     return (
         <form onSubmit={submit} className="space-y-6">
@@ -203,9 +207,22 @@ export default function ProductForm({ initial, mode = 'create' }) {
                         />
                     </Field>
                     {isDeviceCategory && (
+                        <div className="md:col-span-2">
+                            <label className="flex cursor-pointer items-center gap-3 border border-border bg-cream px-4 py-3 hover:border-ink transition-colors">
+                                <input type="checkbox" checked={form.isDeviceSpecific}
+                                    onChange={(e) => setForm((f) => ({ ...f, isDeviceSpecific: e.target.checked, brand: '', phoneModel: '' }))}
+                                    className="h-4 w-4 accent-ink" />
+                                <div>
+                                    <span className="text-sm font-medium">Device-specific product</span>
+                                    <p className="text-[11px] text-text-light">Enable to associate this product with a specific brand and device model</p>
+                                </div>
+                            </label>
+                        </div>
+                    )}
+                    {showDeviceFields && (
                         <>
                             <Field label="Brand" hint="Device brand" error={errors.brand}>
-                                <select value={form.brand} onChange={set('brand')} className="input-luxe">
+                                <select value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value, phoneModel: '' }))} className="input-luxe">
                                     <option value="">Select brand…</option>
                                     {brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
                                 </select>

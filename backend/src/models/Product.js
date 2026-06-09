@@ -103,6 +103,11 @@ const Product = sequelize.define('Product', {
         allowNull: false,
         defaultValue: false
     },
+    isDeviceSpecific: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     tags: {
         type: DataTypes.JSONB,
         allowNull: false,
