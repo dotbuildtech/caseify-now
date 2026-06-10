@@ -133,11 +133,13 @@ app.use('/api/hero-slides', require('./routes/heroSlideRoutes'));
 app.use('/api/category-brands', require('./routes/categoryBrandRoutes'));
 app.use('/api/materials', require('./routes/materialRoutes'));
 app.use('/api/category-materials', require('./routes/categoryMaterialRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/filters', require('./routes/filterRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 
-app.get('/', (req, res) => res.send('Phone Cover Platform API is running...'));
+app.get('/', (req, res) => res.send('Caseify Now API is running...'));
 
 app.use((req, res) => {
     res.status(404).json({ requestId: req.id, message: 'Not found' });

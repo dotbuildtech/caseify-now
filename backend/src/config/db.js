@@ -67,7 +67,7 @@ const connectDB = async () => {
             } catch (err) {
                 console.error('[db] Health check failed:', err.message);
                 try {
-                    await sequelize.close();
+                    await sequelize.connectionManager.init();
                     await sequelize.authenticate();
                     console.log('[db] Reconnected successfully');
                 } catch (reconnectErr) {

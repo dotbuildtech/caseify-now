@@ -8,7 +8,7 @@ export default function QuoteBlock() {
                         "Protection meets <span className="italic-display">style</span>.
                         <span className="block mt-2 not-italic">Every case, a <span className="italic-display">statement</span>."</span>
                     </blockquote>
-                    <p className="mt-8 text-[10px] font-medium uppercase tracking-[0.32em] text-cream/60">— DotBuild Team</p>
+                    <p className="mt-8 text-[10px] font-medium uppercase tracking-[0.32em] text-cream/60">— Caseify Now Team</p>
                 </div>
             </div>
         </section>

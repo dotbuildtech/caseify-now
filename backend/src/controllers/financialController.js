@@ -402,7 +402,7 @@ exports.generateInvoice = asyncHandler(async (req, res) => {
     const grandTotal = +(subTotal + gstTotal + Number(shippingTotal || 0)).toFixed(2);
 
     const seller = {
-        name: process.env.SELLER_NAME || 'DotBuild Ecommerce Pvt Ltd',
+        name: process.env.SELLER_NAME || 'Caseify Now Ecommerce Pvt Ltd',
         address: {
             street: process.env.SELLER_STREET || '123 Tech Park',
             city: process.env.SELLER_CITY || 'Mumbai',
@@ -413,9 +413,9 @@ exports.generateInvoice = asyncHandler(async (req, res) => {
         gstin: process.env.SELLER_GSTIN || '27AAAAA0000A1Z5',
         pan: process.env.SELLER_PAN || 'AAAAA0000A',
         phone: process.env.SELLER_PHONE || '+91-22-12345678',
-        email: process.env.SELLER_EMAIL || 'billing@dotbuild.example',
+        email: process.env.SELLER_EMAIL || 'billing@caseifynow.example',
         bankDetails: {
-            accountName: process.env.SELLER_BANK_NAME || 'DotBuild Ecommerce Pvt Ltd',
+            accountName: process.env.SELLER_BANK_NAME || 'Caseify Now Ecommerce Pvt Ltd',
             accountNumber: process.env.SELLER_BANK_AC || '0000000000',
             ifsc: process.env.SELLER_BANK_IFSC || 'HDFC0000000',
             bankName: process.env.SELLER_BANK || 'HDFC Bank',

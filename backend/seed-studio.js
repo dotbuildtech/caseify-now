@@ -139,58 +139,58 @@ const MATERIALS = [
 
 const MATERIAL_DESIGNS = {
     'matte-hard': [
-        { id: 'md-matte-1', name: 'Midnight Gradient', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['gradient', 'dark', 'minimal'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-matte-2', name: 'Geometric Lines', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['geometric', 'pattern', 'modern'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-matte-3', name: 'Cosmic Dust', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['space', 'cosmic', 'stars'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-matte-4', name: 'Marble Vein', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['marble', 'stone', 'elegant'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 },
-        { id: 'md-matte-5', name: 'Neon Pulse', imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=300&h=300&fit=crop&q=70', tags: ['neon', 'retro', 'vibrant'], designer: 'DotBuild Studio', isActive: true, sortOrder: 5 },
-        { id: 'md-matte-6', name: 'Ocean Waves', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['ocean', 'wave', 'blue'], designer: 'DotBuild Studio', isActive: true, sortOrder: 6 },
-        { id: 'md-matte-7', name: 'Mountain Peak', imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&h=300&fit=crop&q=70', tags: ['mountain', 'nature', 'adventure'], designer: 'DotBuild Studio', isActive: true, sortOrder: 7 },
-        { id: 'md-matte-8', name: 'Pixel Grid', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['pixel', 'digital', 'tech'], designer: 'DotBuild Studio', isActive: true, sortOrder: 8 }
+        { id: 'md-matte-1', name: 'Midnight Gradient', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['gradient', 'dark', 'minimal'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-matte-2', name: 'Geometric Lines', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['geometric', 'pattern', 'modern'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-matte-3', name: 'Cosmic Dust', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['space', 'cosmic', 'stars'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-matte-4', name: 'Marble Vein', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['marble', 'stone', 'elegant'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 },
+        { id: 'md-matte-5', name: 'Neon Pulse', imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=300&h=300&fit=crop&q=70', tags: ['neon', 'retro', 'vibrant'], designer: 'Caseify Studio', isActive: true, sortOrder: 5 },
+        { id: 'md-matte-6', name: 'Ocean Waves', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['ocean', 'wave', 'blue'], designer: 'Caseify Studio', isActive: true, sortOrder: 6 },
+        { id: 'md-matte-7', name: 'Mountain Peak', imageUrl: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&h=300&fit=crop&q=70', tags: ['mountain', 'nature', 'adventure'], designer: 'Caseify Studio', isActive: true, sortOrder: 7 },
+        { id: 'md-matte-8', name: 'Pixel Grid', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['pixel', 'digital', 'tech'], designer: 'Caseify Studio', isActive: true, sortOrder: 8 }
     ],
     'glossy-hard': [
-        { id: 'md-glossy-1', name: 'Mirror Finish', imageUrl: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=300&h=300&fit=crop&q=70', tags: ['mirror', 'reflective', 'clean'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-glossy-2', name: 'Color Burst', imageUrl: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=300&h=300&fit=crop&q=70', tags: ['colorful', 'bright', 'pop'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-glossy-3', name: 'Deep Ocean', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['ocean', 'deep', 'blue'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-glossy-4', name: 'Sunset Haze', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['sunset', 'warm', 'haze'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 },
-        { id: 'md-glossy-5', name: 'Chrome Silver', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['chrome', 'silver', 'metallic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 5 }
+        { id: 'md-glossy-1', name: 'Mirror Finish', imageUrl: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=300&h=300&fit=crop&q=70', tags: ['mirror', 'reflective', 'clean'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-glossy-2', name: 'Color Burst', imageUrl: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=300&h=300&fit=crop&q=70', tags: ['colorful', 'bright', 'pop'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-glossy-3', name: 'Deep Ocean', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['ocean', 'deep', 'blue'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-glossy-4', name: 'Sunset Haze', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['sunset', 'warm', 'haze'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 },
+        { id: 'md-glossy-5', name: 'Chrome Silver', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['chrome', 'silver', 'metallic'], designer: 'Caseify Studio', isActive: true, sortOrder: 5 }
     ],
     'soft-silicone': [
-        { id: 'md-silicone-1', name: 'Matte Black', imageUrl: 'https://images.unsplash.com/photo-1617957688798-4e8e4b8b2c6e?w=300&h=300&fit=crop&q=70', tags: ['black', 'matte', 'classic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-silicone-2', name: 'Pastel Dream', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['pastel', 'soft', 'dreamy'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-silicone-3', name: 'Forest Walk', imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=300&fit=crop&q=70', tags: ['forest', 'green', 'nature'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-silicone-4', name: 'Abstract Strokes', imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=300&h=300&fit=crop&q=70', tags: ['abstract', 'art', 'brush'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 },
-        { id: 'md-silicone-5', name: 'Terrazzo Chip', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['terrazzo', 'chip', 'textured'], designer: 'DotBuild Studio', isActive: true, sortOrder: 5 },
-        { id: 'md-silicone-6', name: 'Watercolor Wash', imageUrl: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=300&h=300&fit=crop&q=70', tags: ['watercolor', 'wash', 'artistic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 6 }
+        { id: 'md-silicone-1', name: 'Matte Black', imageUrl: 'https://images.unsplash.com/photo-1617957688798-4e8e4b8b2c6e?w=300&h=300&fit=crop&q=70', tags: ['black', 'matte', 'classic'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-silicone-2', name: 'Pastel Dream', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['pastel', 'soft', 'dreamy'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-silicone-3', name: 'Forest Walk', imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=300&h=300&fit=crop&q=70', tags: ['forest', 'green', 'nature'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-silicone-4', name: 'Abstract Strokes', imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?w=300&h=300&fit=crop&q=70', tags: ['abstract', 'art', 'brush'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 },
+        { id: 'md-silicone-5', name: 'Terrazzo Chip', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['terrazzo', 'chip', 'textured'], designer: 'Caseify Studio', isActive: true, sortOrder: 5 },
+        { id: 'md-silicone-6', name: 'Watercolor Wash', imageUrl: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=300&h=300&fit=crop&q=70', tags: ['watercolor', 'wash', 'artistic'], designer: 'Caseify Studio', isActive: true, sortOrder: 6 }
     ],
     'clear-tpu': [
-        { id: 'md-clear-1', name: 'Crystal Clear', imageUrl: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=300&h=300&fit=crop&q=70', tags: ['clear', 'transparent', 'minimal'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-clear-2', name: 'Frosted Glass', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['frosted', 'glass', 'matte'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-clear-3', name: 'Iridescent Glow', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['iridescent', 'glow', 'shimmer'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-clear-4', name: 'Aqua Tint', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['aqua', 'tint', 'blue'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 }
+        { id: 'md-clear-1', name: 'Crystal Clear', imageUrl: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=300&h=300&fit=crop&q=70', tags: ['clear', 'transparent', 'minimal'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-clear-2', name: 'Frosted Glass', imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=300&h=300&fit=crop&q=70', tags: ['frosted', 'glass', 'matte'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-clear-3', name: 'Iridescent Glow', imageUrl: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=300&h=300&fit=crop&q=70', tags: ['iridescent', 'glow', 'shimmer'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-clear-4', name: 'Aqua Tint', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['aqua', 'tint', 'blue'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 }
     ],
     'leather-premium': [
-        { id: 'md-leather-1', name: 'Classic Tan', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['tan', 'classic', 'brown'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-leather-2', name: 'Dark Espresso', imageUrl: 'https://images.unsplash.com/photo-1529902359512-16326b7e2f70?w=300&h=300&fit=crop&q=70', tags: ['dark', 'espresso', 'luxury'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-leather-3', name: 'Croc Emboss', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['croc', 'embossed', 'exotic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 }
+        { id: 'md-leather-1', name: 'Classic Tan', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['tan', 'classic', 'brown'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-leather-2', name: 'Dark Espresso', imageUrl: 'https://images.unsplash.com/photo-1529902359512-16326b7e2f70?w=300&h=300&fit=crop&q=70', tags: ['dark', 'espresso', 'luxury'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-leather-3', name: 'Croc Emboss', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['croc', 'embossed', 'exotic'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 }
     ],
     'carbon-fiber': [
-        { id: 'md-carbon-1', name: 'Stealth Black', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['black', 'stealth', 'smooth'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-carbon-2', name: 'Forged Carbon', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['forged', 'swirl', 'unique'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-carbon-3', name: 'Red Weave', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['red', 'weave', 'sport'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-carbon-4', name: 'Blue Tint Weave', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['blue', 'weave', 'cool'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 }
+        { id: 'md-carbon-1', name: 'Stealth Black', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['black', 'stealth', 'smooth'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-carbon-2', name: 'Forged Carbon', imageUrl: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=300&h=300&fit=crop&q=70', tags: ['forged', 'swirl', 'unique'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-carbon-3', name: 'Red Weave', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['red', 'weave', 'sport'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-carbon-4', name: 'Blue Tint Weave', imageUrl: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=300&h=300&fit=crop&q=70', tags: ['blue', 'weave', 'cool'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 }
     ],
     'wood-veneer': [
-        { id: 'md-wood-1', name: 'Dark Walnut', imageUrl: 'https://images.unsplash.com/photo-1506905925773-3e99b38b1603?w=300&h=300&fit=crop&q=70', tags: ['walnut', 'dark', 'classic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-wood-2', name: 'Light Oak', imageUrl: 'https://images.unsplash.com/photo-1533090161767-e55e98e7e99c?w=300&h=300&fit=crop&q=70', tags: ['oak', 'light', 'natural'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-wood-3', name: 'Bamboo Grain', imageUrl: 'https://images.unsplash.com/photo-1506905925773-3e99b38b1603?w=300&h=300&fit=crop&q=70', tags: ['bamboo', 'grain', 'eco'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 }
+        { id: 'md-wood-1', name: 'Dark Walnut', imageUrl: 'https://images.unsplash.com/photo-1506905925773-3e99b38b1603?w=300&h=300&fit=crop&q=70', tags: ['walnut', 'dark', 'classic'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-wood-2', name: 'Light Oak', imageUrl: 'https://images.unsplash.com/photo-1533090161767-e55e98e7e99c?w=300&h=300&fit=crop&q=70', tags: ['oak', 'light', 'natural'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-wood-3', name: 'Bamboo Grain', imageUrl: 'https://images.unsplash.com/photo-1506905925773-3e99b38b1603?w=300&h=300&fit=crop&q=70', tags: ['bamboo', 'grain', 'eco'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 }
     ],
     'metal-brushed': [
-        { id: 'md-metal-1', name: 'Silver Brushed', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['silver', 'brushed', 'clean'], designer: 'DotBuild Studio', isActive: true, sortOrder: 1 },
-        { id: 'md-metal-2', name: 'Rose Gold', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['rose', 'gold', 'warm'], designer: 'DotBuild Studio', isActive: true, sortOrder: 2 },
-        { id: 'md-metal-3', name: 'Space Grey', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['grey', 'space', 'dark'], designer: 'DotBuild Studio', isActive: true, sortOrder: 3 },
-        { id: 'md-metal-4', name: 'Copper Patina', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['copper', 'patina', 'rustic'], designer: 'DotBuild Studio', isActive: true, sortOrder: 4 },
-        { id: 'md-metal-5', name: 'Matte Black', imageUrl: 'https://images.unsplash.com/photo-1617957688798-4e8e4b8b2c6e?w=300&h=300&fit=crop&q=70', tags: ['black', 'matte', 'stealth'], designer: 'DotBuild Studio', isActive: true, sortOrder: 5 }
+        { id: 'md-metal-1', name: 'Silver Brushed', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['silver', 'brushed', 'clean'], designer: 'Caseify Studio', isActive: true, sortOrder: 1 },
+        { id: 'md-metal-2', name: 'Rose Gold', imageUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=300&h=300&fit=crop&q=70', tags: ['rose', 'gold', 'warm'], designer: 'Caseify Studio', isActive: true, sortOrder: 2 },
+        { id: 'md-metal-3', name: 'Space Grey', imageUrl: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=300&fit=crop&q=70', tags: ['grey', 'space', 'dark'], designer: 'Caseify Studio', isActive: true, sortOrder: 3 },
+        { id: 'md-metal-4', name: 'Copper Patina', imageUrl: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=300&h=300&fit=crop&q=70', tags: ['copper', 'patina', 'rustic'], designer: 'Caseify Studio', isActive: true, sortOrder: 4 },
+        { id: 'md-metal-5', name: 'Matte Black', imageUrl: 'https://images.unsplash.com/photo-1617957688798-4e8e4b8b2c6e?w=300&h=300&fit=crop&q=70', tags: ['black', 'matte', 'stealth'], designer: 'Caseify Studio', isActive: true, sortOrder: 5 }
     ]
 };
 

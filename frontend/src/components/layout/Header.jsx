@@ -62,9 +62,7 @@ export default function Header() {
         <header className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-md">
             <div className="container-luxe flex h-16 items-center justify-between gap-6">
                 <Link href="/" className="flex items-center gap-2 shrink-0">
-                    <div className="flex h-9 w-9 items-center justify-center bg-ink text-cream">
-                        <span className="font-display text-lg font-bold">D</span>
-                    </div>
+                    <img src="/logo.png" alt="Caseify Now" className="h-9 w-auto" />
                     <div className="flex flex-col leading-tight">
                         <span className="font-display text-lg font-semibold tracking-editorial">{SITE.name}</span>
                         <span className="text-[9px] font-medium uppercase tracking-[0.28em] text-text-light">Official Store</span>

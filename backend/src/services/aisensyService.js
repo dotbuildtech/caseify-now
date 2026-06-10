@@ -21,7 +21,7 @@ const sendCampaign = async (campaignName, phone, templateParams = []) => {
                 apiKey,
                 campaignName,
                 destination: phone,
-                userName: 'Phone Cover Platform',
+                userName: 'Caseify Now',
                 templateParams,
                 source: 'API',
                 media: {},

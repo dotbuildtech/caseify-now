@@ -6,7 +6,7 @@ import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/components/ui/Toast';
 
 export const metadata = {
-    title: 'DotBuild — Premium Phone Cases & Accessories',
+    title: 'Caseify Now — Premium Phone Cases & Accessories',
     description: 'Premium phone cases and accessories for every device. Quality, style, protection.'
 };
 
