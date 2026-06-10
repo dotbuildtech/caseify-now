@@ -25,7 +25,7 @@ export default function BrandForm({ mode, initial }) {
                 await adminUpdateBrand(initial.id, { name: name.trim(), logo: logo || undefined, description: description.trim() || undefined, isActive });
                 toast.success('Brand updated');
             } else {
-                await adminCreateBrand({ name: name.trim(), logo: logo || undefined, description: description.trim() || undefined });
+                await adminCreateBrand({ name: name.trim(), logo: logo || undefined, description: description.trim() || undefined, isActive: !!isActive });
                 toast.success('Brand created');
             }
             router.push('/admin/brands');

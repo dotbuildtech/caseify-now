@@ -22,7 +22,7 @@ export default function AdminBrandsPage() {
         } finally {
             setLoading(false);
         }
-    }, [q, toast]);
+    }, [q]);
 
     useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
 

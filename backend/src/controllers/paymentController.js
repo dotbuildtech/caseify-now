@@ -40,11 +40,11 @@ exports.verifyPayment = async (req, res) => {
             const order = await Order.findByPk(orderId);
             if (order) {
                 order.isPaid = true;
-                order.paidAt = Date.now();
+                order.paidAt = new Date();
                 order.paymentResult = {
                     id: razorpay_payment_id,
                     status: 'Paid',
-                    update_time: Date.now(),
+                    update_time: new Date().toISOString(),
                     email_address: req.user.email
                 };
                 await order.save();
@@ -57,7 +57,7 @@ exports.verifyPayment = async (req, res) => {
 
                 await Invoice.create({
                     invoiceNumber: newInvoiceNumber,
-                    subTotal: order.totalPrice - order.taxPrice,
+                    subTotal: Number(order.itemsPrice || 0),
                     gstTotal: order.taxPrice,
                     grandTotal: order.totalPrice,
                     status: 'Paid',

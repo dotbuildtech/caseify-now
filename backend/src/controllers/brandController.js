@@ -34,8 +34,12 @@ exports.getBrand = asyncHandler(async (req, res) => {
 
 exports.createBrand = asyncHandler(async (req, res) => {
     const { name, logo, description } = req.body;
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'brand';
-    const brand = await Brand.create({ name, slug, logo, description });
+    if (!name || typeof name !== 'string' || !name.trim()) {
+        res.status(400);
+        throw new Error('Brand name is required');
+    }
+    const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'brand';
+    const brand = await Brand.create({ name: name.trim(), slug, logo, description });
     res.status(201).json(brand);
 });
 
@@ -44,7 +48,7 @@ exports.updateBrand = asyncHandler(async (req, res) => {
     if (!brand) { res.status(404); throw new Error('Brand not found'); }
     const { name, logo, description, isActive } = req.body;
     const updates = {};
-    if (name !== undefined) { updates.name = name; updates.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'brand'; }
+    if (name !== undefined) { updates.name = name; updates.slug = (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'brand'; }
     if (logo !== undefined) updates.logo = logo;
     if (description !== undefined) updates.description = description;
     if (isActive !== undefined) updates.isActive = isActive;

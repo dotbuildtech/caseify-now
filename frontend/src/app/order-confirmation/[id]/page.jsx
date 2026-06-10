@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { CheckCircle2, Package, Truck, MapPin } from 'lucide-react';
 import { fetchOrderById } from '@/services/orderApi';
 import { formatINR, formatDate } from '@/utils/format';
@@ -21,8 +22,8 @@ const getItemQty = (i) => Number(i.qty ?? i.quantity ?? 0);
 
 const STATUS_STEPS = ['Ordered', 'Processing', 'Shipped', 'Delivered'];
 
-export default function OrderConfirmationPage({ params }) {
-    const { id } = params;
+export default function OrderConfirmationPage() {
+    const { id } = useParams();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
 

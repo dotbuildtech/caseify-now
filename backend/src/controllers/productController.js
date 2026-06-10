@@ -1,9 +1,11 @@
 const { z } = require('zod');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
 const { audit } = require('../utils/securityLog');
 const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
+const { uploadFromBuffer } = require('../services/cloudinaryService');
 
 const ALLOWED_SORT = new Set([
     'createdAt', '-createdAt',
@@ -84,10 +86,14 @@ const productQuerySchema = z.object({
 
 const buildProductWhere = (q, isAdmin) => {
     const where = {};
-    if (!isAdmin && !q.includeInactive) {
+    if (isAdmin) {
+        if (q.isActive !== undefined) {
+            where.isActive = q.isActive;
+        } else if (!q.includeInactive) {
+            where.isActive = true;
+        }
+    } else {
         where.isActive = true;
-    } else if (q.isActive !== undefined) {
-        where.isActive = q.isActive;
     }
     if (q.category) where.category = q.category;
     if (q.brand) where.brand = q.brand;
@@ -102,19 +108,27 @@ const buildProductWhere = (q, isAdmin) => {
     if (q.isFeatured !== undefined) where.isFeatured = q.isFeatured;
     if (q.materials) {
         const list = q.materials.split(',').map((m) => m.trim()).filter(Boolean);
-        if (list.length) where.materials = { [Op.overlap]: list };
+        if (list.length) {
+            const vals = list.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+            if (!where[Op.and]) where[Op.and] = [];
+            where[Op.and].push(sequelize.literal(`"Product"."materials" ?| ARRAY[${vals}]`));
+        }
     }
     if (q.tags) {
         const list = q.tags.split(',').map((t) => t.trim()).filter(Boolean);
-        if (list.length) where.tags = { [Op.overlap]: list };
+        if (list.length) {
+            const vals = list.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+            if (!where[Op.and]) where[Op.and] = [];
+            where[Op.and].push(sequelize.literal(`"Product"."tags" ?| ARRAY[${vals}]`));
+        }
     }
     if (q.q) {
-        const term = q.q;
+        const term = q.q.replace(/'/g, "''");
         where[Op.or] = [
-            { name: { [Op.iLike]: `%${term}%` } },
-            { description: { [Op.iLike]: `%${term}%` } },
-            { sku: { [Op.iLike]: `%${term}%` } },
-            { tags: { [Op.overlap]: [term] } }
+            { name: { [Op.iLike]: `%${q.q}%` } },
+            { description: { [Op.iLike]: `%${q.q}%` } },
+            { sku: { [Op.iLike]: `%${q.q}%` } },
+            sequelize.literal(`"Product"."tags" ? '${term}'`)
         ];
     }
     const attrFields = ['material', 'device_type', 'port_type', 'wattage', 'capacity', 'cable_type', 'length'];
@@ -288,6 +302,17 @@ exports.addProductImage = asyncHandler(async (req, res) => {
     res.json(product);
 });
 
+exports.uploadProductImage = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (!req.file) { res.status(400); throw new Error('No file provided'); }
+    const result = await uploadFromBuffer(req.file.buffer, 'phone-cover-platform/products');
+    const product = await Product.findByPk(id);
+    if (!product) { res.status(404); throw new Error('Product not found'); }
+    const images = [...(product.images || []), result.secure_url];
+    await product.update({ images, image: result.secure_url });
+    res.json(product);
+});
+
 exports.removeProductImage = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const imageUrl = req.query.url;
@@ -310,7 +335,8 @@ exports.getLowStockProducts = asyncHandler(async (req, res) => {
             isActive: true,
             stock: { [Op.lte]: Product.sequelize.col('lowStockThreshold') }
         },
-        order: [['stock', 'ASC']]
+        order: [['stock', 'ASC']],
+        limit: 100
     });
     res.json({ count: products.length, data: products });
 });

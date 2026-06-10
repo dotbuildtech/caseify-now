@@ -17,9 +17,9 @@
     --color-ink: #0A0A0A;
     --color-cream: #FAFAFA;
     --color-bronze: #DC2626;
-    --font-sans: 'Outfit', system-ui, sans-serif;
-    --font-display: 'Fraunces', Georgia, serif;
-    --font-mono: 'DM Mono', ui-monospace, monospace;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-display: Georgia, 'Times New Roman', serif;
+    --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

@@ -133,7 +133,9 @@ const Product = sequelize.define('Product', {
         { fields: ['category'] },
         { fields: ['isActive'] },
         { fields: ['price'] },
-        { fields: ['phoneModel'] }
+        { fields: ['phoneModel'] },
+        { fields: ['isActive', 'category', 'price'] },
+        { fields: ['isFeatured', 'isActive'] }
     ],
     hooks: {
         beforeValidate: async (product) => {

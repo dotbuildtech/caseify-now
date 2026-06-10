@@ -20,8 +20,8 @@ export default function CategoryBrandsPage() {
     const [materialChanged, setMaterialChanged] = useState({});
 
     useEffect(() => {
-        adminListBrands({ isActive: 'true' }).then(setAllBrands).catch(() => {});
-        adminListMaterials({ isActive: 'true' }).then(setAllMaterials).catch(() => {});
+        adminListBrands({ isActive: 'true' }).then(setAllBrands).catch(() => toast.error('Failed to load brands'));
+        adminListMaterials({ isActive: 'true' }).then(setAllMaterials).catch(() => toast.error('Failed to load materials'));
         adminListCategoryBrands().then((data) => {
             const map = {};
             data.forEach((l) => {
@@ -29,7 +29,7 @@ export default function CategoryBrandsPage() {
                 map[l.categoryName].push(l.BrandId);
             });
             setBrandSelected(map);
-        }).catch(() => {});
+        }).catch(() => toast.error('Failed to load category brands'));
         adminListCategoryMaterials().then((data) => {
             const map = {};
             data.forEach((l) => {
@@ -37,7 +37,7 @@ export default function CategoryBrandsPage() {
                 map[l.categoryName].push(l.MaterialId);
             });
             setMaterialSelected(map);
-        }).catch(() => {});
+        }).catch(() => toast.error('Failed to load category materials'));
     }, []);
 
     const toggleBrand = (cat, id) => {

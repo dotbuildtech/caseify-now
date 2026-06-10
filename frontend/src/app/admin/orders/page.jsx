@@ -43,7 +43,7 @@ export default function AdminOrdersPage() {
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, []);
 
     useEffect(() => { load(); }, [load]);
 

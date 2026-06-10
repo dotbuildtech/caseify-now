@@ -180,11 +180,13 @@ export function StudioProvider({ children }) {
             form: { ...form, layers },
             thumbnail: thumbnail || null
         };
-        const next = [design, ...savedDesigns].slice(0, 50);
-        setSavedDesigns(next);
-        persistSaved(next);
+        setSavedDesigns((prev) => {
+            const next = [design, ...prev].slice(0, 50);
+            persistSaved(next);
+            return next;
+        });
         return design;
-    }, [brand, modelId, materialId, form, layers, savedDesigns]);
+    }, [brand, modelId, materialId, form, layers]);
 
     const loadDesign = useCallback((design) => {
         if (design.brand) setBrand(design.brand);

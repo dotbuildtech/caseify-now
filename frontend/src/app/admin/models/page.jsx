@@ -32,7 +32,7 @@ export default function AdminModelsPage() {
         } finally {
             setLoading(false);
         }
-    }, [q, brandFilter, deviceType, toast]);
+    }, [q, brandFilter, deviceType]);
 
     useEffect(() => { const t = setTimeout(load, 300); return () => clearTimeout(t); }, [load]);
 

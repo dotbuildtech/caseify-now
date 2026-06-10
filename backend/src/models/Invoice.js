@@ -128,7 +128,9 @@ const Invoice = sequelize.define('Invoice', {
     indexes: [
         { name: 'invoices_number_uq', fields: ['invoiceNumber'], unique: true },
         { fields: ['status'] },
-        { fields: ['issuedAt'] }
+        { fields: ['issuedAt'] },
+        { fields: ['OrderId'] },
+        { fields: ['UserId'] }
     ]
 });
 

@@ -14,37 +14,10 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-const memoryCache = new Map();
-const CACHE_TTL = 30 * 1000;
-const PUBLIC_GET_PATTERN = /^\/(products(\/[^/]+)?|categories|designs)/;
-
-const isCacheable = (config) => {
-    if (config.method?.toLowerCase() !== 'get') return false;
-    if (config.headers?.Authorization) return false;
-    return PUBLIC_GET_PATTERN.test(config.url || '');
-};
-
-api.interceptors.request.use((config) => {
-    if (!isCacheable(config)) return config;
-    const key = `${config.method}:${config.url}?${JSON.stringify(config.params || {})}`;
-    const cached = memoryCache.get(key);
-    if (cached && cached.expires > Date.now()) {
-        config.adapter = () => Promise.resolve({ data: cached.data, status: 200, statusText: 'OK', headers: {}, config, request: {} });
-    } else if (cached) {
-        memoryCache.delete(key);
-    }
-    return config;
-});
+let isRedirectingToLogin = false;
 
 api.interceptors.response.use(
-    (res) => {
-        const config = res.config;
-        if (isCacheable(config) && res.status === 200) {
-            const key = `${config.method}:${config.url}?${JSON.stringify(config.params || {})}`;
-            memoryCache.set(key, { data: res.data, expires: Date.now() + CACHE_TTL });
-        }
-        return res;
-    },
+    (res) => res,
     async (err) => {
         const original = err.config;
         if (err.response?.status === 401 && original && !original._retry) {
@@ -60,7 +33,8 @@ api.interceptors.response.use(
             } catch {
                 Cookies.remove('accessToken');
                 Cookies.remove('refreshToken');
-                if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                if (!isRedirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                    isRedirectingToLogin = true;
                     window.location.href = '/login';
                 }
             }
@@ -69,6 +43,6 @@ api.interceptors.response.use(
     }
 );
 
-export const clearApiCache = () => memoryCache.clear();
+export const clearApiCache = () => {};
 
 export default api;

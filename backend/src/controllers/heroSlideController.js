@@ -1,8 +1,8 @@
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const HeroSlide = require('../models/HeroSlide');
-const path = require('path');
-const fs = require('fs');
+const { sequelize } = require('../config/db');
+const { uploadFromBuffer, deleteImage, getPublicIdFromUrl } = require('../services/cloudinaryService');
 
 exports.listSlides = asyncHandler(async (req, res) => {
     const where = {};
@@ -36,7 +36,8 @@ exports.createSlide = asyncHandler(async (req, res) => {
         isActive: isActive !== undefined ? isActive : true
     };
     if (req.file) {
-        data.bg = `/uploads/heroslides/${req.file.filename}`;
+        const result = await uploadFromBuffer(req.file.buffer, 'phone-cover-platform/heroslides');
+        data.bg = result.secure_url;
     } else if (bg) {
         data.bg = bg;
     }
@@ -57,11 +58,10 @@ exports.updateSlide = asyncHandler(async (req, res) => {
     if (isActive !== undefined) slide.isActive = isActive;
 
     if (req.file) {
-        const oldPath = slide.bg ? path.join(__dirname, '../../', slide.bg) : null;
-        slide.bg = `/uploads/heroslides/${req.file.filename}`;
-        if (oldPath && fs.existsSync(oldPath) && oldPath.includes('uploads/heroslides/')) {
-            try { fs.unlinkSync(oldPath); } catch { /* ignore */ }
-        }
+        const oldPublicId = getPublicIdFromUrl(slide.bg);
+        if (oldPublicId) deleteImage(oldPublicId).catch(() => {});
+        const result = await uploadFromBuffer(req.file.buffer, 'phone-cover-platform/heroslides');
+        slide.bg = result.secure_url;
     } else if (bg !== undefined) {
         slide.bg = bg || null;
     }
@@ -73,10 +73,8 @@ exports.updateSlide = asyncHandler(async (req, res) => {
 exports.deleteSlide = asyncHandler(async (req, res) => {
     const slide = await HeroSlide.findByPk(req.params.id);
     if (!slide) { res.status(404); throw new Error('Hero slide not found'); }
-    if (slide.bg && slide.bg.includes('/uploads/heroslides/')) {
-        const filePath = path.join(__dirname, '../../', slide.bg);
-        try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch { /* ignore */ }
-    }
+    const publicId = getPublicIdFromUrl(slide.bg);
+    if (publicId) deleteImage(publicId).catch(() => {});
     await slide.destroy({ force: req.query.force === 'true' });
     res.json({ message: 'Hero slide deleted' });
 });
@@ -84,9 +82,13 @@ exports.deleteSlide = asyncHandler(async (req, res) => {
 exports.reorderSlides = asyncHandler(async (req, res) => {
     const { ids } = req.body;
     if (!Array.isArray(ids)) { res.status(400); throw new Error('ids must be an array'); }
-    for (let i = 0; i < ids.length; i++) {
-        await HeroSlide.update({ sortOrder: i }, { where: { id: ids[i] } });
-    }
+    await sequelize.transaction(async (transaction) => {
+        const cases = ids.map((id, i) => `WHEN ${Number(id)} THEN ${i}`).join(' ');
+        await sequelize.query(
+            `UPDATE "HeroSlides" SET "sortOrder" = CASE "id" ${cases} ELSE "sortOrder" END WHERE "id" IN (:ids)`,
+            { replacements: { ids }, transaction }
+        );
+    });
     const slides = await HeroSlide.findAll({ order: [['sortOrder', 'ASC']] });
     res.json({ data: slides });
 });

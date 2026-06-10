@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, X, Trash2, ImagePlus } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -8,6 +8,7 @@ import SearchableSelect from '@/components/ui/SearchableSelect';
 import { adminCreateProduct, adminUpdateProduct, adminListBrands } from '@/services/adminApi';
 import { CATEGORIES, CATEGORY_NAMES, SUBCATEGORY_NAMES, ALL_CATEGORY_NAMES, isDeviceSpecificCategory, getCategoryConfig } from '@/utils/constants';
 import api from '@/services/api';
+import compressImage from '@/utils/compressImage';
 
 const blank = {
     name: '',
@@ -65,8 +66,11 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const toast = useToast();
     const [form, setForm] = useState(normalize(initial));
     const [imageUrl, setImageUrl] = useState('');
-    const [tagsInput, setTagsInput] = useState((initial?.tags || []).join(', '));
-    const fileRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+    const [tagsInput, setTagsInput] = useState('');
+    useEffect(() => {
+        setTagsInput((initial?.tags || []).join(', '));
+    }, [initial?.tags]);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
     const [brands, setBrands] = useState([]);
@@ -112,30 +116,47 @@ export default function ProductForm({ initial, mode = 'create' }) {
         setImageUrl('');
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) { toast.error('Only image files allowed'); return; }
-        if (file.size > 5 * 1024 * 1024) { toast.error('File too large (max 5MB)'); return; }
-        const reader = new FileReader();
-        reader.onload = () => {
-            const dataUrl = reader.result;
-            setForm((f) => ({
-                ...f,
-                images: [...f.images, dataUrl],
-                image: f.image || dataUrl
-            }));
-        };
-        reader.readAsDataURL(file);
-        e.target.value = '';
-    };
-
     const removeImage = (u) => {
         setForm((f) => ({
             ...f,
             images: f.images.filter((x) => x !== u),
             image: f.image === u ? (f.images.filter((x) => x !== u)[0] || '') : f.image
         }));
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast.error('Only jpg, png, webp allowed');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File too large (max 5MB)');
+            return;
+        }
+        setUploading(true);
+        try {
+            const compressed = await compressImage(file);
+            const fd = new FormData();
+            fd.append('image', compressed);
+            const r = await api.post('/uploads/image', fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const url = r.data?.url;
+            if (!url) throw new Error('No URL returned');
+            setForm((f) => ({
+                ...f,
+                images: [...f.images, url],
+                image: f.image || url
+            }));
+            toast.success('Image uploaded');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Upload failed');
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
     };
 
     const submit = async (e) => {
@@ -313,7 +334,6 @@ export default function ProductForm({ initial, mode = 'create' }) {
 
             <div className="border border-border bg-surface p-5 md:p-6">
                 <h3 className="mb-4 font-display text-lg">Images</h3>
-                <p className="mb-3 text-[11px] text-text-light">Paste an image URL. Backend stores URLs; no file upload.</p>
                 <div className="flex flex-wrap gap-2">
                     <input
                         value={imageUrl}
@@ -325,16 +345,10 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <button type="button" onClick={addImage} className="btn-secondary !px-5">
                         <ImagePlus className="h-4 w-4" /> Add URL
                     </button>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                    />
-                    <button type="button" onClick={() => fileRef.current?.click()} className="btn-secondary !px-5">
-                        <ImagePlus className="h-4 w-4" /> Upload
-                    </button>
+                    <label className={`btn-secondary !px-5 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {uploading ? 'Uploading…' : 'Upload file'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                    </label>
                 </div>
                 {form.images.length > 0 && (
                     <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-5">

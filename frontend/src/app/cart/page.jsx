@@ -20,7 +20,8 @@ export default function CartPage() {
         if (!authLoading && !user) {
             router.replace('/login?redirect=/cart');
         }
-    }, [authLoading, user, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authLoading, user]);
 
     if (authLoading) {
         return (

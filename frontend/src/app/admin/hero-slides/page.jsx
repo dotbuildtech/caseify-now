@@ -19,7 +19,7 @@ export default function AdminHeroSlidesPage() {
             setItems(r.data?.data || []);
         } catch { toast.error('Failed to load hero slides'); }
         finally { setLoading(false); }
-    }, [toast]);
+    }, []);
 
     useEffect(() => { load(); }, [load]);
 

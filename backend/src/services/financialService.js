@@ -53,11 +53,20 @@ exports.getRevenueAnalytics = async (query = {}) => {
     const { start, end } = parseDateRange(query);
     const baseWhere = { isPaid: true, paidAt: { [Op.between]: [start, end] } };
 
-    const orders = await Order.findAll({ where: baseWhere });
-    const totalRevenue = orders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
-    const totalTax = orders.reduce((a, o) => a + Number(o.taxPrice || 0), 0);
-    const totalShipping = orders.reduce((a, o) => a + Number(o.shippingPrice || 0), 0);
-    const orderCount = orders.length;
+    const totals = await Order.findOne({
+        where: baseWhere,
+        attributes: [
+            [fn('COUNT', col('Order.id')), 'orderCount'],
+            [fn('COALESCE', fn('SUM', col('totalPrice')), 0), 'totalRevenue'],
+            [fn('COALESCE', fn('SUM', col('taxPrice')), 0), 'totalTax'],
+            [fn('COALESCE', fn('SUM', col('shippingPrice')), 0), 'totalShipping']
+        ],
+        raw: true
+    });
+    const totalRevenue = Number(totals?.totalRevenue || 0);
+    const totalTax = Number(totals?.totalTax || 0);
+    const totalShipping = Number(totals?.totalShipping || 0);
+    const orderCount = Number(totals?.orderCount || 0);
     const avgOrderValue = orderCount > 0 ? +(totalRevenue / orderCount).toFixed(2) : 0;
 
     const daily = await getOrderRevenue(baseWhere);
@@ -98,15 +107,23 @@ exports.getProfitAndLoss = async (query = {}) => {
     const { start, end } = parseDateRange(query);
     const orderWhere = { isPaid: true, paidAt: { [Op.between]: [start, end] } };
 
-    const orders = await Order.findAll({ where: orderWhere });
-    const grossRevenue = orders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
-    const taxCollected = orders.reduce((a, o) => a + Number(o.taxPrice || 0), 0);
+    const totals = await Order.findOne({
+        where: orderWhere,
+        attributes: [
+            [fn('COUNT', col('Order.id')), 'orderCount'],
+            [fn('COALESCE', fn('SUM', col('totalPrice')), 0), 'grossRevenue'],
+            [fn('COALESCE', fn('SUM', col('taxPrice')), 0), 'taxCollected']
+        ],
+        raw: true
+    });
+    const grossRevenue = Number(totals?.grossRevenue || 0);
+    const taxCollected = Number(totals?.taxCollected || 0);
 
     return {
         period: { startDate: start.toISOString(), endDate: end.toISOString() },
         revenue: {
             grossRevenue: +grossRevenue.toFixed(2),
-            orderCount: orders.length
+            orderCount: Number(totals?.orderCount || 0)
         },
         taxCollected: +taxCollected.toFixed(2),
         netProfit: 0,
@@ -240,11 +257,8 @@ exports.getDashboardSummary = async () => {
         return Number(r?.total || 0);
     };
 
-    const thisMonthOrders = await Order.findAll({ where: { isPaid: true, paidAt: { [Op.gte]: monthStart } } });
-    const lastMonthOrders = await Order.findAll({ where: { isPaid: true, paidAt: { [Op.between]: [lastMonthStart, lastMonthEnd] } } });
-
-    const thisMonthRevenue = thisMonthOrders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
-    const lastMonthRevenue = lastMonthOrders.reduce((a, o) => a + Number(o.totalPrice || 0), 0);
+    const thisMonthRevenue = await sumField(Order, { isPaid: true, paidAt: { [Op.gte]: monthStart } }, 'totalPrice');
+    const lastMonthRevenue = await sumField(Order, { isPaid: true, paidAt: { [Op.between]: [lastMonthStart, lastMonthEnd] } }, 'totalPrice');
     const revenueChange = lastMonthRevenue > 0 ? +(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100).toFixed(2) : 0;
 
     const pendingInvoices = await Invoice.count({ where: { status: { [Op.in]: ['Generated', 'Sent'] } } });

@@ -78,7 +78,8 @@ const Supplier = sequelize.define('Supplier', {
     indexes: [
         { fields: ['name'] },
         { fields: ['gstin'] },
-        { fields: ['category'] }
+        { fields: ['category'] },
+        { fields: ['isActive'] }
     ]
 });
 

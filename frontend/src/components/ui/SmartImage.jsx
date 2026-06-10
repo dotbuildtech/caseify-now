@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Image from 'next/image';
 
 const FALLBACK = 'https://images.unsplash.com/photo-1526738549149-8e07ead6a224?auto=format&fit=crop&w=600&q=70';
@@ -17,6 +17,7 @@ export default function SmartImage({
     ...rest
 }) {
     const [errored, setErrored] = useState(false);
+    const hasTriedFallback = useRef(false);
     const finalSrc = !src || errored ? FALLBACK : src;
     const isDataUrl = finalSrc.startsWith('data:');
     const isUnsplash = finalSrc.includes('images.unsplash.com');
@@ -31,7 +32,7 @@ export default function SmartImage({
                 quality={quality}
                 priority={priority}
                 unoptimized={isUnsplash || isDataUrl}
-                onError={() => setErrored(true)}
+                onError={() => { if (!hasTriedFallback.current) { hasTriedFallback.current = true; setErrored(true); } }}
                 className={className}
                 {...rest}
             />
@@ -48,7 +49,7 @@ export default function SmartImage({
             quality={quality}
             priority={priority}
             unoptimized={isUnsplash || isDataUrl}
-            onError={() => setErrored(true)}
+            onError={() => { if (!hasTriedFallback.current) { hasTriedFallback.current = true; setErrored(true); } }}
             className={className}
             {...rest}
         />

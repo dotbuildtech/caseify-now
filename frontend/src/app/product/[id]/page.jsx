@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Minus, Plus, Truck, ShieldCheck, Heart, ShoppingBag, Check, AlertCircle } from 'lucide-react';
 import { fetchProductById, fetchProducts } from '@/services/productApi';
@@ -12,8 +12,8 @@ import { isDeviceSpecificCategory } from '@/utils/constants';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 
-export default function ProductPage({ params }) {
-    const { id } = params;
+export default function ProductPage() {
+    const { id } = useParams();
     const router = useRouter();
     const { addItem } = useCart();
     const { user, loading: authLoading } = useAuth();

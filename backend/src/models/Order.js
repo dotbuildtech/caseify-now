@@ -13,16 +13,26 @@ const Order = sequelize.define('Order', {
     paymentResult: {
         type: DataTypes.JSONB
     },
+    itemsPrice: {
+        type: DataTypes.DECIMAL(12, 2),
+        allowNull: false,
+        defaultValue: 0,
+        get() {
+            const v = this.getDataValue('itemsPrice');
+            return v == null ? null : Number(v);
+        },
+        validate: { min: 0 }
+    },
     taxPrice: {
-        type: DataTypes.FLOAT,
+        type: DataTypes.DECIMAL(12, 2),
         defaultValue: 0.0
     },
     shippingPrice: {
-        type: DataTypes.FLOAT,
+        type: DataTypes.DECIMAL(12, 2),
         defaultValue: 0.0
     },
     totalPrice: {
-        type: DataTypes.FLOAT,
+        type: DataTypes.DECIMAL(12, 2),
         defaultValue: 0.0
     },
     isPaid: {
@@ -52,13 +62,25 @@ const Order = sequelize.define('Order', {
         type: DataTypes.ENUM('Ordered', 'Processing', 'Shipped', 'Delivered', 'Cancelled'),
         defaultValue: 'Ordered'
     }
+}, {
+    indexes: [
+        { fields: ['UserId'] },
+        { fields: ['orderStatus'] },
+        { fields: ['createdAt'] },
+        { fields: ['razorpayOrderId'], unique: true }
+    ]
 });
 
 const OrderItem = sequelize.define('OrderItem', {
-    name: { type: DataTypes.STRING, allowNull: false },
+    name: { type: DataTypes.STRING(500), allowNull: false },
     qty: { type: DataTypes.INTEGER, allowNull: false },
-    image: { type: DataTypes.STRING, allowNull: true },
-    price: { type: DataTypes.FLOAT, allowNull: false }
+    image: { type: DataTypes.TEXT, allowNull: true },
+    price: { type: DataTypes.DECIMAL(12, 2), allowNull: false }
+}, {
+    indexes: [
+        { fields: ['OrderId'] },
+        { fields: ['ProductId'] }
+    ]
 });
 
 module.exports = { Order, OrderItem };

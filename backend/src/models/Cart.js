@@ -56,7 +56,8 @@ const CartItem = sequelize.define('CartItem', {
         { fields: ['CartId'] },
         { fields: ['ProductId'] },
         { fields: ['ProductVariantId'] },
-        { fields: ['CartId', 'ProductId', 'ProductVariantId'], unique: true }
+        { fields: ['CartId', 'ProductId', 'ProductVariantId'], unique: true },
+        { fields: ['createdAt'] }
     ]
 });
 

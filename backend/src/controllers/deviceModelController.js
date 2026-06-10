@@ -29,6 +29,10 @@ exports.getDeviceModel = asyncHandler(async (req, res) => {
 
 exports.createDeviceModel = asyncHandler(async (req, res) => {
     const { name, BrandId, deviceType } = req.body;
+    if (!name || typeof name !== 'string' || !name.trim()) {
+        res.status(400);
+        throw new Error('Device model name is required');
+    }
     if (!BrandId) { res.status(400); throw new Error('BrandId is required'); }
     const brand = await Brand.findByPk(BrandId);
     if (!brand) { res.status(404); throw new Error('Brand not found'); }
@@ -45,7 +49,11 @@ exports.updateDeviceModel = asyncHandler(async (req, res) => {
     if (name !== undefined) {
         updates.name = name;
         const brand = BrandId ? await Brand.findByPk(BrandId) : await Brand.findByPk(model.BrandId);
-        const brandSlug = brand ? brand.slug : 'unknown';
+        if (!brand) {
+            res.status(404);
+            throw new Error('Brand not found');
+        }
+        const brandSlug = brand.slug;
         updates.slug = `${brandSlug}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
     }
     if (BrandId !== undefined) updates.BrandId = BrandId;

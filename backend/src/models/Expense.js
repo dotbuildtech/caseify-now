@@ -99,7 +99,8 @@ const Expense = sequelize.define('Expense', {
         { fields: ['category'] },
         { fields: ['status'] },
         { fields: ['expenseDate'] },
-        { fields: ['paymentMethod'] }
+        { fields: ['paymentMethod'] },
+        { fields: ['SupplierId'] }
     ]
 });
 

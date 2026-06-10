@@ -20,7 +20,8 @@ export default function MyAccountPage() {
             .then((d) => { if (mounted) setProfile(d?.data || d || ctxUser); })
             .catch(() => { if (mounted) setProfile(ctxUser); });
         return () => { mounted = false; };
-    }, [ctxUser, authLoading, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ctxUser, authLoading]);
 
     if (!profile) return <div className="container-luxe py-20"><div className="h-32 bg-background-light animate-pulse" /></div>;
 

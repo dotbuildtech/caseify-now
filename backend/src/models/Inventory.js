@@ -18,6 +18,14 @@ const Inventory = sequelize.define('Inventory', {
         type: DataTypes.JSONB,
         defaultValue: []
     }
+}, {
+    tableName: 'Inventories',
+    timestamps: true,
+    indexes: [
+        { fields: ['ProductId'], unique: true },
+        { fields: ['quantity'] },
+        { fields: ['lowStockThreshold'] }
+    ]
 });
 
 // Association

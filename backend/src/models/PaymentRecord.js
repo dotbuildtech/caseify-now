@@ -120,7 +120,9 @@ const PaymentRecord = sequelize.define('PaymentRecord', {
         { fields: ['paidAt'] },
         { fields: ['status'] },
         { fields: ['gateway'] },
-        { fields: ['bankAccount'] }
+        { fields: ['bankAccount'] },
+        { fields: ['UserId'] },
+        { fields: ['OrderId'] }
     ]
 });
 

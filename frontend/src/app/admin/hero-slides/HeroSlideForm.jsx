@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, X, ImagePlus } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
@@ -20,6 +20,15 @@ export default function HeroSlideForm({ mode, initial }) {
     const [preview, setPreview] = useState(initial?.bg || '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const objectUrlRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (objectUrlRef.current) {
+                URL.revokeObjectURL(objectUrlRef.current);
+            }
+        };
+    }, []);
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
@@ -27,7 +36,12 @@ export default function HeroSlideForm({ mode, initial }) {
         if (!file.type.startsWith('image/')) { toast.error('Only image files allowed'); return; }
         if (file.size > 5 * 1024 * 1024) { toast.error('File too large (max 5MB)'); return; }
         setBgFile(file);
-        setPreview(URL.createObjectURL(file));
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+        }
+        const url = URL.createObjectURL(file);
+        objectUrlRef.current = url;
+        setPreview(url);
         e.target.value = '';
     };
 
@@ -46,7 +60,7 @@ export default function HeroSlideForm({ mode, initial }) {
             formData.append('isActive', String(isActive));
             if (bgFile) {
                 formData.append('bg', bgFile);
-            } else if (bg && bg !== preview && !bgFile) {
+            } else if (bg) {
                 formData.append('bg', bg);
             }
 
@@ -71,6 +85,10 @@ export default function HeroSlideForm({ mode, initial }) {
 
     const clearImage = () => {
         setBgFile(null);
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
         setPreview('');
         setBg('');
     };

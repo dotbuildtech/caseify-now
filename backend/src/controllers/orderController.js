@@ -7,9 +7,10 @@ const User = require('../models/User');
 const Invoice = require('../models/Invoice');
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
 
-const TAX_RATE = parseFloat(process.env.TAX_RATE || '0');
+const TAX_RATE = (() => { const r = parseFloat(process.env.TAX_RATE || '0'); return Number.isFinite(r) ? r : 0; })();
 const SHIPPING_FEE = parseFloat(process.env.SHIPPING_FEE || '0');
 const MAX_QTY_PER_ITEM = 99;
+const CUSTOM_PRODUCT_ID = 9999;
 
 const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
 
@@ -48,7 +49,7 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
     for (const item of orderItems) {
         const product = productMap.get(item.product);
         if (!product) {
-            if (item.product === 9999 && item.designMeta) {
+            if (item.product === CUSTOM_PRODUCT_ID && item.designMeta) {
                 continue;
             }
             res.status(404);
@@ -80,41 +81,50 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
             totalPrice
         }, { transaction: t });
 
+        const decrementOps = [];
+        const orderItemData = [];
+
         for (const item of orderItems) {
             const product = productMap.get(item.product);
 
             if (!product && item.product === 9999) {
-                await OrderItem.create({
+                orderItemData.push({
                     OrderId: order.id,
                     ProductId: item.product,
                     name: item.designMeta?.materialLabel ? `${item.designMeta.materialLabel} Custom Phone Case` : 'Custom Phone Case',
                     qty: item.qty,
                     image: item.designMeta?.thumbnail || '',
                     price: item.designMeta?.totalPrice || item.designMeta?.materialPrice || 399
-                }, { transaction: t });
+                });
                 continue;
             }
 
-            const [affected] = await Product.decrement('stock', {
-                by: item.qty,
-                where: { id: product.id, stock: { [Op.gte]: item.qty } },
-                transaction: t
-            });
+            decrementOps.push(
+                Product.decrement('stock', {
+                    by: item.qty,
+                    where: { id: product.id, stock: { [Op.gte]: item.qty } },
+                    transaction: t
+                }).then(([affected]) => {
+                    if (affected === 0) {
+                        const err = new Error(`Insufficient stock for "${product.name}"`);
+                        err.status = 409;
+                        throw err;
+                    }
+                })
+            );
 
-            if (affected === 0) {
-                res.status(409);
-                throw new Error(`Insufficient stock for "${product.name}"`);
-            }
-
-            await OrderItem.create({
+            orderItemData.push({
                 OrderId: order.id,
                 ProductId: product.id,
                 name: product.name,
                 qty: item.qty,
                 image: product.image || '',
                 price: product.price
-            }, { transaction: t });
+            });
         }
+
+        await Promise.all(decrementOps);
+        await OrderItem.bulkCreate(orderItemData, { transaction: t });
 
         return order;
     });
@@ -196,11 +206,17 @@ exports.updateOrderToPaid = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error('razorpayPaymentId and razorpaySignature are required');
         }
-        const valid = verifyPaymentSignature({
-            razorpayOrderId: order.razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature
-        });
+        let valid;
+        try {
+            valid = verifyPaymentSignature({
+                razorpayOrderId: order.razorpayOrderId,
+                razorpayPaymentId,
+                razorpaySignature
+            });
+        } catch (e) {
+            res.status(503);
+            throw new Error('Payment service unavailable');
+        }
         if (!valid) {
             res.status(400);
             throw new Error('Invalid payment signature');
@@ -248,23 +264,34 @@ exports.updateOrderToPaid = asyncHandler(async (req, res) => {
 });
 
 exports.getMyOrders = asyncHandler(async (req, res) => {
-    const orders = await Order.findAll({
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const { count, rows } = await Order.findAndCountAll({
         where: { UserId: req.user.id },
         include: [{ model: OrderItem, as: 'items' }],
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
-    res.json(orders);
+    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
 });
 
 exports.getOrders = asyncHandler(async (req, res) => {
-    const orders = await Order.findAll({
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const { count, rows } = await Order.findAndCountAll({
         include: [
             { model: User, attributes: ['id', 'name'] },
             { model: OrderItem, as: 'items' }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset,
+        distinct: true
     });
-    res.json(orders);
+    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
 });
 
 exports.updateOrderStatus = asyncHandler(async (req, res) => {

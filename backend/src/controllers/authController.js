@@ -17,7 +17,6 @@ const OTP_SALT_ROUNDS = 10;
 const ACCESS_TOKEN_EXPIRES_IN = '1h';
 const REFRESH_TOKEN_BYTES = 64;
 const REFRESH_TOKEN_EXPIRES_DAYS = 7;
-const REFRESH_TOKEN_SALT_ROUNDS = 10;
 const RESET_PASSWORD_EXPIRY_MINUTES = 30;
 
 const DUMMY_BCRYPT_HASH = '$2a$10$ctVoolAI1URPzipAZ0GzR.Rl/tl5Hn/2ege.6nGJHSwIVajwvM0eS';
@@ -54,8 +53,8 @@ const validateRegistrationInput = ({ name, email, password, phone }) => {
     return null;
 };
 
-const generateAccessToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateAccessToken = (user) => {
+    return jwt.sign({ id: user.id, role: user.role, email: user.email }, process.env.JWT_SECRET, {
         expiresIn: ACCESS_TOKEN_EXPIRES_IN
     });
 };
@@ -64,8 +63,8 @@ const generateRefreshTokenValue = () => {
     return crypto.randomBytes(REFRESH_TOKEN_BYTES).toString('hex');
 };
 
-const hashToken = async (token) => {
-    return await bcrypt.hash(token, REFRESH_TOKEN_SALT_ROUNDS);
+const hashToken = (token) => {
+    return crypto.createHash('sha256').update(token).digest('hex');
 };
 
 const hashUserAgent = (ua) => {
@@ -74,9 +73,9 @@ const hashUserAgent = (ua) => {
 };
 
 const issueTokenPair = async (user, req) => {
-    const accessToken = generateAccessToken(user.id);
+    const accessToken = generateAccessToken(user);
     const refreshTokenValue = generateRefreshTokenValue();
-    const tokenHash = await hashToken(refreshTokenValue);
+    const tokenHash = hashToken(refreshTokenValue);
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000);
     const ua = req?.headers?.['user-agent'] || null;
 
@@ -213,22 +212,12 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
     }
 
     const incomingUaHash = hashUserAgent(req.headers['user-agent'] || null);
+    const tokenHash = hashToken(refreshToken);
 
-    const candidates = await RefreshToken.findAll({
-        where: {
-            revokedAt: null,
-            expiresAt: { [Op.gt]: new Date() }
-        },
+    const matched = await RefreshToken.findOne({
+        where: { tokenHash, revokedAt: null, expiresAt: { [Op.gt]: new Date() } },
         include: [{ model: User }]
     });
-
-    let matched = null;
-    for (const candidate of candidates) {
-        if (await bcrypt.compare(refreshToken, candidate.tokenHash)) {
-            matched = candidate;
-            break;
-        }
-    }
 
     if (!matched) {
         logSecurityEvent('refresh.not_found', { ip: req.ip });
@@ -246,7 +235,7 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
 
     const user = matched.User;
     const newRefreshValue = generateRefreshTokenValue();
-    const newHash = await hashToken(newRefreshValue);
+    const newHash = hashToken(newRefreshValue);
 
     matched.revokedAt = new Date();
     matched.replacedByToken = newHash;
@@ -264,7 +253,7 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
     logSecurityEvent('refresh.success', { userId: user.id, ip: req.ip });
 
     res.json({
-        accessToken: generateAccessToken(user.id),
+        accessToken: generateAccessToken(user),
         refreshToken: newRefreshValue
     });
 });
@@ -273,16 +262,13 @@ exports.logout = asyncHandler(async (req, res) => {
     const { refreshToken } = req.body;
 
     if (typeof refreshToken === 'string' && refreshToken.length >= 32) {
-        const candidates = await RefreshToken.findAll({
-            where: { userId: req.user.id, revokedAt: null }
+        const tokenHash = hashToken(refreshToken);
+        const candidate = await RefreshToken.findOne({
+            where: { tokenHash, userId: req.user.id, revokedAt: null }
         });
-
-        for (const candidate of candidates) {
-            if (await bcrypt.compare(refreshToken, candidate.tokenHash)) {
-                candidate.revokedAt = new Date();
-                await candidate.save();
-                break;
-            }
+        if (candidate) {
+            candidate.revokedAt = new Date();
+            await candidate.save();
         }
     }
 

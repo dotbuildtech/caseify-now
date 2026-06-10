@@ -52,11 +52,18 @@ exports.generateInvoice = async (req, res) => {
 // @access  Private/Admin
 exports.getFinancialAnalytics = async (req, res) => {
     try {
-        const orders = await Order.findAll({ where: { isPaid: true } });
-        
-        const totalRevenue = orders.reduce((acc, order) => acc + order.totalPrice, 0);
-        const totalTax = orders.reduce((acc, order) => acc + order.taxPrice, 0);
-        const orderCount = orders.length;
+        const totals = await Order.findOne({
+            where: { isPaid: true },
+            attributes: [
+                [sequelize.fn('COUNT', sequelize.col('id')), 'orderCount'],
+                [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('totalPrice')), 0), 'totalRevenue'],
+                [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('taxPrice')), 0), 'totalTax']
+            ],
+            raw: true
+        });
+        const totalRevenue = Number(totals?.totalRevenue || 0);
+        const totalTax = Number(totals?.totalTax || 0);
+        const orderCount = Number(totals?.orderCount || 0);
 
         // Group by month using Sequelize aggregate/fn (simplified for now as SQL varies)
         const monthlyRevenue = await Order.findAll({

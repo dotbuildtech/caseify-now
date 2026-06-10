@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import Cookies from 'js-cookie';
 import { login as apiLogin, register as apiRegister, logout as apiLogout, fetchProfile } from '@/services/authApi';
 
@@ -39,8 +39,10 @@ export function AuthProvider({ children }) {
         setUser(null);
     }, []);
 
+    const contextValue = useMemo(() => ({ user, loading, login, register, logout, setUser }), [user, loading, login, register, logout]);
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, setUser }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

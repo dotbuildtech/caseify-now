@@ -1,6 +1,7 @@
 const asyncHandler = require('../utils/asyncHandler');
 const { z } = require('zod');
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/db');
 const { audit } = require('../utils/securityLog');
 const { Order, OrderItem } = require('../models/Order');
 const Invoice = require('../models/Invoice');
@@ -119,8 +120,8 @@ const invoiceGenerateSchema = z.object({
     notes: z.string().optional()
 });
 
-const generateInvoiceNumber = async () => {
-    const last = await Invoice.findOne({ order: [['invoiceNumber', 'DESC']] });
+const generateInvoiceNumber = async (transaction) => {
+    const last = await Invoice.findOne({ order: [['invoiceNumber', 'DESC']], transaction, lock: transaction ? true : false });
     let n = 1;
     if (last) {
         const m = String(last.invoiceNumber).match(/(\d+)\s*$/);
@@ -269,7 +270,7 @@ exports.getExpense = asyncHandler(async (req, res) => {
 exports.createExpense = asyncHandler(async (req, res) => {
     const data = req.body;
     const totalAmount = +(Number(data.amount || 0) + Number(data.gstAmount || 0)).toFixed(2);
-    if (data.SupplierId) {
+    if (data.SupplierId && data.status !== 'Cancelled' && data.status !== 'Pending') {
         const supplier = await Supplier.findByPk(data.SupplierId);
         if (supplier) {
             supplier.outstandingBalance = Number(supplier.outstandingBalance || 0) + totalAmount;
@@ -304,11 +305,16 @@ exports.deleteExpense = asyncHandler(async (req, res) => {
     }
     const force = req.query.force === 'true';
     if (expense.SupplierId && !force) {
-        const supplier = await Supplier.findByPk(expense.SupplierId);
-        if (supplier) {
-            supplier.outstandingBalance = Math.max(0, Number(supplier.outstandingBalance || 0) - Number(expense.totalAmount || 0));
-            await supplier.save();
-        }
+        await sequelize.transaction(async (t) => {
+            const supplier = await Supplier.findByPk(expense.SupplierId, { transaction: t });
+            if (supplier) {
+                supplier.outstandingBalance = Math.max(0, Number(supplier.outstandingBalance || 0) - Number(expense.totalAmount || 0));
+                await supplier.save({ transaction: t });
+            }
+            await expense.destroy({ force, transaction: t });
+        });
+        audit(req, 'expense.delete', `Expense:${expense.id}`);
+        return res.json({ message: 'Expense archived' });
     }
     await expense.destroy({ force });
     audit(req, 'expense.delete', `Expense:${expense.id}`);
@@ -487,6 +493,10 @@ exports.getInvoiceByOrder = asyncHandler(async (req, res) => {
 
 // ============ ADMIN DOWNLOAD INVOICE ============
 exports.adminDownloadInvoicePDF = asyncHandler(async (req, res) => {
+    if (req.user.role !== 'admin') {
+        res.status(403);
+        throw new Error('Not authorized');
+    }
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
         res.status(404);

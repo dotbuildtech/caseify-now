@@ -24,7 +24,7 @@ const RefreshToken = sequelize.define('RefreshToken', {
         allowNull: true
     },
     userAgent: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         allowNull: true
     },
     userAgentHash: {

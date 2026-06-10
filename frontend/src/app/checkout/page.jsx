@@ -35,7 +35,8 @@ export default function CheckoutPage() {
         if (!authLoading && !user) {
             router.replace('/login?redirect=/checkout');
         }
-    }, [authLoading, user, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authLoading, user]);
 
     if (authLoading) {
         return (
@@ -80,6 +81,7 @@ export default function CheckoutPage() {
                 orderItems,
                 shippingAddress: {
                     fullName: form.fullName,
+                    email: form.email,
                     phone: form.phone,
                     address: form.address,
                     city: form.city,
@@ -90,9 +92,14 @@ export default function CheckoutPage() {
                 paymentMethod: form.paymentMethod
             });
             const orderId = order?.id || order?._id || order?.data?.id;
-            await clear();
+            if (!orderId) {
+                toast.error('Order was placed but no ID returned. Check your orders.');
+                router.push('/orders');
+                return;
+            }
+            try { await clear(); } catch { /* best-effort cart clear */ }
             toast.success('Order placed successfully');
-            router.push(`/order-confirmation/${orderId || ''}`);
+            router.push(`/order-confirmation/${orderId}`);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Order failed');
         } finally {

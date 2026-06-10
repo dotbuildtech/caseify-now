@@ -34,9 +34,14 @@ exports.downloadInvoice = asyncHandler(async (req, res) => {
 });
 
 exports.getMyInvoices = asyncHandler(async (req, res) => {
-    const invoices = await Invoice.findAll({
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    const { count, rows } = await Invoice.findAndCountAll({
         where: { UserId: req.user.id },
-        order: [['issuedAt', 'DESC']]
+        order: [['issuedAt', 'DESC']],
+        limit,
+        offset
     });
-    res.json(invoices);
+    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
 });

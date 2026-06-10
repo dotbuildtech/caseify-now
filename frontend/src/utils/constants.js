@@ -126,7 +126,7 @@ export const CATEGORIES = [
 
 export const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
 export const SUBCATEGORY_NAMES = CATEGORIES.flatMap((c) => c.subcategories);
-export const ALL_CATEGORY_NAMES = [...CATEGORY_NAMES, ...SUBCATEGORY_NAMES];
+export const ALL_CATEGORY_NAMES = [...new Set([...CATEGORY_NAMES, ...SUBCATEGORY_NAMES])];
 
 export const isDeviceSpecificCategory = (name) => {
     const cat = CATEGORIES.find((c) => c.name === name || c.subcategories.includes(name));

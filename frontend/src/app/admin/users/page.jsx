@@ -25,7 +25,7 @@ export default function AdminUsersPage() {
             .catch((e) => toast.error(e.response?.data?.message || 'Failed to load users'))
             .finally(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; };
-    }, [page, toast]);
+    }, [page]);
 
     const filtered = q.trim()
         ? users.filter((u) => `${u.name} ${u.email}`.toLowerCase().includes(q.trim().toLowerCase()))

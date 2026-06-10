@@ -36,7 +36,7 @@ export const adminRemoveProductImage = (id, url) =>
         .then((r) => { clearApiCache(); return r.data; });
 
 // ---------- Orders (admin) ----------
-export const adminListOrders = () => api.get('/orders').then((r) => r.data);
+export const adminListOrders = () => api.get('/orders').then((r) => r.data?.data || r.data);
 
 export const adminUpdateOrderStatus = (id, status) =>
     api.put(`/orders/${id}/status`, { status }).then((r) => r.data);

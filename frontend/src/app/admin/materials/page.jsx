@@ -11,9 +11,10 @@ export default function MaterialsPage() {
     const [editing, setEditing] = useState(null);
     const [editName, setEditName] = useState('');
     const [loading, setLoading] = useState(true);
+    const [fetchErr, setFetchErr] = useState(null);
 
     useEffect(() => {
-        adminListMaterials({ isActive: 'true' }).then(setMaterials).catch(() => {}).finally(() => setLoading(false));
+        adminListMaterials({ isActive: 'true' }).then(setMaterials).catch(() => setFetchErr('Failed to load materials')).finally(() => setLoading(false));
     }, []);
 
     const create = async () => {
@@ -64,6 +65,7 @@ export default function MaterialsPage() {
                 </button>
             </div>
 
+            {fetchErr && <p className="text-sm text-error mb-4">{fetchErr}</p>}
             {loading ? (
                 <div className="text-xs text-text-light">Loading…</div>
             ) : materials.length === 0 ? (

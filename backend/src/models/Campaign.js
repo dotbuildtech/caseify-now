@@ -32,6 +32,14 @@ const Campaign = sequelize.define('Campaign', {
         type: DataTypes.STRING,
         defaultValue: 'all'
     }
+}, {
+    tableName: 'Campaigns',
+    timestamps: true,
+    indexes: [
+        { fields: ['isActive'] },
+        { fields: ['endDate'] },
+        { fields: ['code'], unique: true }
+    ]
 });
 
 module.exports = Campaign;

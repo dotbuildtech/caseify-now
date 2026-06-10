@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sequelize } = require('../config/db');
 const { audit } = require('../utils/securityLog');
 const { Cart, CartItem } = require('../models/Cart');
+const { saveDataUrl } = require('../utils/saveDataUrl');
 const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
 
@@ -34,8 +35,8 @@ const decorateCart = async (cartId) => {
                 model: CartItem,
                 as: 'items',
                 include: [
-                    { model: Product },
-                    { model: ProductVariant, as: 'variant' }
+                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price', 'stock', 'isActive'] },
+                    { model: ProductVariant, as: 'variant', attributes: ['id', 'name', 'image', 'price', 'stock', 'isActive'] }
                 ]
             }
         ],
@@ -43,7 +44,13 @@ const decorateCart = async (cartId) => {
     });
     if (!cart) return null;
 
-    const items = cart.items || [];
+    const items = (cart.items || []).map((item) => {
+        const json = item.toJSON();
+        if (json.designMeta && json.imageAtAdd) {
+            json.designMeta.thumbnail = json.imageAtAdd;
+        }
+        return json;
+    });
     const summary = items.reduce(
         (acc, item) => {
             const line = Number(item.priceAtAdd) * item.quantity;
@@ -99,8 +106,12 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         if (designMeta && !product) {
             const cart = await getOrCreateCart(req.user.id, transaction);
 
-            const [cartItem] = await CartItem.findOrCreate({
-                where: { CartId: cart.id, ProductId: productId },
+            const { thumbnail: thumb, ...designMetaForDb } = designMeta;
+            const hasDesignMeta = Object.keys(designMetaForDb).length > 0;
+            const savedThumb = await saveDataUrl(thumb);
+
+            const [cartItem, created] = await CartItem.findOrCreate({
+                where: { CartId: cart.id, ProductId: productId, ProductVariantId: null },
                 defaults: {
                     CartId: cart.id,
                     ProductId: productId,
@@ -108,17 +119,32 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
                     quantity,
                     priceAtAdd: designMeta.totalPrice || designMeta.materialPrice || 399,
                     nameAtAdd: `${designMeta.materialLabel || 'Custom'} Phone Case · ${designMeta.modelLabel || ''}`,
-                    imageAtAdd: designMeta.thumbnail || null,
+                    imageAtAdd: savedThumb,
                     variantLabel: `${designMeta.modelLabel || ''} · ${designMeta.materialLabel || ''}`,
-                    designMeta: designMeta || null
+                    designMeta: hasDesignMeta ? designMetaForDb : null
                 },
                 transaction
             });
 
-            if (!cartItem) {
-                const err = new Error('Failed to add custom item');
-                err.status = 500;
-                throw err;
+            if (!created) {
+                const newQty = cartItem.quantity + quantity;
+                if (newQty > MAX_QTY) {
+                    const err = new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
+                    err.status = 400;
+                    throw err;
+                }
+                cartItem.quantity = newQty;
+                cartItem.priceAtAdd = designMeta.totalPrice || designMeta.materialPrice || 399;
+                cartItem.imageAtAdd = savedThumb;
+                cartItem.designMeta = hasDesignMeta ? designMetaForDb : null;
+                await cartItem.save({ transaction });
+            } else {
+                const count = await CartItem.count({ where: { CartId: cart.id }, transaction });
+                if (count > MAX_DISTINCT_ITEMS) {
+                    const err = new Error(`Cart cannot exceed ${MAX_DISTINCT_ITEMS} distinct items`);
+                    err.status = 400;
+                    throw err;
+                }
             }
 
             await cart.update({ lastActivityAt: new Date() }, { transaction });
@@ -165,24 +191,28 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         const where = { CartId: cart.id, ProductId: productId };
         if (productVariantId) where.ProductVariantId = productVariantId;
 
-        const [cartItem, created] = await CartItem.findOrCreate({
-            where,
-            defaults: {
-                CartId: cart.id,
-                ProductId: productId,
-                ProductVariantId: productVariantId || null,
-                quantity,
-                priceAtAdd: unitPrice,
-                nameAtAdd,
-                imageAtAdd,
-                variantLabel,
-                designMeta: designMeta || null
-            },
-            transaction
-        });
+            const savedImageAtAdd = await saveDataUrl(imageAtAdd);
+            const dm = designMeta ? { ...designMeta } : null;
+            if (dm && dm.thumbnail) dm.thumbnail = await saveDataUrl(dm.thumbnail);
 
-        if (!created) {
-            const newQty = cartItem.quantity + quantity;
+            const [cartItem, created] = await CartItem.findOrCreate({
+                where,
+                defaults: {
+                    CartId: cart.id,
+                    ProductId: productId,
+                    ProductVariantId: productVariantId || null,
+                    quantity,
+                    priceAtAdd: unitPrice,
+                    nameAtAdd,
+                    imageAtAdd: savedImageAtAdd,
+                    variantLabel,
+                    designMeta: dm
+                },
+                transaction
+            });
+
+            if (!created) {
+                const newQty = cartItem.quantity + quantity;
             if (newQty > MAX_QTY) {
                 const err = new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
                 err.status = 400;
@@ -254,6 +284,18 @@ exports.updateCartItemQty = asyncHandler(async (req, res) => {
                 throw err;
             }
             stock = variant.stock;
+        } else if (!cartItem.ProductVariantId && productVariantId) {
+            const variant = await ProductVariant.findOne({
+                where: { id: productVariantId, ProductId: productId },
+                transaction
+            });
+            if (!variant || !variant.isActive) {
+                const err = new Error('Variant not available');
+                err.status = 404;
+                throw err;
+            }
+            stock = variant.stock;
+            cartItem.ProductVariantId = productVariantId;
         }
 
         if (quantity > stock) {
@@ -337,11 +379,13 @@ exports.getCartItemCount = asyncHandler(async (req, res) => {
 
 exports.cleanupAbandonedCarts = asyncHandler(async (req, res) => {
     const cutoff = new Date(Date.now() - CART_IDLE_DAYS * 24 * 60 * 60 * 1000);
-    const carts = await Cart.findAll({ where: { lastActivityAt: { [Op.lt]: cutoff } } });
+    const carts = await Cart.findAll({ where: { lastActivityAt: { [Op.lt]: cutoff } }, limit: 500 });
     const ids = carts.map((c) => c.id);
     if (ids.length === 0) return res.json({ count: 0, message: 'No abandoned carts' });
-    await CartItem.destroy({ where: { CartId: { [Op.in]: ids } } });
-    await Cart.destroy({ where: { id: { [Op.in]: ids } } });
+    await sequelize.transaction(async (transaction) => {
+        await CartItem.destroy({ where: { CartId: { [Op.in]: ids } }, transaction });
+        await Cart.destroy({ where: { id: { [Op.in]: ids } }, transaction });
+    });
     audit(req, 'cart.cleanup', null, { count: ids.length });
     res.json({ count: ids.length, message: `Cleaned ${ids.length} abandoned cart(s)` });
 });

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { User, Package, Heart, MapPin, Layers, Sparkles, ChevronRight, Trash2, ShoppingBag, Edit3 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { fetchProfile } from '@/services/authApi';
@@ -26,6 +26,7 @@ const StatusBadge = ({ status }) => {
 
 export default function DashboardPage() {
     const router = useRouter();
+    const pathname = usePathname();
     const { user: ctxUser, loading: authLoading, logout } = useAuth();
     const toast = useToast();
     const [profile, setProfile] = useState(null);
@@ -47,7 +48,8 @@ export default function DashboardPage() {
             if (mounted) setDesigns(raw ? JSON.parse(raw).slice(0, 6) : []);
         } catch { if (mounted) setDesigns([]); }
         return () => { mounted = false; };
-    }, [ctxUser, authLoading, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ctxUser, authLoading]);
 
     const deleteDesign = (id) => {
         const next = designs.filter((d) => d.id !== id);
@@ -88,18 +90,21 @@ export default function DashboardPage() {
                     </div>
                     <nav className="p-2">
                         {[
-                            { href: '/dashboard', label: 'Overview', Icon: Layers, active: true },
+                            { href: '/dashboard', label: 'Overview', Icon: Layers },
                             { href: '/orders', label: 'Orders', Icon: Package },
                             { href: '/customize', label: 'Design Studio', Icon: Edit3 },
                             { href: '/my-account', label: 'Profile', Icon: User }
-                        ].map((item) => (
-                            <Link key={item.href} href={item.href} className={`flex items-center justify-between px-3 py-2 text-sm ${item.active ? 'border-l-2 border-ink bg-background-light font-medium' : 'text-text-light hover:bg-background-light'}`}>
+                        ].map((item) => {
+                            const active = item.href === pathname;
+                            return (
+                            <Link key={item.href} href={item.href} className={`flex items-center justify-between px-3 py-2 text-sm ${active ? 'border-l-2 border-ink bg-background-light font-medium' : 'text-text-light hover:bg-background-light'}`}>
                                 <span className="flex items-center gap-2"><item.Icon className="h-4 w-4" /> {item.label}</span>
                                 <ChevronRight className="h-3 w-3" />
                             </Link>
-                        ))}
+                            );
+                        })}
                     </nav>
-                    <button onClick={() => { logout(); router.push('/'); }} className="flex w-full items-center gap-2 border-t border-border p-4 text-sm text-text-light hover:text-error">
+                    <button onClick={async () => { await logout(); router.push('/'); }} className="flex w-full items-center gap-2 border-t border-border p-4 text-sm text-text-light hover:text-error">
                         <User className="h-4 w-4" /> Logout
                     </button>
                 </aside>

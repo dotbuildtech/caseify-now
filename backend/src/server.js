@@ -133,6 +133,7 @@ app.use('/api/hero-slides', require('./routes/heroSlideRoutes'));
 app.use('/api/category-brands', require('./routes/categoryBrandRoutes'));
 app.use('/api/materials', require('./routes/materialRoutes'));
 app.use('/api/category-materials', require('./routes/categoryMaterialRoutes'));
+app.use('/api/uploads', require('./routes/uploadRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

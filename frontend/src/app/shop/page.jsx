@@ -1,6 +1,6 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchProducts } from '@/services/productApi';
 import ProductCard from '@/components/product/ProductCard';
 import SearchBar from '@/components/shop/SearchBar';
@@ -27,7 +27,7 @@ function ActiveFilters({ filters, onRemove, onClear }) {
     if (filters.priceMin || filters.priceMax) chips.push({ key: 'price_range', label: `₹${filters.priceMin || 0}–₹${filters.priceMax || '∞'}` });
     if (filters.inStock) chips.push({ key: 'inStock', label: 'In Stock' });
     Object.entries(filters).forEach(([k, v]) => {
-        if (['q', 'category', 'brand', 'phoneModel', 'priceMin', 'priceMax', 'inStock', 'sort'].includes(k)) return;
+        if (['q', 'category', 'brand', 'phoneModel', 'priceMin', 'priceMax', 'inStock', 'materials', 'sort'].includes(k)) return;
         if (v) chips.push({ key: k, label: `${k.replace(/_/g, ' ')}: ${v}` });
     });
     if (chips.length === 0) return null;
@@ -47,8 +47,9 @@ function ActiveFilters({ filters, onRemove, onClear }) {
     );
 }
 
-export default function ShopPage() {
+function ShopContent() {
     const params = useSearchParams();
+    const router = useRouter();
 
     const [q, setQ] = useState(params.get('q') || '');
     const [category, setCategory] = useState(params.get('category') || '');
@@ -144,7 +145,7 @@ export default function ShopPage() {
             if (sort && sort !== 'featured') sp.set('sort', sort);
             const qs = sp.toString();
             const url = qs ? `/shop?${qs}` : '/shop';
-            window.history.replaceState(null, '', url);
+            router.replace(url, { scroll: false });
         }, 500);
         return () => clearTimeout(t);
     }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort]);
@@ -449,7 +450,7 @@ export default function ShopPage() {
                             </div>
                         </div>
 
-                        <ActiveFilters filters={{ ...filterParams, q, category, brand, phoneModel, priceMin, priceMax, inStock }} onRemove={removeFilter} onClear={clearFilters} />
+                        <ActiveFilters filters={{ q, category, brand, phoneModel, priceMin, priceMax, inStock, materials: selectedMaterials.join(','), sort }} onRemove={removeFilter} onClear={clearFilters} />
 
                         {loading ? (
                             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">
@@ -485,5 +486,13 @@ export default function ShopPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ShopPage() {
+    return (
+        <Suspense fallback={<div className="container-luxe py-20"><div className="h-96 bg-background-light animate-pulse" /></div>}>
+            <ShopContent />
+        </Suspense>
     );
 }

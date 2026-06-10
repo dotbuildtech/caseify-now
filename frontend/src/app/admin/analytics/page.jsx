@@ -35,7 +35,7 @@ export default function AdminAnalyticsPage() {
             }
         })();
         return () => { mounted = false; };
-    }, [toast]);
+    }, []);
 
     const tiles = [
         { label: 'Revenue (30d)', value: formatINR(revenue?.summary?.totalRevenue ?? 0), Icon: IndianRupee },

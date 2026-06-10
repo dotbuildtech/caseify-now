@@ -12,7 +12,7 @@ const getItemPrice = (i) => {
     if (i.Product?.price != null) return Number(i.Product.price) || 0;
     return 0;
 };
-const getItemProductId = (i) => i.ProductId ?? i.productId ?? i.Product?.id ?? i.id;
+const getItemProductId = (i) => i.ProductId ?? i.productId ?? i.Product?.id ?? null;
 const getItemImage = (i) => {
     if (i.Product?.image) return i.Product.image;
     if (i.Product?.images?.length) {
@@ -40,41 +40,57 @@ export function CartProvider({ children }) {
         setLoading(true);
         try {
             const data = await fetchCart();
-            setItems(Array.isArray(data?.items) ? data.items : []);
-            if (data?.summary) setSummary(data.summary);
+            if (data) {
+                setItems(Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []));
+                if (data?.summary) setSummary(data.summary);
+            }
         } catch {
             setItems([]);
         } finally {
             setLoading(false);
         }
-    }, [user, authLoading]);
+    }, [user?.id, authLoading]);
 
     useEffect(() => { load(); }, [load]);
 
-    const addItem = async (productId, quantity = 1, designMeta = null) => {
+    const addItem = useCallback(async (productId, quantity = 1, designMeta = null) => {
         const data = await apiAdd(productId, quantity, designMeta);
-        await load();
+        const cart = data?.items ? data : await fetchCart();
+        if (cart) {
+            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
+            if (cart?.summary) setSummary(cart.summary);
+        }
         return data;
-    };
+    }, []);
 
-    const updateItem = async (productId, quantity) => {
-        await apiUpdate(productId, quantity);
-        await load();
-    };
+    const updateItem = useCallback(async (productId, quantity) => {
+        const data = await apiUpdate(productId, quantity);
+        const cart = data?.items ? data : await fetchCart();
+        if (cart) {
+            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
+            if (cart?.summary) setSummary(cart.summary);
+        }
+    }, []);
 
-    const removeItem = async (productId) => {
-        await apiRemove(productId);
-        await load();
-    };
+    const removeItem = useCallback(async (productId) => {
+        const data = await apiRemove(productId);
+        const cart = data?.items ? data : await fetchCart();
+        if (cart) {
+            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
+            if (cart?.summary) setSummary(cart.summary);
+        }
+    }, []);
 
-    const clear = async () => {
+    const clear = useCallback(async () => {
         await apiClear();
-        await load();
-    };
+        setItems([]);
+        setSummary({ itemCount: 0, uniqueItems: 0, subtotal: 0, total: 0 });
+    }, []);
 
     const value = useMemo(() => {
         const count = items.reduce((s, i) => s + getItemQty(i), 0) || summary.itemCount || 0;
-        const subtotal = items.reduce((s, i) => s + getItemQty(i) * getItemPrice(i), 0) || summary.subtotal || 0;
+        const computed = items.reduce((s, i) => s + getItemQty(i) * getItemPrice(i), 0);
+        const subtotal = items.length > 0 ? computed : (summary?.subtotal ?? 0);
         return {
             items,
             count,
@@ -93,7 +109,7 @@ export function CartProvider({ children }) {
             getItemName,
             getItemCategory
         };
-    }, [items, summary, loading]);
+    }, [items, summary, loading, addItem, updateItem, removeItem, clear, load]);
 
     return (
         <CartContext.Provider value={value}>

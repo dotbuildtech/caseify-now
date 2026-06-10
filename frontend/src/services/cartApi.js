@@ -4,7 +4,11 @@ const unwrap = (r) => r?.data?.data || r?.data;
 
 export const fetchCart = async () => {
     const r = await api.get('/cart');
-    return unwrap(r);
+    const data = unwrap(r);
+    return {
+        items: data?.items || [],
+        summary: data?.summary || { itemCount: 0, uniqueItems: 0, subtotal: 0, total: 0 }
+    };
 };
 
 export const fetchCartCount = async () => {

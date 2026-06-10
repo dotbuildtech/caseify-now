@@ -8,19 +8,34 @@ const { sequelize } = require('../config/db');
 // @access  Private/Admin
 exports.getSalesAnalytics = async (req, res) => {
     try {
-        const salesByProduct = await OrderItem.findAll({
+        const rows = await OrderItem.findAll({
             attributes: [
                 'ProductId',
                 [sequelize.fn('SUM', sequelize.col('qty')), 'totalSold'],
                 [sequelize.fn('SUM', sequelize.literal('qty * price')), 'revenue']
             ],
             group: ['ProductId'],
-            order: [[sequelize.literal('"totalSold"'), 'DESC']],
+            order: [[sequelize.col('totalSold'), 'DESC']],
             limit: 10,
-            include: [{ model: Product, attributes: ['name'] }]
+            raw: true
         });
 
-        res.json(salesByProduct);
+        const productIds = rows.map((r) => r.ProductId);
+        const products = await Product.findAll({
+            where: { id: productIds },
+            attributes: ['id', 'name'],
+            raw: true
+        });
+        const nameMap = Object.fromEntries(products.map((p) => [p.id, p.name]));
+
+        const result = rows.map((r) => ({
+            ProductId: r.ProductId,
+            totalSold: r.totalSold,
+            revenue: r.revenue,
+            Product: { name: nameMap[r.ProductId] || 'Unknown' }
+        }));
+
+        res.json(result);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

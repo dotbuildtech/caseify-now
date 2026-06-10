@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
@@ -14,6 +14,8 @@ export default function AdminProductsPage() {
     const search = useSearchParams();
     const lowStockOnly = search.get('lowStock') === '1';
     const toast = useToast();
+    const toastRef = useRef(toast);
+    toastRef.current = toast;
     const [q, setQ] = useState('');
     const [category, setCategory] = useState('');
     const [items, setItems] = useState([]);
@@ -34,15 +36,16 @@ export default function AdminProductsPage() {
             setItems(data);
             setTotal(res.pagination?.total ?? data.length);
         } catch (e) {
-            toast.error(e.response?.data?.message || 'Failed to load products');
+            toastRef.current.error(e.response?.data?.message || 'Failed to load products');
         } finally {
             setLoading(false);
         }
-    }, [q, category, page, lowStockOnly, toast]);
+    }, [q, category, page, lowStockOnly]);
 
     useEffect(() => {
-        const t = setTimeout(load, 300);
-        return () => clearTimeout(t);
+        const controller = new AbortController();
+        const t = setTimeout(() => { load(); }, 300);
+        return () => { clearTimeout(t); controller.abort(); };
     }, [load]);
 
     const del = async (p) => {
