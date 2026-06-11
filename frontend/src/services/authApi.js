@@ -1,17 +1,26 @@
 import api from './api';
 import Cookies from 'js-cookie';
 
-export const login = async ({ email, password }) => {
-    const { data } = await api.post('/auth/login', { email, password });
+const storeTokens = (data) => {
     Cookies.set('accessToken', data.accessToken, { expires: 1 / 96 });
     if (data.refreshToken) Cookies.set('refreshToken', data.refreshToken, { expires: 7 });
+};
+
+export const login = async ({ email, password }) => {
+    const { data } = await api.post('/auth/login', { email, password });
+    storeTokens(data);
     return data;
 };
 
 export const register = async (payload) => {
     const { data } = await api.post('/auth/register', payload);
-    Cookies.set('accessToken', data.accessToken, { expires: 1 / 96 });
-    if (data.refreshToken) Cookies.set('refreshToken', data.refreshToken, { expires: 7 });
+    storeTokens(data);
+    return data;
+};
+
+export const googleLogin = async (credential) => {
+    const { data } = await api.post('/auth/google', { credential });
+    storeTokens(data);
     return data;
 };
 

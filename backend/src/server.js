@@ -33,10 +33,11 @@ app.use(helmet({
         useDefaults: true,
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", 'https://accounts.google.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", 'https://accounts.google.com'],
+            frameSrc: ["'self'", 'https://accounts.google.com'],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"]
         }
@@ -44,7 +45,7 @@ app.use(helmet({
     hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
     referrerPolicy: { policy: 'no-referrer' },
     crossOriginResourcePolicy: { policy: 'same-site' },
-    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginOpenerPolicy: isProduction ? { policy: 'same-origin' } : { policy: 'unsafe-none' },
     noSniff: true,
     frameguard: { action: 'deny' }
 }));

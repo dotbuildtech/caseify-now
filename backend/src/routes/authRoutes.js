@@ -14,6 +14,7 @@ const {
     sendOTP,
     verifyOTP
 } = require('../controllers/authController');
+const { googleLogin, setPassword } = require('../controllers/googleAuthController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { authLimiter, loginLimiter, registerLimiter, otpLimiter } = require('../middleware/rateLimiter');
 
@@ -22,9 +23,11 @@ router.post('/login', loginLimiter, loginUser);
 router.post('/refresh', authLimiter, refreshAccessToken);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);
+router.post('/google', authLimiter, googleLogin);
 
 router.get('/profile', protect, authLimiter, getUserProfile);
 router.put('/change-password', protect, authLimiter, changePassword);
+router.post('/set-password', protect, authLimiter, setPassword);
 router.post('/logout', protect, authLimiter, logout);
 router.post('/logout-all', protect, authLimiter, logoutAll);
 router.get('/users', protect, admin, authLimiter, getUsers);

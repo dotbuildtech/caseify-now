@@ -72,7 +72,7 @@ const hashUserAgent = (ua) => {
     return crypto.createHash('sha256').update(ua).digest('hex');
 };
 
-const issueTokenPair = async (user, req) => {
+const issueTokenPair = exports.issueTokenPair = async (user, req) => {
     const accessToken = generateAccessToken(user);
     const refreshTokenValue = generateRefreshTokenValue();
     const tokenHash = hashToken(refreshTokenValue);
@@ -91,12 +91,14 @@ const issueTokenPair = async (user, req) => {
     return { accessToken, refreshToken: refreshTokenValue };
 };
 
-const sanitizeUser = (user) => ({
+const sanitizeUser = exports.sanitizeUser = (user) => ({
     _id: user.id,
     name: user.name,
     email: user.email,
     phone: user.phone || null,
-    role: user.role
+    role: user.role,
+    profileImage: user.profileImage || null,
+    authProvider: user.authProvider || 'local'
 });
 
 const equalizeTimingWithDummyHash = async (password) => {
@@ -177,6 +179,12 @@ exports.loginUser = asyncHandler(async (req, res) => {
         logSecurityEvent('login.locked', { userId: user.id, email: normalizedEmail, ip: req.ip });
         res.status(423);
         throw new Error('Account temporarily locked. Try again later');
+    }
+
+    if (!user.password && user.authProvider === 'google') {
+        logSecurityEvent('login.google_only', { userId: user.id, email: normalizedEmail, ip: req.ip });
+        res.status(401);
+        throw new Error('This account uses Google Sign-In. Please continue with Google.');
     }
 
     const isMatch = await user.comparePassword(password);

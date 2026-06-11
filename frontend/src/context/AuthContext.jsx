@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import Cookies from 'js-cookie';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, fetchProfile } from '@/services/authApi';
+import { login as apiLogin, register as apiRegister, googleLogin as apiGoogleLogin, logout as apiLogout, fetchProfile } from '@/services/authApi';
 
 const AuthContext = createContext(null);
 
@@ -34,12 +34,19 @@ export function AuthProvider({ children }) {
         return data;
     }, []);
 
+    const googleLogin = useCallback(async (credential) => {
+        const data = await apiGoogleLogin(credential);
+        const u = data?.user || data?.data?.user || data;
+        setUser(u);
+        return data;
+    }, []);
+
     const logout = useCallback(async () => {
         await apiLogout();
         setUser(null);
     }, []);
 
-    const contextValue = useMemo(() => ({ user, loading, login, register, logout, setUser }), [user, loading, login, register, logout]);
+    const contextValue = useMemo(() => ({ user, loading, login, register, googleLogin, logout, setUser }), [user, loading, login, register, googleLogin, logout]);
 
     return (
         <AuthContext.Provider value={contextValue}>

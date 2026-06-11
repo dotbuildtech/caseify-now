@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/Toast';
+import GoogleSignInButton from '@/components/ui/GoogleSignInButton';
 
 export default function RegisterPage() {
     const router = useRouter();
-    const { register } = useAuth();
+    const { register, googleLogin } = useAuth();
     const toast = useToast();
     const [form, setForm] = useState({ name: '', email: '', password: '' });
     const [submitting, setSubmitting] = useState(false);
+    const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
     const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -25,6 +27,19 @@ export default function RegisterPage() {
             toast.error(err.response?.data?.message || 'Registration failed');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleGoogleSuccess = async (credential) => {
+        try {
+            setGoogleSubmitting(true);
+            await googleLogin(credential);
+            toast.success('Account created');
+            router.push('/');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Google sign-in failed');
+        } finally {
+            setGoogleSubmitting(false);
         }
     };
 
@@ -54,6 +69,25 @@ export default function RegisterPage() {
                         {submitting ? 'Creating...' : 'Create Account'}
                     </button>
                 </form>
+
+                <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-3 text-text-light">or</span>
+                    </div>
+                </div>
+
+                {googleSubmitting ? (
+                    <div className="w-full py-3 text-center text-sm text-text-light">Connecting to Google...</div>
+                ) : (
+                    <GoogleSignInButton
+                        onSuccess={handleGoogleSuccess}
+                        onError={(msg) => toast.error(msg)}
+                        text="continue_with"
+                    />
+                )}
 
                 <p className="mt-6 text-center text-sm text-text-light">
                     Already have account? <Link href="/login" className="font-medium text-ink hover:text-bronze">Login</Link>
