@@ -1,14 +1,51 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { getUnreadCount } from '@/services/contactApi';
+
+function MessagesNavItem() {
+    const pathname = usePathname();
+    const [unread, setUnread] = useState(0);
+    const isActive = pathname.startsWith('/admin/messages');
+
+    const poll = useCallback(async () => {
+        try {
+            const data = await getUnreadCount();
+            setUnread(data.count || 0);
+        } catch {}
+    }, []);
+
+    useEffect(() => {
+        poll();
+        const t = setInterval(poll, 30000);
+        return () => clearInterval(t);
+    }, [poll]);
+
+    return (
+        <Link href="/admin/messages"
+            className={`flex items-center justify-between px-3 py-2 text-sm ${isActive ? 'font-medium text-ink' : 'text-text-light hover:bg-background-light'}`}
+        >
+            <span className="flex items-center gap-2"><MessagesSquare className="h-4 w-4" strokeWidth={1.5} /> Messages</span>
+            <span className="flex items-center gap-1">
+                {unread > 0 && (
+                    <span className="flex items-center justify-center rounded-full bg-bronze px-1.5 py-0.5 text-[10px] font-semibold text-cream">
+                        {unread}
+                    </span>
+                )}
+                <ChevronRight className="h-3 w-3" />
+            </span>
+        </Link>
+    );
+}
 
 const NAV = [
     { href: '/admin', label: 'Overview', Icon: LayoutDashboard, exact: true },
     { href: '/admin/products', label: 'Products', Icon: Package },
     { href: '/admin/orders', label: 'Orders', Icon: ShoppingBag },
+    { href: '/admin/messages', label: 'Messages', Icon: MessagesSquare, badge: true },
     { href: '/admin/inventory', label: 'Inventory', Icon: Boxes },
     { href: '/admin/users', label: 'Users', Icon: Users },
     { href: '/admin/brands', label: 'Brands', Icon: Tag },
@@ -62,6 +99,13 @@ export default function AdminLayout({ children }) {
                     </div>
                     <nav className="p-2">
                         {NAV.map((item) => {
+                            if (item.badge) {
+                                return (
+                                    <div key={item.href} className={pathname.startsWith(item.href) ? 'border-l-2 border-ink bg-background-light' : ''}>
+                                        <MessagesNavItem />
+                                    </div>
+                                );
+                            }
                             const active = isActive(item);
                             return (
                                 <Link

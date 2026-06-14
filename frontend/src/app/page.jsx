@@ -1,6 +1,6 @@
 import HeroSlider from '@/components/home/HeroSlider';
 import Marquee from '@/components/home/Marquee';
-import CategoriesSection from '@/components/home/CategoriesSection';
+import CategoryShowcase from '@/components/home/CategoryShowcase';
 import FeaturedProducts from '@/components/home/FeaturedProducts';
 import QuoteBlock from '@/components/home/QuoteBlock';
 import ValuesGrid from '@/components/home/ValuesGrid';
@@ -12,7 +12,7 @@ export default function HomePage() {
         <>
             <HeroSlider />
             <Marquee />
-            <CategoriesSection />
+            <CategoryShowcase />
             <FeaturedProducts />
             <QuoteBlock />
             <ValuesGrid />

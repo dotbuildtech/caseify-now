@@ -1,18 +1,28 @@
 'use client';
 import { useState } from 'react';
-import { Mail, Phone, MapPin } from 'lucide-react';
+import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { SITE } from '@/utils/constants';
 import { useToast } from '@/components/ui/Toast';
+import { submitContact } from '@/services/contactApi';
 
 export default function ContactPage() {
     const toast = useToast();
     const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+    const [sending, setSending] = useState(false);
     const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault();
-        toast.success('Message sent! We will reply soon.');
-        setForm({ name: '', email: '', subject: '', message: '' });
+        setSending(true);
+        try {
+            await submitContact(form);
+            toast.success('Message sent! We will reply soon.');
+            setForm({ name: '', email: '', subject: '', message: '' });
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to send message');
+        } finally {
+            setSending(false);
+        }
     };
 
     return (
@@ -45,7 +55,13 @@ export default function ContactPage() {
                         <label className="label-luxe">Your Message *</label>
                         <textarea required rows={6} value={form.message} onChange={update('message')} className="input-luxe resize-none" />
                     </div>
-                    <button type="submit" className="btn-primary">Send Message</button>
+                    <button type="submit" disabled={sending} className="btn-primary inline-flex items-center gap-2">
+                        {sending ? 'Sending...' : (
+                            <>
+                                Send Message <Send className="h-4 w-4" />
+                            </>
+                        )}
+                    </button>
                 </form>
 
                 <aside>

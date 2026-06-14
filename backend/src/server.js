@@ -135,6 +135,7 @@ app.use('/api/category-brands', require('./routes/categoryBrandRoutes'));
 app.use('/api/materials', require('./routes/materialRoutes'));
 app.use('/api/category-materials', require('./routes/categoryMaterialRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/filters', require('./routes/filterRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
 
