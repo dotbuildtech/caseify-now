@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 
-export default function AdminProductsPage() {
+function AdminProductsPageContent() {
     const search = useSearchParams();
     const lowStockOnly = search.get('lowStock') === '1';
     const toast = useToast();
@@ -180,5 +180,13 @@ export default function AdminProductsPage() {
                 </div>
             )}
         </>
+    );
+}
+
+export default function AdminProductsPage() {
+    return (
+        <Suspense fallback={<div className="container py-20"><div className="h-96 bg-background-light animate-pulse rounded" /></div>}>
+            <AdminProductsPageContent />
+        </Suspense>
     );
 }

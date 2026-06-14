@@ -2,22 +2,27 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { HERO_SLIDES as FALLBACK_SLIDES } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
 import api from '@/services/api';
 
 export default function HeroSlider() {
-    const [slides, setSlides] = useState(FALLBACK_SLIDES);
+    const [slides, setSlides] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [i, setI] = useState(0);
-    const slidesLenRef = useRef(slides.length);
+    const slidesLenRef = useRef(0);
     slidesLenRef.current = slides.length;
 
     useEffect(() => {
         let mounted = true;
         const controller = new AbortController();
         api.get('/hero-slides', { signal: controller.signal })
-            .then((r) => { if (!mounted) return; const d = r.data?.data; if (Array.isArray(d) && d.length) setSlides(d); })
-            .catch(() => {});
+            .then((r) => {
+                if (!mounted) return;
+                const d = r.data?.data;
+                if (Array.isArray(d) && d.length) setSlides(d);
+                setLoading(false);
+            })
+            .catch(() => { if (mounted) setLoading(false); });
         return () => { mounted = false; controller.abort(); };
     }, []);
 
@@ -30,6 +35,8 @@ export default function HeroSlider() {
     }, [next]);
 
     const slide = slides[i];
+
+    if (!slide) return null;
 
     return (
         <section className="relative h-[80vh] min-h-[600px] w-full overflow-hidden bg-ink text-cream">

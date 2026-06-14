@@ -2,11 +2,16 @@
 import Link from 'next/link';
 import { Instagram, Twitter, Facebook, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
 import { SITE, MARQUEE } from '@/utils/constants';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Footer() {
     const [email, setEmail] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [year, setYear] = useState(null);
+
+    useEffect(() => {
+        setYear(new Date().getFullYear());
+    }, []);
 
     return (
         <footer className="bg-ink text-cream">
@@ -109,7 +114,7 @@ export default function Footer() {
 
             <div className="border-t border-cream/10">
                 <div className="container-luxe flex flex-col items-center justify-between gap-3 py-6 sm:flex-row">
-                    <p className="text-[10px] uppercase tracking-[0.32em] text-cream/50">© {new Date().getFullYear()} {SITE.name}. All rights reserved.</p>
+                    <p className="text-[10px] uppercase tracking-[0.32em] text-cream/50">© {year} {SITE.name}. All rights reserved.</p>
                     <div className="flex items-center gap-4 text-[10px] uppercase tracking-[0.32em] text-cream/50">
                         <a href="#" className="hover:text-cream">Privacy</a>
                         <a href="#" className="hover:text-cream">Terms</a>

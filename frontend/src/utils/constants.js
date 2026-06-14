@@ -1,9 +1,9 @@
 export const SITE = {
-    name: 'Caseify Now',
+    name: 'DotBuild',
     tagline: 'Premium Mobile Accessories',
     contact: {
         phone: '+91 98765 43210',
-        email: 'support@caseifynow.example',
+        email: 'support@dotbuild.example',
         address: '456 Electronics Hub, Bangalore 560001'
     },
     social: { facebook: '', instagram: '', twitter: '' }
@@ -126,7 +126,7 @@ export const CATEGORIES = [
 
 export const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
 export const SUBCATEGORY_NAMES = CATEGORIES.flatMap((c) => c.subcategories);
-export const ALL_CATEGORY_NAMES = [...new Set([...CATEGORY_NAMES, ...SUBCATEGORY_NAMES])];
+export const ALL_CATEGORY_NAMES = [...CATEGORY_NAMES, ...SUBCATEGORY_NAMES];
 
 export const isDeviceSpecificCategory = (name) => {
     const cat = CATEGORIES.find((c) => c.name === name || c.subcategories.includes(name));
@@ -176,10 +176,4 @@ export const FEATURES = [
     { title: 'Secure Payments', description: 'UPI, Cards, and Cash on Delivery', icon: 'Shield' },
     { title: '30-Day Returns', description: 'No questions asked return policy', icon: 'Heart' },
     { title: 'Premium Quality', description: 'Tested and certified products only', icon: 'Sparkles' }
-];
-
-export const HERO_SLIDES = [
-    { title: 'Protect Your Device', subtitle: 'Premium mobile accessories with latest designs.', ctaText: 'Shop Now', ctaLink: '/shop', bg: 'https://images.unsplash.com/photo-1705346738010-d480180032ba?auto=format&fit=crop&w=1200&q=65' },
-    { title: 'Design It Yourself', subtitle: 'AI-powered studio to make a case as unique as you.', ctaText: 'Open Studio', ctaLink: '/customize', bg: 'https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?auto=format&fit=crop&w=1200&q=65' },
-    { title: 'Summer Sale Now Live', subtitle: 'Up to 50% off on selected premium accessories.', ctaText: 'Shop Deals', ctaLink: '/shop?sort=price_desc', bg: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=65' }
 ];
