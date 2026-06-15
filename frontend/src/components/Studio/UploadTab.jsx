@@ -82,20 +82,24 @@ export default function UploadTab() {
             />
 
             <div>
-                <p className="mb-2 md:mb-3 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Or pick a preset</p>
-                <div className="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Or pick a preset</p>
+                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollSnapType: 'x mandatory' }}>
                     {PHOTO_PRESETS.map((p) => (
                         <button
                             key={p.id}
                             onClick={() => { updateForm({ bgImage: p.url }); addImageLayer(p.url); toast.success(`${p.label} added`); }}
-                            className="group relative aspect-square overflow-hidden rounded-lg md:rounded-xl border border-stone-200 bg-stone-100 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+                            className="group relative shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 text-left transition-all duration-300 hover:border-stone-400 hover:shadow-md"
+                            style={{ width: '110px', scrollSnapAlign: 'start' }}
                         >
-                            <SmartImage src={p.url} alt={p.label} fill sizes="(max-width: 640px) 33vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent p-1.5 md:p-2.5">
-                                <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.12em] text-white">{p.label}</p>
+                            <div className="relative aspect-square w-full overflow-hidden bg-stone-100">
+                                <SmartImage src={p.url} alt={p.label} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                            </div>
+                            <div className="p-1.5">
+                                <p className="truncate text-[10px] font-semibold text-stone-700">{p.label}</p>
                             </div>
                         </button>
                     ))}
+                    <div className="min-w-[8px] shrink-0" />
                 </div>
             </div>
         </div>

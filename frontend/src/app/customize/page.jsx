@@ -165,8 +165,10 @@ function StudioInner() {
             <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-10">
                 <div className="grid gap-6 md:gap-10 lg:grid-cols-[1fr_minmax(340px,420px)]">
                     <div className="flex flex-col items-center animate-fadeIn">
-                        <div className="sticky top-[53px] lg:top-[73px] z-10 flex justify-center py-2 md:py-4">
-                            <StudioCanvas onCapture={canvasCaptureRef} />
+                        <div className="sticky top-[53px] lg:top-[73px] z-10 py-2 md:py-4">
+                            <div className="mx-auto w-full max-w-[230px] sm:max-w-[300px] lg:max-w-[340px]">
+                                <StudioCanvas onCapture={canvasCaptureRef} />
+                            </div>
                         </div>
                     </div>
 
