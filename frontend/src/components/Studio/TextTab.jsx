@@ -16,7 +16,7 @@ export default function TextTab() {
 
     const handleAdd = () => {
         if (!text.trim()) return;
-        addTextLayer(text);
+        addTextLayer({ text, font, color, size, bold, uppercase });
         updateForm({ text });
     };
 
@@ -50,7 +50,7 @@ export default function TextTab() {
 
             <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 mb-2">Font</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-5 gap-2">
                     {FONTS.map((f) => (
                         <button
                             key={f.id}

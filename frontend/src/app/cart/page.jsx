@@ -76,34 +76,50 @@ export default function CartPage() {
                         )}
                         <ul className="divide-y divide-border border-t border-b border-border">
                             {items.map((item) => {
-                                const id = getItemProductId(item);
+                                const productId = getItemProductId(item);
+                                const isCustom = productId === 9999;
                                 const qty = getItemQty(item);
                                 const price = getItemPrice(item);
                                 const lineTotal = qty * price;
                                 const img = getItemImage(item);
                                 const name = getItemName(item);
                                 const category = getItemCategory(item);
+                                const key = item.id || productId;
                                 return (
-                                    <li key={id} className="flex gap-4 py-6">
-                                        <Link href={`/product/${id}`} className="block relative h-28 w-24 flex-shrink-0 overflow-hidden bg-background-light">
-                                            <SmartImage src={img} alt={name} fill sizes="120px" className="object-cover" />
-                                        </Link>
+                                    <li key={key} className="flex gap-4 py-6">
+                                        {isCustom ? (
+                                            <div className="relative h-28 w-24 flex-shrink-0 overflow-hidden bg-background-light">
+                                                {img && <SmartImage src={img} alt={name} fill sizes="120px" className="object-cover" />}
+                                            </div>
+                                        ) : (
+                                            <Link href={`/product/${productId}`} className="block relative h-28 w-24 flex-shrink-0 overflow-hidden bg-background-light">
+                                                <SmartImage src={img} alt={name} fill sizes="120px" className="object-cover" />
+                                            </Link>
+                                        )}
                                         <div className="flex flex-1 flex-col">
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <Link href={`/product/${id}`} className="text-sm font-medium text-ink hover:text-bronze">{name}</Link>
+                                                    {isCustom ? (
+                                                        <span className="text-sm font-medium text-ink">{name}</span>
+                                                    ) : (
+                                                        <Link href={`/product/${productId}`} className="text-sm font-medium text-ink hover:text-bronze">{name}</Link>
+                                                    )}
                                                     <p className="mt-1 text-xs text-text-light">{category}</p>
                                                 </div>
-                                                <button onClick={() => removeItem(id)} className="text-text-light hover:text-error" aria-label="Remove">
+                                                <button onClick={() => removeItem(productId)} className="text-text-light hover:text-error" aria-label="Remove">
                                                     <X className="h-4 w-4" />
                                                 </button>
                                             </div>
                                             <div className="mt-auto flex items-end justify-between gap-3">
-                                                <div className="inline-flex items-center border border-border">
-                                                    <button onClick={() => updateItem(id, Math.max(1, qty - 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Minus className="h-3 w-3 mx-auto" /></button>
-                                                    <span className="h-9 w-10 text-center text-sm font-semibold tabular-nums leading-[2.25rem]">{qty}</span>
-                                                    <button onClick={() => updateItem(id, Math.min(99, qty + 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Plus className="h-3 w-3 mx-auto" /></button>
-                                                </div>
+                                                {isCustom ? (
+                                                    <span className="h-9 text-xs text-text-light leading-[2.25rem] italic">Custom design</span>
+                                                ) : (
+                                                    <div className="inline-flex items-center border border-border">
+                                                        <button onClick={() => updateItem(productId, Math.max(1, qty - 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Minus className="h-3 w-3 mx-auto" /></button>
+                                                        <span className="h-9 w-10 text-center text-sm font-semibold tabular-nums leading-[2.25rem]">{qty}</span>
+                                                        <button onClick={() => updateItem(productId, Math.min(99, qty + 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Plus className="h-3 w-3 mx-auto" /></button>
+                                                    </div>
+                                                )}
                                                 <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
                                             </div>
                                         </div>

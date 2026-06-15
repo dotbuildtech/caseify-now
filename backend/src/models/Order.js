@@ -75,7 +75,12 @@ const OrderItem = sequelize.define('OrderItem', {
     name: { type: DataTypes.STRING(500), allowNull: false },
     qty: { type: DataTypes.INTEGER, allowNull: false },
     image: { type: DataTypes.TEXT, allowNull: true },
-    price: { type: DataTypes.DECIMAL(12, 2), allowNull: false }
+    price: { type: DataTypes.DECIMAL(12, 2), allowNull: false },
+    productSnapshot: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        defaultValue: null
+    }
 }, {
     indexes: [
         { fields: ['OrderId'] },

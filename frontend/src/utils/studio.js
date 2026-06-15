@@ -31,7 +31,14 @@ export const PHOTO_PRESETS = [
 export const FONTS = [
     { id: 'serif', label: 'Serif', family: 'var(--font-display)' },
     { id: 'sans', label: 'Sans', family: 'var(--font-sans)' },
-    { id: 'mono', label: 'Mono', family: 'var(--font-mono)' }
+    { id: 'mono', label: 'Mono', family: 'var(--font-mono)' },
+    { id: 'script', label: 'Script', family: 'var(--font-script)' },
+    { id: 'display', label: 'Display', family: 'var(--font-display-heavy)' },
+    { id: 'elegant', label: 'Elegant', family: 'var(--font-elegant)' },
+    { id: 'modern', label: 'Modern', family: 'var(--font-modern)' },
+    { id: 'digital', label: 'Digital', family: 'var(--font-digital)' },
+    { id: 'minimal', label: 'Minimal', family: 'var(--font-minimal)' },
+    { id: 'gothic', label: 'Gothic', family: 'var(--font-gothic)' }
 ];
 
 export const COLOR_PALETTE = [

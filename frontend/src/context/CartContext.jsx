@@ -19,10 +19,12 @@ const getItemImage = (i) => {
         const first = i.Product.images[0];
         return typeof first === 'string' ? first : first?.url;
     }
+    if (i.imageAtAdd) return i.imageAtAdd;
+    if (i.designMeta?.thumbnail) return i.designMeta.thumbnail;
     return i.image || '';
 };
-const getItemName = (i) => i.Product?.name || i.name || '';
-const getItemCategory = (i) => i.Product?.category || i.category || '';
+const getItemName = (i) => i.Product?.name || i.nameAtAdd || i.name || '';
+const getItemCategory = (i) => i.Product?.category || i.variantLabel || i.designMeta?.brand || i.category || '';
 
 export function CartProvider({ children }) {
     const { user, loading: authLoading } = useAuth();

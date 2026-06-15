@@ -5,6 +5,7 @@ const { Order, OrderItem } = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const Invoice = require('../models/Invoice');
+const { saveDataUrl } = require('../utils/saveDataUrl');
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
 
 const TAX_RATE = (() => { const r = parseFloat(process.env.TAX_RATE || '0'); return Number.isFinite(r) ? r : 0; })();
@@ -88,13 +89,38 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
             const product = productMap.get(item.product);
 
             if (!product && item.product === 9999) {
+                const dm = item.designMeta || {};
+
+                const rawThumb = dm.thumbnail
+                    || dm.bgImage
+                    || (dm.layers?.find(l => l.type === 'image')?.url)
+                    || '';
+
+                const orderImage = await saveDataUrl(rawThumb);
+
                 orderItemData.push({
                     OrderId: order.id,
                     ProductId: item.product,
-                    name: item.designMeta?.materialLabel ? `${item.designMeta.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                    name: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
                     qty: item.qty,
-                    image: item.designMeta?.thumbnail || '',
-                    price: item.designMeta?.totalPrice || item.designMeta?.materialPrice || 399
+                    image: orderImage,
+                    price: dm.totalPrice || dm.materialPrice || 399,
+                    productSnapshot: {
+                        isCustom: true,
+                        productName: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                        brand: dm.brand || null,
+                        model: dm.modelLabel || null,
+                        material: dm.materialLabel || null,
+                        designPreview: orderImage || null,
+                        uploadedImages: dm.layers?.filter(l => l.type === 'image').map(l => l.url) || [],
+                        customText: dm.layers?.filter(l => l.type === 'text').map(l => l.text).join(', ') || null,
+                        customizationNotes: null,
+                        bgColor: dm.bgColor || null,
+                        bgImage: dm.bgImage || null,
+                        layers: dm.layers || [],
+                        layerCount: dm.layerCount || 0,
+                        designId: dm.designId || null
+                    }
                 });
                 continue;
             }
@@ -119,7 +145,22 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                 name: product.name,
                 qty: item.qty,
                 image: product.image || '',
-                price: product.price
+                price: product.price,
+                productSnapshot: {
+                    isCustom: false,
+                    productName: product.name,
+                    brand: product.brand || null,
+                    model: product.phoneModel || null,
+                    category: product.category || null,
+                    sku: product.sku || null,
+                    image: product.image || null,
+                    price: product.price,
+                    selectedVariant: item.selectedVariant || null,
+                    color: item.color || product.attributes?.color || null,
+                    material: item.material || product.materials?.[0] || null,
+                    size: item.size || product.attributes?.size || null,
+                    designType: product.attributes?.designType || null
+                }
             });
         }
 
@@ -283,7 +324,7 @@ exports.getOrders = asyncHandler(async (req, res) => {
     const offset = (page - 1) * limit;
     const { count, rows } = await Order.findAndCountAll({
         include: [
-            { model: User, attributes: ['id', 'name'] },
+            { model: User, attributes: ['id', 'name', 'email', 'phone'] },
             { model: OrderItem, as: 'items' }
         ],
         order: [['createdAt', 'DESC']],

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useStudio } from '@/context/StudioContext';
+import { FONTS } from '@/utils/studio';
 
 const CameraCutout = ({ model }) => {
     if (!model?.cameraCutout) return null;
@@ -165,12 +166,12 @@ export default function StudioCanvas({ onCapture }) {
     };
 
     return (
-        <div className="flex flex-col items-center">
-            <div className={`relative mx-auto w-full max-w-[320px] transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className="flex flex-col items-center w-full">
+            <div className={`relative mx-auto w-full max-w-[280px] sm:max-w-[320px] max-h-[70vh] sm:max-h-[85vh] lg:max-h-none transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                 <div className="relative aspect-[9/19.5] overflow-hidden rounded-[13%/7%] bg-stone-900 shadow-2xl shadow-stone-900/30">
                     <div
                         ref={containerRef}
-                        className="relative h-full w-full touch-none select-none"
+                        className="relative h-full w-full select-none"
                         onPointerMove={handlePointerMove}
                         onPointerUp={handlePointerUp}
                         onPointerCancel={handlePointerUp}
@@ -194,7 +195,7 @@ export default function StudioCanvas({ onCapture }) {
                                     key={layer.id}
                                     onPointerDown={(e) => handlePointerDown(e, layer)}
                                     onClick={(e) => { e.stopPropagation(); setSelectedLayerId(layer.id); }}
-                                    className={`absolute z-30 select-none touch-none transition-shadow duration-200 ${isSelected ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-black/0' : ''}`}
+                                    className={`absolute z-30 touch-none select-none transition-shadow duration-200 ${isSelected ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-black/0' : ''}`}
                                     style={{
                                         left: `${layer.x}%`,
                                         top: `${layer.y}%`,
@@ -207,7 +208,7 @@ export default function StudioCanvas({ onCapture }) {
                                         <div style={{
                                             color: layer.color,
                                             fontSize: `${layer.size}px`,
-                                            fontFamily: layer.font === 'serif' ? 'var(--font-display)' : layer.font === 'mono' ? 'var(--font-mono)' : 'var(--font-sans)',
+                                            fontFamily: FONTS.find(f => f.id === layer.font)?.family || 'var(--font-sans)',
                                             fontWeight: layer.bold ? 700 : 500,
                                             textAlign: 'center',
                                             textTransform: layer.uppercase ? 'uppercase' : 'none',
@@ -223,7 +224,7 @@ export default function StudioCanvas({ onCapture }) {
                                         <img
                                             src={layer.url}
                                             alt=""
-                                            style={{ width: `${layer.width || 50}%`, display: 'block', borderRadius: '4px', ...getImageFilter(layer) }}
+                                            style={{ width: `${layer.baseWidth || 120}px`, display: 'block', borderRadius: '4px', ...getImageFilter(layer) }}
                                             draggable={false}
                                         />
                                     )}

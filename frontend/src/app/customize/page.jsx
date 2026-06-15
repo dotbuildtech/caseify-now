@@ -114,20 +114,20 @@ function StudioInner() {
     return (
         <div className="min-h-screen bg-stone-50">
             <div className="border-b border-stone-200 bg-white/80 backdrop-blur-md sticky top-0 z-40">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-                    <div className="flex items-center gap-6">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.25em] text-stone-400">— Design Studio</span>
-                        <h1 className="font-display text-2xl">Make it <span className="italic text-red-600/80 font-light">yours</span>.</h1>
+                <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
+                    <div className="flex items-center gap-3 md:gap-6">
+                        <span className="text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.25em] text-stone-400">— Design Studio</span>
+                        <h1 className="hidden md:block font-display text-2xl">Make it <span className="italic text-red-600/80 font-light">yours</span>.</h1>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button onClick={loadTemplates} className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-stone-700 transition-all duration-300 hover:border-stone-900 hover:text-stone-900">
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <button onClick={loadTemplates} className="hidden md:inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-stone-700 transition-all duration-300 hover:border-stone-900 hover:text-stone-900">
                             <Layout className="h-3.5 w-3.5" /> Templates
                         </button>
-                        <button onClick={handleSave} disabled={saving} className={`inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] transition-all duration-300 ${saved ? 'border-green-500 bg-green-50 text-green-600' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-900 hover:text-stone-900'}`}>
+                        <button onClick={handleSave} disabled={saving} className={`hidden md:inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] transition-all duration-300 ${saved ? 'border-green-500 bg-green-50 text-green-600' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-900 hover:text-stone-900'}`}>
                             {saved ? <><Check className="h-3.5 w-3.5" /> Saved</> : <><Heart className="h-3.5 w-3.5" /> {saving ? 'Saving…' : 'Save'}</>}
                         </button>
-                        <button onClick={handleAddToBag} disabled={adding} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/20 active:scale-95 disabled:opacity-60">
-                            <ShoppingBag className="h-3.5 w-3.5" /> {adding ? 'Adding…' : `Add to bag — ${formatINR(totalPrice)}`}
+                        <button onClick={handleAddToBag} disabled={adding} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2 md:px-6 md:py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/20 active:scale-95 disabled:opacity-60">
+                            <ShoppingBag className="h-3.5 w-3.5" /> {adding ? 'Adding…' : <><span className="hidden sm:inline">Add to bag — </span>{formatINR(totalPrice)}</>}
                         </button>
                     </div>
                 </div>
@@ -135,17 +135,17 @@ function StudioInner() {
 
             {templateOpen && (
                 <div className="border-b border-stone-200 bg-white">
-                    <div className="mx-auto max-w-7xl px-6 py-5">
+                    <div className="mx-auto max-w-7xl px-4 md:px-6 py-5">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">Templates</h3>
                             <button onClick={() => setTemplateOpen(false)} className="text-[10px] text-stone-400 hover:text-stone-600">Close</button>
                         </div>
                         {templatesLoading ? (
-                            <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+                            <div className="grid grid-cols-3 gap-2 md:gap-3 md:grid-cols-6">
                                 {Array.from({ length: 6 }).map((_, i) => <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-stone-100" />)}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+                            <div className="grid grid-cols-3 gap-2 md:gap-3 md:grid-cols-6">
                                 {templates.map((tpl) => (
                                     <button key={tpl.id} onClick={() => { applyTemplate(tpl); setTemplateOpen(false); toast.success(`"${tpl.label}" template applied`); }} className="group relative overflow-hidden rounded-xl border border-stone-200 bg-stone-100 transition-all hover:shadow-md hover:-translate-y-0.5">
                                         <div className="aspect-[2/3] w-full">
@@ -162,15 +162,15 @@ function StudioInner() {
                 </div>
             )}
 
-            <div className="mx-auto max-w-7xl px-6 py-10">
-                <div className="grid gap-10 lg:grid-cols-[1fr_400px]">
+            <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-10">
+                <div className="grid gap-6 md:gap-10 lg:grid-cols-[1fr_minmax(340px,420px)]">
                     <div className="flex flex-col items-center animate-fadeIn">
-                        <div className="relative">
+                        <div className="lg:sticky lg:top-[73px] w-full flex justify-center py-2 md:py-4">
                             <StudioCanvas onCapture={canvasCaptureRef} />
                         </div>
                     </div>
 
-                    <div className="space-y-6 animate-slideUp">
+                    <div className="space-y-4 md:space-y-6 animate-slideUp">
                         <BrandModelSelector />
                         <MaterialSelector />
                         <MaterialDesigns />
@@ -181,16 +181,16 @@ function StudioInner() {
                                     const Icon = t.icon;
                                     const active = tab === t.id;
                                     return (
-                                        <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] transition-all duration-300 ${active ? 'bg-stone-900 text-white shadow-md' : 'text-stone-400 hover:text-stone-700'}`}>
-                                            <Icon className={`h-4 w-4 transition-transform duration-300 ${active ? 'scale-110' : ''}`} />
-                                            {t.label}
+                                        <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-1 flex-col items-center gap-1 rounded-xl px-1.5 py-2.5 md:px-2 md:py-3 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.12em] transition-all duration-300 ${active ? 'bg-stone-900 text-white shadow-md' : 'text-stone-400 hover:text-stone-700'}`}>
+                                            <Icon className={`h-3.5 w-3.5 md:h-4 md:w-4 transition-transform duration-300 ${active ? 'scale-110' : ''}`} />
+                                            <span className="hidden sm:inline">{t.label}</span>
                                         </button>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+                        <div className="rounded-2xl border border-stone-200 bg-white p-4 md:p-5 shadow-sm">
                             {tab === 'upload' && <UploadTab key="upload" />}
                             {tab === 'ai' && <AITab key="ai" />}
                             {tab === 'text' && <TextTab key="text" />}
@@ -202,10 +202,10 @@ function StudioInner() {
 
                         <ImageEditor />
 
-                        <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-4 md:p-5 shadow-sm">
                             <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-400">Total price</span>
                             <div className="text-right">
-                                <span className="font-display text-2xl font-semibold tabular-nums">{formatINR(totalPrice)}</span>
+                                <span className="font-display text-xl md:text-2xl font-semibold tabular-nums">{formatINR(totalPrice)}</span>
                                 {material && <p className="text-[9px] text-stone-400">{material.label}</p>}
                             </div>
                         </div>

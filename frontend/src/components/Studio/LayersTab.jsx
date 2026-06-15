@@ -1,6 +1,7 @@
 'use client';
 import { Trash2, Copy, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { useStudio } from '@/context/StudioContext';
+import { FONTS } from '@/utils/studio';
 import ImageEditor from './ImageEditor';
 
 const LayerIcon = ({ type, emoji }) => {
@@ -81,6 +82,35 @@ export default function LayersTab() {
                                 <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Color</label>
                                 <input type="color" value={selectedLayer.color} onChange={(e) => updateLayer(selectedLayer.id, { color: e.target.value })} className="mt-1 h-10 w-full cursor-pointer rounded-xl border border-stone-200" />
                             </div>
+                            <div>
+                                <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Font</label>
+                                <div className="mt-1 grid grid-cols-5 gap-1.5">
+                                    {FONTS.map((f) => (
+                                        <button
+                                            key={f.id}
+                                            onClick={() => updateLayer(selectedLayer.id, { font: f.id })}
+                                            style={{ fontFamily: f.family }}
+                                            className={`rounded-lg border px-2 py-1.5 text-[10px] font-medium transition-all duration-200 ${selectedLayer.font === f.id ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 bg-white text-stone-600 hover:border-stone-400'}`}
+                                        >
+                                            {f.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => updateLayer(selectedLayer.id, { uppercase: !(selectedLayer.uppercase !== false) })}
+                                    className={`flex-1 rounded-lg border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.15em] transition-all duration-200 ${selectedLayer.uppercase !== false ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-400'}`}
+                                >
+                                    AA
+                                </button>
+                                <button
+                                    onClick={() => updateLayer(selectedLayer.id, { bold: !selectedLayer.bold })}
+                                    className={`flex-1 rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-all duration-200 ${selectedLayer.bold ? 'border-stone-900 bg-stone-900 text-white' : 'border-stone-200 text-stone-500 hover:border-stone-400'}`}
+                                >
+                                    B
+                                </button>
+                            </div>
                         </>
                     )}
 
@@ -93,8 +123,8 @@ export default function LayersTab() {
 
                     {selectedLayer.type === 'image' && (
                         <div>
-                            <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Size · {Math.round((selectedLayer.scale || 1) * 100)}%</label>
-                            <input type="range" min={0.3} max={3} step={0.05} value={selectedLayer.scale || 1} onChange={(e) => updateLayer(selectedLayer.id, { scale: Number(e.target.value) })} className="mt-1 w-full accent-stone-900" />
+                            <label className="text-[10px] font-semibold uppercase tracking-[0.15em] text-stone-400">Size · {selectedLayer.baseWidth || 120}px</label>
+                            <input type="range" min={30} max={300} value={selectedLayer.baseWidth || 120} onChange={(e) => updateLayer(selectedLayer.id, { baseWidth: Number(e.target.value) })} className="mt-1 w-full accent-stone-900" />
                         </div>
                     )}
 

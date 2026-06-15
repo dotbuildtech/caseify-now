@@ -26,11 +26,11 @@ Cart.belongsTo(User, { foreignKey: 'UserId' });
 Cart.hasMany(CartItem, { foreignKey: 'CartId', as: 'items' });
 CartItem.belongsTo(Cart, { foreignKey: 'CartId' });
 
-CartItem.belongsTo(Product, { foreignKey: 'ProductId' });
-Product.hasMany(CartItem, { foreignKey: 'ProductId' });
+CartItem.belongsTo(Product, { foreignKey: 'ProductId', constraints: false });
+Product.hasMany(CartItem, { foreignKey: 'ProductId', constraints: false });
 
-CartItem.belongsTo(ProductVariant, { foreignKey: 'ProductVariantId', as: 'variant' });
-ProductVariant.hasMany(CartItem, { foreignKey: 'ProductVariantId' });
+CartItem.belongsTo(ProductVariant, { foreignKey: 'ProductVariantId', as: 'variant', constraints: false });
+ProductVariant.hasMany(CartItem, { foreignKey: 'ProductVariantId', constraints: false });
 
 User.hasMany(Order, { foreignKey: 'UserId' });
 Order.belongsTo(User, { foreignKey: 'UserId' });
@@ -38,8 +38,8 @@ Order.belongsTo(User, { foreignKey: 'UserId' });
 Order.hasMany(OrderItem, { foreignKey: 'OrderId', as: 'items' });
 OrderItem.belongsTo(Order, { foreignKey: 'OrderId' });
 
-OrderItem.belongsTo(Product, { foreignKey: 'ProductId' });
-Product.hasMany(OrderItem, { foreignKey: 'ProductId' });
+OrderItem.belongsTo(Product, { foreignKey: 'ProductId', constraints: false });
+Product.hasMany(OrderItem, { foreignKey: 'ProductId', constraints: false });
 
 Order.hasOne(Invoice, { foreignKey: 'OrderId' });
 Invoice.belongsTo(Order, { foreignKey: 'OrderId' });

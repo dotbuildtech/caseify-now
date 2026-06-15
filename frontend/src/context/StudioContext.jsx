@@ -107,9 +107,11 @@ export function StudioProvider({ children }) {
 
     const updateForm = useCallback((patch) => { setForm((f) => ({ ...f, ...patch })); }, []);
 
-    const addTextLayer = useCallback((text) => {
+    const addTextLayer = useCallback((options) => {
+        const { text, font = 'sans', color = '#0A0A0A', size = 48, bold = false, uppercase = true } =
+            typeof options === 'string' ? { text: options } : (options || {});
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 50, y: 50, size: 32, color: '#0A0A0A', font: 'sans', rotation: 0, scale: 1, opacity: 1 }]);
+        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 50, y: 50, size, color, font, rotation: 0, scale: 1, opacity: 1, bold, uppercase }]);
         setSelectedLayerId(id);
         return id;
     }, []);
@@ -123,7 +125,7 @@ export function StudioProvider({ children }) {
 
     const addImageLayer = useCallback((url) => {
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'image', url, x: 50, y: 50, width: 60, rotation: 0, scale: 1, opacity: 1, filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0 } }]);
+        setLayers((l) => [...l, { id, type: 'image', url, x: 50, y: 50, baseWidth: 120, rotation: 0, scale: 1, opacity: 1, filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0 } }]);
         setSelectedLayerId(id);
         return id;
     }, []);
