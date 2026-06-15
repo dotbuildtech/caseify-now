@@ -126,8 +126,8 @@ function StudioInner() {
                         <button onClick={handleSave} disabled={saving} className={`hidden md:inline-flex items-center gap-2 rounded-full border px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.15em] transition-all duration-300 ${saved ? 'border-green-500 bg-green-50 text-green-600' : 'border-stone-300 bg-white text-stone-700 hover:border-stone-900 hover:text-stone-900'}`}>
                             {saved ? <><Check className="h-3.5 w-3.5" /> Saved</> : <><Heart className="h-3.5 w-3.5" /> {saving ? 'Saving…' : 'Save'}</>}
                         </button>
-                        <button onClick={handleAddToBag} disabled={adding} className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2 md:px-6 md:py-2.5 text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/20 active:scale-95 disabled:opacity-60">
-                            <ShoppingBag className="h-3.5 w-3.5" /> {adding ? 'Adding…' : <><span className="hidden sm:inline">Add to bag — </span>{formatINR(totalPrice)}</>}
+                        <button onClick={handleAddToBag} disabled={adding} className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-3 py-1.5 md:px-6 md:py-2.5 text-[10px] md:text-xs font-semibold uppercase tracking-[0.15em] text-white shadow-lg shadow-stone-900/10 transition-all duration-300 hover:bg-stone-800 hover:shadow-xl hover:shadow-stone-900/20 active:scale-95 disabled:opacity-60">
+                            <ShoppingBag className="h-3 w-3 md:h-3.5 md:w-3.5" /> {adding ? 'Adding…' : <><span className="hidden sm:inline">Add to bag — </span>{formatINR(totalPrice)}</>}
                         </button>
                     </div>
                 </div>
@@ -165,7 +165,7 @@ function StudioInner() {
             <div className="mx-auto max-w-7xl px-4 md:px-6 py-6 md:py-10">
                 <div className="grid gap-6 md:gap-10 lg:grid-cols-[1fr_minmax(340px,420px)]">
                     <div className="flex flex-col items-center animate-fadeIn">
-                        <div className="sticky top-[53px] lg:top-[73px] z-10 w-full flex justify-center py-2 md:py-4">
+                        <div className="sticky top-[53px] lg:top-[73px] z-10 flex justify-center py-2 md:py-4">
                             <StudioCanvas onCapture={canvasCaptureRef} />
                         </div>
                     </div>

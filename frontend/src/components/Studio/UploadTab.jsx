@@ -55,20 +55,20 @@ export default function UploadTab() {
                 onDragOver={onDragOver}
                 onDragLeave={onDragLeave}
                 onClick={() => fileRef.current?.click()}
-                className={`group flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-all duration-300 ${dragOver ? 'border-stone-900 bg-stone-100 scale-[1.02]' : 'border-stone-200 bg-stone-50 hover:border-stone-400 hover:bg-stone-100'}`}
+                className={`group flex cursor-pointer flex-col items-center gap-2.5 rounded-xl md:rounded-2xl border-2 border-dashed p-4 md:p-8 text-center transition-all duration-300 ${dragOver ? 'border-stone-900 bg-stone-100 scale-[1.02]' : 'border-stone-200 bg-stone-50 hover:border-stone-400 hover:bg-stone-100'}`}
             >
-                <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 ${dragOver ? 'bg-stone-900 text-white scale-110' : 'bg-stone-200 text-stone-500 group-hover:bg-stone-900 group-hover:text-white'}`}>
+                <div className={`flex h-10 w-10 md:h-14 md:w-14 items-center justify-center rounded-xl md:rounded-2xl transition-all duration-300 ${dragOver ? 'bg-stone-900 text-white scale-110' : 'bg-stone-200 text-stone-500 group-hover:bg-stone-900 group-hover:text-white'}`}>
                     {uploading ? (
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     ) : (
-                        <Upload className="h-6 w-6" />
+                        <Upload className="h-5 w-5 md:h-6 md:w-6" />
                     )}
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-stone-700">
+                    <p className="text-xs md:text-sm font-semibold text-stone-700">
                         {uploading ? 'Processing…' : dragOver ? 'Drop your image here' : 'Upload your image'}
                     </p>
-                    <p className="mt-1 text-[10px] uppercase tracking-[0.15em] text-stone-400">
+                    <p className="mt-0.5 md:mt-1 text-[9px] md:text-[10px] uppercase tracking-[0.15em] text-stone-400">
                         PNG, JPG, WEBP · max 10MB
                     </p>
                 </div>
@@ -82,17 +82,17 @@ export default function UploadTab() {
             />
 
             <div>
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Or pick a preset</p>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="mb-2 md:mb-3 text-[9px] md:text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Or pick a preset</p>
+                <div className="grid grid-cols-3 md:grid-cols-2 gap-1.5 md:gap-2">
                     {PHOTO_PRESETS.map((p) => (
                         <button
                             key={p.id}
                             onClick={() => { updateForm({ bgImage: p.url }); addImageLayer(p.url); toast.success(`${p.label} added`); }}
-                            className="group relative aspect-square overflow-hidden rounded-xl border border-stone-200 bg-stone-100 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+                            className="group relative aspect-square overflow-hidden rounded-lg md:rounded-xl border border-stone-200 bg-stone-100 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
                         >
-                            <SmartImage src={p.url} alt={p.label} fill sizes="(max-width: 640px) 50vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent p-2.5">
-                                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white">{p.label}</p>
+                            <SmartImage src={p.url} alt={p.label} fill sizes="(max-width: 640px) 33vw, 25vw" className="object-cover transition-transform duration-500 group-hover:scale-110" />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-stone-900/90 via-stone-900/40 to-transparent p-1.5 md:p-2.5">
+                                <p className="text-[8px] md:text-[10px] font-semibold uppercase tracking-[0.12em] text-white">{p.label}</p>
                             </div>
                         </button>
                     ))}
