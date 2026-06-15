@@ -167,7 +167,7 @@ export default function StudioCanvas({ onCapture }) {
 
     return (
         <div className="flex flex-col items-center w-full">
-            <div className={`relative mx-auto w-full max-w-[280px] sm:max-w-[320px] max-h-[70vh] sm:max-h-[85vh] lg:max-h-none transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <div className={`relative mx-auto w-full max-w-[260px] sm:max-w-[320px] max-h-[50vh] sm:max-h-[65vh] lg:max-h-none transition-all duration-700 ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
                 <div className="relative aspect-[9/19.5] overflow-hidden rounded-[13%/7%] bg-stone-900 shadow-2xl shadow-stone-900/30">
                     <div
                         ref={containerRef}
