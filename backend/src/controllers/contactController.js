@@ -3,38 +3,48 @@ const asyncHandler = require('../utils/asyncHandler');
 const Contact = require('../models/Contact');
 const nodemailer = require('nodemailer');
 
-const createTransporter = () => {
-    return nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT, 10) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS
-        }
-    });
+const REPLY_MAX_LENGTH = 5000;
+
+const sanitizeSubject = (subject) => {
+    if (!subject) return '';
+    return subject.replace(/[\r\n]/g, ' ').trim().substring(0, 300);
 };
+
+const sanitizeEmailLine = (val) => {
+    if (!val) return '';
+    return String(val).replace(/[\r\n]/g, ' ').trim();
+};
+
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
+    }
+});
 
 exports.submitContact = asyncHandler(async (req, res) => {
     const { name, email, subject, message } = req.body;
 
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 150) {
         res.status(400);
-        throw new Error('Name must be at least 2 characters');
+        throw new Error('Name must be 2-150 characters');
     }
-    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
         res.status(400);
         throw new Error('Please provide a valid email address');
     }
-    if (!message || typeof message !== 'string' || message.trim().length < 10) {
+    if (!message || typeof message !== 'string' || message.trim().length < 10 || message.trim().length > 5000) {
         res.status(400);
-        throw new Error('Message must be at least 10 characters');
+        throw new Error('Message must be 10-5000 characters');
     }
 
     const contact = await Contact.create({
-        name: name.trim(),
+        name: sanitizeEmailLine(name),
         email: email.toLowerCase().trim(),
-        subject: subject?.trim() || null,
+        subject: sanitizeSubject(subject),
         message: message.trim()
     });
 
@@ -100,26 +110,35 @@ exports.replyToMessage = asyncHandler(async (req, res) => {
     const contact = await Contact.findByPk(req.params.id);
     if (!contact) { res.status(404); throw new Error('Message not found'); }
 
-    if (!replyMessage || typeof replyMessage !== 'string' || replyMessage.trim().length < 1) {
+    if (!replyMessage || typeof replyMessage !== 'string') {
         res.status(400);
         throw new Error('Reply message is required');
     }
+    const trimmedReply = replyMessage.trim();
+    if (trimmedReply.length < 1 || trimmedReply.length > REPLY_MAX_LENGTH) {
+        res.status(400);
+        throw new Error(`Reply message must be 1-${REPLY_MAX_LENGTH} characters`);
+    }
 
-    const transporter = createTransporter();
-    await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: contact.email,
-        subject: `Re: ${contact.subject || 'Your message to Caseify Now'}`,
-        text: replyMessage.trim(),
-        replyTo: process.env.SMTP_USER
-    });
-
-    contact.replyMessage = replyMessage.trim();
+    contact.replyMessage = trimmedReply;
     contact.repliedAt = new Date();
     contact.isRead = true;
     await contact.save();
 
     res.json({ message: 'Reply sent successfully', contact });
+
+    const safeSubject = sanitizeSubject(contact.subject);
+    const safeRecipient = sanitizeEmailLine(contact.email);
+
+    transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: safeRecipient,
+        subject: `Re: ${safeSubject || 'Your message to Caseify Now'}`,
+        text: trimmedReply,
+        replyTo: process.env.SMTP_USER
+    }).catch((emailErr) => {
+        console.error('Failed to send reply email:', emailErr.message);
+    });
 });
 
 exports.deleteMessage = asyncHandler(async (req, res) => {
