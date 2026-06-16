@@ -139,6 +139,7 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/filters', require('./routes/filterRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
 app.use('/api/homepage', require('./routes/homepageRoutes'));
+app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

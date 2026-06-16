@@ -101,6 +101,10 @@ export const adminUpdateDeviceModel = (id, payload) =>
 export const adminDeleteDeviceModel = (id) =>
     api.delete(`/device-models/${id}`).then((r) => { clearApiCache(); return r.data; });
 
+// ---------- Dashboard composite endpoint (admin) ----------
+export const adminGetDashboard = () =>
+    api.get('/admin/dashboard').then((r) => r.data);
+
 // ---------- Financial dashboard (admin) ----------
 export const adminFinancialDashboard = (params = {}) =>
     api.get('/financial/dashboard', { params }).then((r) => r.data);
