@@ -1,4 +1,3 @@
-'use client';
 import { MARQUEE } from '@/utils/constants';
 
 export default function Marquee() {

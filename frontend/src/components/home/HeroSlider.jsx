@@ -3,28 +3,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import SmartImage from '@/components/ui/SmartImage';
-import api from '@/services/api';
 
-export default function HeroSlider() {
-    const [slides, setSlides] = useState([]);
-    const [loading, setLoading] = useState(true);
+export default function HeroSlider({ slides = [] }) {
     const [i, setI] = useState(0);
     const slidesLenRef = useRef(0);
     slidesLenRef.current = slides.length;
-
-    useEffect(() => {
-        let mounted = true;
-        const controller = new AbortController();
-        api.get('/hero-slides', { signal: controller.signal })
-            .then((r) => {
-                if (!mounted) return;
-                const d = r.data?.data;
-                if (Array.isArray(d) && d.length) setSlides(d);
-                setLoading(false);
-            })
-            .catch(() => { if (mounted) setLoading(false); });
-        return () => { mounted = false; controller.abort(); };
-    }, []);
 
     const next = useCallback(() => setI((p) => (p + 1) % (slidesLenRef.current || 1)), []);
     const prev = useCallback(() => setI((p) => (p - 1 + slidesLenRef.current) % (slidesLenRef.current || 1)), []);

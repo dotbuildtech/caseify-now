@@ -1,8 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { ShoppingBag, ArrowUpRight } from 'lucide-react';
-import { fetchProducts } from '@/services/productApi';
 import { formatINR } from '@/utils/format';
 import SmartImage from '@/components/ui/SmartImage';
 
@@ -47,19 +45,7 @@ function ProductCard({ p }) {
     );
 }
 
-export default function FeaturedProducts() {
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let mounted = true;
-        fetchProducts({ isFeatured: true, limit: 10, sort: '-createdAt' })
-            .then((d) => { if (mounted) setProducts((d.data || []).slice(0, 5)); })
-            .catch(() => { if (mounted) setProducts([]); })
-            .finally(() => { if (mounted) setLoading(false); });
-        return () => { mounted = false; };
-    }, []);
-
+export default function FeaturedProducts({ products = [] }) {
     return (
         <section className="bg-surface py-20 md:py-28">
             <div className="container-luxe">
@@ -79,19 +65,9 @@ export default function FeaturedProducts() {
                     </Link>
                 </div>
 
-                {loading ? (
+                {products.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i}>
-                                <div className="aspect-[3/4] bg-background-light animate-pulse" />
-                                <div className="mt-4 h-4 w-2/3 bg-background-light animate-pulse" />
-                                <div className="mt-2 h-3 w-1/3 bg-background-light animate-pulse" />
-                            </div>
-                        ))}
-                    </div>
-                ) : products.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6">
-                        {products.map((p) => <ProductCard key={p.id || p.slug} p={p} />)}
+                        {products.slice(0, 5).map((p) => <ProductCard key={p.id || p.slug} p={p} />)}
                     </div>
                 ) : (
                     <div className="border border-dashed border-border bg-background-light p-12 text-center">
