@@ -1,1 +1,1 @@
-# phone-cover-platfo
+# phone-cover-platform 
