@@ -10,22 +10,27 @@ const FEATURES = [
 
 export default function ValuesGrid() {
     return (
-        <section className="bg-background-light py-20 md:py-28">
+        <section className="bg-background-light py-24 md:py-32">
             <div className="container-luxe">
-                <div className="mb-12 text-center md:mb-16">
+                <div className="mb-14 text-center md:mb-18">
                     <span className="eyebrow">— Why Choose Us</span>
-                    <h2 className="mt-4 font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl">
+                    <h2 className="mt-5 font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl">
                         Quality you can <span className="italic-display">trust</span>.
                     </h2>
                 </div>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
                     {FEATURES.map((f) => {
                         const Icon = ICONS[f.icon];
                         return (
-                            <div key={f.title} className="group border border-border bg-surface p-6 transition-all hover:border-ink md:p-8">
-                                <Icon className="h-7 w-7 text-ink transition-colors group-hover:text-bronze" strokeWidth={1.25} />
+                            <div
+                                key={f.title}
+                                className="group bg-surface p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-ink/5 md:p-9"
+                            >
+                                <div className="flex h-12 w-12 items-center justify-center bg-background-light transition-colors group-hover:bg-bronze/10">
+                                    <Icon className="h-6 w-6 text-ink transition-colors group-hover:text-bronze" strokeWidth={1.25} />
+                                </div>
                                 <h3 className="mt-6 font-display text-xl md:text-2xl">{f.title}</h3>
-                                <p className="mt-2 text-sm text-text-light">{f.description}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-text-light">{f.description}</p>
                             </div>
                         );
                     })}

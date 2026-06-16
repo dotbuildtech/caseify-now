@@ -13,7 +13,7 @@ function ProductCard({ p }) {
         : (p.image || '');
     return (
         <Link href={`/product/${p.slug || p.id}`} className="group block">
-            <div className="relative aspect-[3/4] overflow-hidden bg-background-light">
+            <div className="relative aspect-[3/4] overflow-hidden bg-background-light transition-all duration-500 group-hover:shadow-lg group-hover:shadow-ink/5 group-hover:-translate-y-0.5">
                 <SmartImage
                     src={img}
                     alt={p.name}
@@ -21,20 +21,20 @@ function ProductCard({ p }) {
                     sizes="(max-width: 640px) 50vw, 20vw"
                 />
                 {discount && (
-                    <span className="absolute left-3 top-3 z-10 bg-bronze px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-cream">
+                    <span className="absolute left-3 top-3 z-10 bg-bronze/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-cream">
                         -{discount}%
                     </span>
                 )}
-                <div className="absolute right-3 top-3 z-10 flex h-9 w-9 translate-x-12 items-center justify-center bg-cream text-ink opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100">
+                <div className="absolute right-3 top-3 z-10 flex h-9 w-9 translate-x-12 items-center justify-center bg-cream/90 backdrop-blur-sm text-ink opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100">
                     <ShoppingBag className="h-4 w-4" />
                 </div>
             </div>
             <div className="mt-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <h3 className="truncate text-sm font-medium leading-tight text-ink group-hover:text-bronze">{p.name}</h3>
+                    <h3 className="truncate text-sm font-medium leading-tight text-ink transition-colors group-hover:text-bronze">{p.name}</h3>
                     <p className="mt-1 text-xs text-text-light">{p.category}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                     <p className="text-sm font-semibold tabular-nums text-ink">{formatINR(sale)}</p>
                     {original && (
                         <p className="text-xs text-text-light line-through tabular-nums">{formatINR(original)}</p>
@@ -46,13 +46,15 @@ function ProductCard({ p }) {
 }
 
 export default function FeaturedProducts({ products = [] }) {
+    const displayProducts = products.slice(0, 5);
+
     return (
-        <section className="bg-surface py-20 md:py-28">
+        <section className="bg-surface py-24 md:py-32">
             <div className="container-luxe">
-                <div className="mb-12 flex items-end justify-between gap-6 md:mb-16">
-                    <div>
+                <div className="mb-14 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end md:mb-18">
+                    <div className="max-w-2xl">
                         <span className="eyebrow">— Best Sellers</span>
-                        <h2 className="mt-4 max-w-2xl font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl">
+                        <h2 className="mt-5 font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl">
                             Products customers<br />
                             <span className="italic-display">love</span>.
                         </h2>
@@ -60,18 +62,26 @@ export default function FeaturedProducts({ products = [] }) {
                             Handpicked bestsellers trusted by thousands. Premium quality, affordable prices.
                         </p>
                     </div>
-                    <Link href="/shop" className="hidden md:inline-flex btn-ghost">
+                    <Link href="/shop" className="btn-ghost hidden md:inline-flex">
                         View all <ArrowUpRight className="h-3 w-3" />
                     </Link>
                 </div>
 
-                {products.length > 0 ? (
+                {displayProducts.length > 0 ? (
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6">
-                        {products.slice(0, 5).map((p) => <ProductCard key={p.id || p.slug} p={p} />)}
+                        {displayProducts.map((p) => <ProductCard key={p.id || p.slug} p={p} />)}
                     </div>
                 ) : (
-                    <div className="border border-dashed border-border bg-background-light p-12 text-center">
+                    <div className="border border-dashed border-border bg-background-light/50 p-14 text-center">
                         <p className="text-sm text-text-light">No featured products yet. Add some via the admin panel.</p>
+                    </div>
+                )}
+
+                {displayProducts.length > 0 && (
+                    <div className="mt-12 text-center md:mt-16 md:hidden">
+                        <Link href="/shop" className="btn-ghost">
+                            View all <ArrowUpRight className="h-3 w-3" />
+                        </Link>
                     </div>
                 )}
             </div>
