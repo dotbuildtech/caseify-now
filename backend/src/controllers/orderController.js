@@ -1,3 +1,4 @@
+const { z } = require('zod');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/db');
 const asyncHandler = require('../utils/asyncHandler');
@@ -7,6 +8,7 @@ const User = require('../models/User');
 const Invoice = require('../models/Invoice');
 const { saveDataUrl } = require('../utils/saveDataUrl');
 const { createRazorpayOrder, verifyPaymentSignature } = require('../services/razorpayService');
+const { sanitizeOrder } = require('../utils/serializers');
 
 const TAX_RATE = (() => { const r = parseFloat(process.env.TAX_RATE || '0'); return Number.isFinite(r) ? r : 0; })();
 const SHIPPING_FEE = parseFloat(process.env.SHIPPING_FEE || '0');
@@ -14,6 +16,16 @@ const MAX_QTY_PER_ITEM = 99;
 const CUSTOM_PRODUCT_ID = 9999;
 
 const isPositiveInt = (n) => Number.isInteger(n) && n > 0;
+
+const shippingSchema = z.object({
+    address: z.string().min(1).max(500),
+    city: z.string().min(1).max(100),
+    state: z.string().min(1).max(100),
+    postalCode: z.string().min(1).max(20),
+    country: z.string().min(1).max(100),
+    fullName: z.string().min(1).max(200).optional(),
+    phone: z.string().max(20).optional()
+});
 
 const canAccessOrder = (order, user) =>
     order && (order.UserId === user.id || user.role === 'admin');
@@ -26,9 +38,10 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
         throw new Error('No order items');
     }
 
-    if (!shippingAddress || typeof shippingAddress !== 'object') {
+    const parseResult = shippingSchema.safeParse(shippingAddress);
+    if (!parseResult.success) {
         res.status(400);
-        throw new Error('Shipping address is required');
+        throw new Error('Shipping address must include address, city, state, postalCode, country');
     }
 
     if (typeof paymentMethod !== 'string' || !paymentMethod.trim()) {
@@ -62,7 +75,14 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
     for (const item of orderItems) {
         const product = productMap.get(item.product);
         if (!product && item.product === 9999) {
-            itemsPrice += (item.designMeta?.totalPrice || item.designMeta?.materialPrice || 399) * item.qty;
+            const designMeta = item.designMeta || {};
+            const materialPrice = (() => {
+                const p = parseFloat(designMeta.materialPrice);
+                return Number.isFinite(p) && p > 0 ? p : 399;
+            })();
+            const layerCount = parseInt(designMeta.layerCount, 10) || 0;
+            const perUnitPrice = materialPrice + (layerCount > 1 ? (layerCount - 1) * 50 : 0);
+            itemsPrice += Math.max(0, perUnitPrice) * item.qty;
         } else {
             itemsPrice += product.price * item.qty;
         }
@@ -71,128 +91,124 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
     const shippingPrice = itemsPrice > 0 ? SHIPPING_FEE : 0;
     const totalPrice = +(itemsPrice + taxPrice + shippingPrice).toFixed(2);
 
-    const result = await sequelize.transaction(async (t) => {
-        const order = await Order.create({
-            UserId: req.user.id,
-            shippingAddress,
-            paymentMethod: paymentMethod.trim(),
-            itemsPrice: +itemsPrice.toFixed(2),
-            taxPrice,
-            shippingPrice,
-            totalPrice
-        }, { transaction: t });
-
-        const decrementOps = [];
-        const orderItemData = [];
-
-        for (const item of orderItems) {
-            const product = productMap.get(item.product);
-
-            if (!product && item.product === 9999) {
-                const dm = item.designMeta || {};
-
-                const rawThumb = dm.thumbnail
-                    || dm.bgImage
-                    || (dm.layers?.find(l => l.type === 'image')?.url)
-                    || '';
-
-                const orderImage = await saveDataUrl(rawThumb);
-
-                orderItemData.push({
-                    OrderId: order.id,
-                    ProductId: item.product,
-                    name: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
-                    qty: item.qty,
-                    image: orderImage,
-                    price: dm.totalPrice || dm.materialPrice || 399,
-                    productSnapshot: {
-                        isCustom: true,
-                        productName: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
-                        brand: dm.brand || null,
-                        model: dm.modelLabel || null,
-                        material: dm.materialLabel || null,
-                        designPreview: orderImage || null,
-                        uploadedImages: dm.layers?.filter(l => l.type === 'image').map(l => l.url) || [],
-                        customText: dm.layers?.filter(l => l.type === 'text').map(l => l.text).join(', ') || null,
-                        customizationNotes: null,
-                        bgColor: dm.bgColor || null,
-                        bgImage: dm.bgImage || null,
-                        layers: dm.layers || [],
-                        layerCount: dm.layerCount || 0,
-                        designId: dm.designId || null
-                    }
-                });
-                continue;
-            }
-
-            decrementOps.push(
-                Product.decrement('stock', {
-                    by: item.qty,
-                    where: { id: product.id, stock: { [Op.gte]: item.qty } },
-                    transaction: t
-                }).then(([affected]) => {
-                    if (affected === 0) {
-                        const err = new Error(`Insufficient stock for "${product.name}"`);
-                        err.status = 409;
-                        throw err;
-                    }
-                })
-            );
-
-            orderItemData.push({
-                OrderId: order.id,
-                ProductId: product.id,
-                name: product.name,
-                qty: item.qty,
-                image: product.image || '',
-                price: product.price,
-                productSnapshot: {
-                    isCustom: false,
-                    productName: product.name,
-                    brand: product.brand || null,
-                    model: product.phoneModel || null,
-                    category: product.category || null,
-                    sku: product.sku || null,
-                    image: product.image || null,
-                    price: product.price,
-                    selectedVariant: item.selectedVariant || null,
-                    color: item.color || product.attributes?.color || null,
-                    material: item.material || product.materials?.[0] || null,
-                    size: item.size || product.attributes?.size || null,
-                    designType: product.attributes?.designType || null
-                }
-            });
-        }
-
-        await Promise.all(decrementOps);
-        await OrderItem.bulkCreate(orderItemData, { transaction: t });
-
-        return order;
-    });
-
     const normalizedMethod = paymentMethod.trim().toLowerCase();
     const isCod = normalizedMethod === 'cod';
 
-    let razorpayOrderId = null;
-    let razorpayKeyId = null;
-    let razorpayAmount = null;
-    let razorpayCurrency = null;
+    const razorpayPromise = isCod ? Promise.resolve(null) : createRazorpayOrder({
+        amount: totalPrice,
+        receipt: `order_${Date.now()}`
+    }).catch(e => {
+        console.warn('Razorpay unavailable:', e.message);
+        return null;
+    });
 
-    if (!isCod) {
-        try {
-            const razorpayOrder = await createRazorpayOrder({
-                amount: totalPrice,
-                receipt: `order_${result.id}`
-            });
-            razorpayOrderId = razorpayOrder.id;
-            razorpayKeyId = process.env.RAZORPAY_KEY_ID;
-            razorpayAmount = razorpayOrder.amount;
-            razorpayCurrency = razorpayOrder.currency;
-        } catch (e) {
-            // Razorpay not configured in dev — proceed without it; the order is still recorded as unpaid.
-            console.warn('Skipping Razorpay for order', result.id, '-', e.message);
-        }
-    }
+    const [result, razorpayResult] = await Promise.all([
+        sequelize.transaction(async (t) => {
+            const order = await Order.create({
+                UserId: req.user.id,
+                shippingAddress,
+                paymentMethod: paymentMethod.trim(),
+                itemsPrice: +itemsPrice.toFixed(2),
+                taxPrice,
+                shippingPrice,
+                totalPrice
+            }, { transaction: t });
+
+            const decrementOps = [];
+            const orderItemData = [];
+
+            for (const item of orderItems) {
+                const product = productMap.get(item.product);
+
+                if (!product && item.product === 9999) {
+                    const dm = item.designMeta || {};
+
+                    const rawThumb = dm.thumbnail
+                        || dm.bgImage
+                        || (dm.layers?.find(l => l.type === 'image')?.url)
+                        || '';
+
+                    const orderImage = await saveDataUrl(rawThumb);
+
+                    orderItemData.push({
+                        OrderId: order.id,
+                        ProductId: item.product,
+                        name: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                        qty: item.qty,
+                        image: orderImage,
+                        price: dm.totalPrice || dm.materialPrice || 399,
+                        productSnapshot: {
+                            isCustom: true,
+                            productName: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                            brand: dm.brand || null,
+                            model: dm.modelLabel || null,
+                            material: dm.materialLabel || null,
+                            designPreview: orderImage || null,
+                            uploadedImages: dm.layers?.filter(l => l.type === 'image').map(l => l.url) || [],
+                            customText: dm.layers?.filter(l => l.type === 'text').map(l => l.text).join(', ') || null,
+                            customizationNotes: null,
+                            bgColor: dm.bgColor || null,
+                            bgImage: dm.bgImage || null,
+                            layers: dm.layers || [],
+                            layerCount: dm.layerCount || 0,
+                            designId: dm.designId || null
+                        }
+                    });
+                    continue;
+                }
+
+                decrementOps.push(
+                    Product.decrement('stock', {
+                        by: item.qty,
+                        where: { id: product.id, stock: { [Op.gte]: item.qty } },
+                        transaction: t
+                    }).then(([affected]) => {
+                        if (affected === 0) {
+                            const err = new Error(`Insufficient stock for "${product.name}"`);
+                            err.status = 409;
+                            throw err;
+                        }
+                    })
+                );
+
+                orderItemData.push({
+                    OrderId: order.id,
+                    ProductId: product.id,
+                    name: product.name,
+                    qty: item.qty,
+                    image: product.image || '',
+                    price: product.price,
+                    productSnapshot: {
+                        isCustom: false,
+                        productName: product.name,
+                        brand: product.brand || null,
+                        model: product.phoneModel || null,
+                        category: product.category || null,
+                        sku: product.sku || null,
+                        image: product.image || null,
+                        price: product.price,
+                        selectedVariant: item.selectedVariant || null,
+                        color: item.color || product.attributes?.color || null,
+                        material: item.material || product.materials?.[0] || null,
+                        size: item.size || product.attributes?.size || null,
+                        designType: product.attributes?.designType || null
+                    }
+                });
+            }
+
+            await Promise.all(decrementOps);
+            await OrderItem.bulkCreate(orderItemData, { transaction: t });
+
+            return order;
+        }),
+        razorpayPromise
+    ]);
+
+    const razorpayOrder = razorpayResult;
+    const razorpayOrderId = razorpayOrder?.id || null;
+    const razorpayKeyId = razorpayOrder ? process.env.RAZORPAY_KEY_ID : null;
+    const razorpayAmount = razorpayOrder?.amount || null;
+    const razorpayCurrency = razorpayOrder?.currency || null;
 
     if (razorpayOrderId) {
         result.razorpayOrderId = razorpayOrderId;
@@ -201,7 +217,7 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
 
     const createdOrder = await Order.findByPk(result.id, { include: [{ model: OrderItem, as: 'items' }] });
     res.status(201).json({
-        order: createdOrder,
+        order: sanitizeOrder(createdOrder),
         razorpayOrderId,
         razorpayKeyId,
         amount: razorpayAmount,
@@ -315,7 +331,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
         limit,
         offset
     });
-    res.json({ data: rows, pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
+    res.json({ data: rows.map(sanitizeOrder), pagination: { page, limit, total: count, totalPages: Math.ceil(count / limit) } });
 });
 
 exports.getOrders = asyncHandler(async (req, res) => {

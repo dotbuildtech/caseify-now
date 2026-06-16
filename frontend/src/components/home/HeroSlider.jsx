@@ -28,7 +28,7 @@ export default function HeroSlider({ slides = [] }) {
     if (!slide) return null;
 
     return (
-        <section className="relative h-[90vh] min-h-[600px] w-full overflow-hidden bg-ink text-cream">
+        <section className="relative h-[83vh] min-h-[500px] w-full overflow-hidden bg-ink text-cream">
             {slides.map((s, idx) => (
                 <div
                     key={s.id || idx}
@@ -49,7 +49,7 @@ export default function HeroSlider({ slides = [] }) {
                 </div>
             ))}
 
-            <div key={animKey} className="relative z-10 container-luxe flex h-full flex-col justify-center pb-20 md:pb-28">
+            <div key={animKey} className="relative z-10 container-luxe flex h-full flex-col justify-end pb-20 md:pb-28">
                 <span className="eyebrow text-cream/50 animate-slideUp" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
                     — Latest Collection
                 </span>
@@ -105,9 +105,8 @@ export default function HeroSlider({ slides = [] }) {
                             <button
                                 key={idx}
                                 onClick={() => setI(idx)}
-                                className={`h-1 transition-all duration-500 ${
-                                    idx === i ? 'w-10 bg-cream' : 'w-4 bg-cream/20 hover:bg-cream/50'
-                                }`}
+                                className={`h-1 transition-all duration-500 ${idx === i ? 'w-10 bg-cream' : 'w-4 bg-cream/20 hover:bg-cream/50'
+                                    }`}
                                 aria-label={`Slide ${idx + 1}`}
                             />
                         ))}

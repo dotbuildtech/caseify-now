@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const { connectDB } = require('./config/db');
 const originCheck = require('./middleware/originCheck');
 const requestId = require('./middleware/requestId');
@@ -27,6 +28,8 @@ if (isProduction) {
 }
 
 app.use(requestId);
+
+app.use(cookieParser());
 
 app.use(helmet({
     contentSecurityPolicy: isProduction ? {

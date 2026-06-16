@@ -1,5 +1,4 @@
 import axios from 'axios';
-import Cookies from 'js-cookie';
 
 const api = axios.create({
     baseURL: '/api',
@@ -8,35 +7,28 @@ const api = axios.create({
     timeout: 15000
 });
 
-api.interceptors.request.use((config) => {
-    const token = Cookies.get('accessToken');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    return config;
-});
-
+let isRefreshing = false;
 let isRedirectingToLogin = false;
 
 api.interceptors.response.use(
     (res) => res,
     async (err) => {
         const original = err.config;
-        if (err.response?.status === 401 && original && !original._retry) {
+        if (err.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/refresh')) {
             original._retry = true;
+            if (isRefreshing) return Promise.reject(err);
+            isRefreshing = true;
             try {
-                const refreshToken = Cookies.get('refreshToken');
-                if (!refreshToken) throw new Error('No refresh token');
-                const { data } = await axios.post('/api/auth/refresh', { refreshToken });
-                Cookies.set('accessToken', data.accessToken, { expires: 1 / 96 });
-                original.headers = original.headers || {};
-                original.headers.Authorization = `Bearer ${data.accessToken}`;
+                await axios.post('/api/auth/refresh');
                 return api(original);
             } catch {
-                Cookies.remove('accessToken');
-                Cookies.remove('refreshToken');
                 if (!isRedirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
                     isRedirectingToLogin = true;
                     window.location.href = '/login';
                 }
+                return Promise.reject(err);
+            } finally {
+                isRefreshing = false;
             }
         }
         return Promise.reject(err);

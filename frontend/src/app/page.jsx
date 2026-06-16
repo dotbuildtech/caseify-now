@@ -1,8 +1,9 @@
 import dynamic from 'next/dynamic';
 import Marquee from '@/components/home/Marquee';
+import Reveal from '@/components/ui/Reveal';
 
 const HeroSlider = dynamic(() => import('@/components/home/HeroSlider'), {
-    loading: () => <div className="h-[80vh] min-h-[600px] bg-ink animate-pulse" />
+    loading: () => <div className="h-[70vh] min-h-[500px] bg-ink animate-pulse" />
 });
 const CategoryShowcase = dynamic(() => import('@/components/home/CategoryShowcase'), {
     loading: () => (
@@ -67,13 +68,13 @@ export default async function HomePage() {
     return (
         <>
             <HeroSlider slides={data.heroSlides} />
-            <Marquee />
-            <CategoryShowcase categories={data.categories} />
-            <FeaturedProducts products={data.featuredProducts} />
-            <QuoteBlock />
-            <ValuesGrid />
-            <Testimonials />
-            <CTABlock />
+            <Reveal><Marquee /></Reveal>
+            <Reveal delay={0.1}><CategoryShowcase categories={data.categories} /></Reveal>
+            <Reveal delay={0.1}><FeaturedProducts products={data.featuredProducts} /></Reveal>
+            <Reveal delay={0.1}><QuoteBlock /></Reveal>
+            <Reveal delay={0.1}><ValuesGrid /></Reveal>
+            <Reveal delay={0.1}><Testimonials /></Reveal>
+            <Reveal delay={0.1}><CTABlock /></Reveal>
         </>
     );
 }

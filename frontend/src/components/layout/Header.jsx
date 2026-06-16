@@ -74,6 +74,7 @@ export default function Header() {
                         <Link
                             key={l.href}
                             href={l.href}
+                            prefetch={true}
                             className={`text-xs font-medium uppercase tracking-[0.18em] transition-colors ${pathname === l.href ? 'text-bronze' : 'text-ink hover:text-bronze'}`}
                         >
                             {l.label}
@@ -162,6 +163,7 @@ export default function Header() {
                             <Link
                                 key={l.href}
                                 href={l.href}
+                                prefetch={true}
                                 onClick={() => setOpen(false)}
                                 className="block py-2 text-sm font-medium uppercase tracking-[0.18em] text-ink hover:text-bronze"
                             >

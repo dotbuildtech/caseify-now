@@ -1,6 +1,5 @@
 'use client';
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
-import Cookies from 'js-cookie';
 import { login as apiLogin, register as apiRegister, googleLogin as apiGoogleLogin, logout as apiLogout, fetchProfile } from '@/services/authApi';
 
 const AuthContext = createContext(null);
@@ -10,8 +9,6 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const accessToken = Cookies.get('accessToken');
-        if (!accessToken) { setLoading(false); return; }
         let mounted = true;
         fetchProfile()
             .then((d) => { if (mounted) setUser(d?.data || d); })

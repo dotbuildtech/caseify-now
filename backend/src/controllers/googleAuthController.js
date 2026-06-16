@@ -3,7 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const logSecurityEvent = require('../utils/securityLog');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
-const { issueTokenPair, sanitizeUser } = require('./authController');
+const { issueTokenPair, sanitizeUser, setTokenCookies } = require('./authController');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -49,11 +49,8 @@ exports.googleLogin = asyncHandler(async (req, res) => {
         const tokens = await issueTokenPair(user, req);
         logSecurityEvent('google.login_success', { userId: user.id, email, ip: req.ip });
 
-        res.json({
-            ...sanitizeUser(user),
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
-        });
+        setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+        res.json(sanitizeUser(user));
         return;
     }
 
@@ -72,11 +69,8 @@ exports.googleLogin = asyncHandler(async (req, res) => {
         const tokens = await issueTokenPair(user, req);
         logSecurityEvent('google.link_success', { userId: user.id, email, ip: req.ip });
 
-        res.json({
-            ...sanitizeUser(user),
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken
-        });
+        setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+        res.json(sanitizeUser(user));
         return;
     }
 
@@ -94,11 +88,8 @@ exports.googleLogin = asyncHandler(async (req, res) => {
     const tokens = await issueTokenPair(user, req);
     logSecurityEvent('google.register_success', { userId: user.id, email, ip: req.ip });
 
-    res.status(201).json({
-        ...sanitizeUser(user),
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-    });
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    res.status(201).json(sanitizeUser(user));
 });
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -149,9 +140,6 @@ exports.setPassword = asyncHandler(async (req, res) => {
     const tokens = await issueTokenPair(user, req);
     logSecurityEvent('set_password.success', { userId: user.id, ip: req.ip });
 
-    res.json({
-        message: 'Password set successfully',
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-    });
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    res.json({ message: 'Password set successfully' });
 });

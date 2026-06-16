@@ -1,9 +1,15 @@
 const jwt = require('jsonwebtoken');
 
 const optionalAuth = (req, res, next) => {
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    const token = (() => {
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+            return req.headers.authorization.split(' ')[1];
+        }
+        return req.cookies?.accessToken || null;
+    })();
+
+    if (token) {
         try {
-            const token = req.headers.authorization.split(' ')[1];
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             req.user = decoded;
         } catch {

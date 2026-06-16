@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { fetchCart, addToCart as apiAdd, updateCartItem as apiUpdate, removeCartItem as apiRemove, clearCart as apiClear } from '@/services/cartApi';
 import { useAuth } from './AuthContext';
 
@@ -31,6 +31,7 @@ export function CartProvider({ children }) {
     const [items, setItems] = useState([]);
     const [summary, setSummary] = useState({ itemCount: 0, uniqueItems: 0, subtotal: 0, total: 0 });
     const [loading, setLoading] = useState(false);
+    const pendingOps = useRef(0);
 
     const load = useCallback(async () => {
         if (authLoading) return;
@@ -56,60 +57,95 @@ export function CartProvider({ children }) {
     useEffect(() => { load(); }, [load]);
 
     const addItem = useCallback(async (productId, quantity = 1, designMeta = null) => {
-        const data = await apiAdd(productId, quantity, designMeta);
-        const cart = data?.items ? data : await fetchCart();
-        if (cart) {
-            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
-            if (cart?.summary) setSummary(cart.summary);
+        const optimisticItem = {
+            ProductId: productId,
+            quantity,
+            priceAtAdd: 0,
+            nameAtAdd: 'Adding...',
+            imageAtAdd: '',
+            designMeta
+        };
+        setItems((prev) => [...prev, optimisticItem]);
+        pendingOps.current += 1;
+
+        try {
+            const data = await apiAdd(productId, quantity, designMeta);
+            pendingOps.current -= 1;
+            if (data?.items) {
+                setItems(data.items);
+                if (data?.summary) setSummary(data.summary);
+            } else if (pendingOps.current === 0) {
+                await load();
+            }
+            return data;
+        } catch (err) {
+            pendingOps.current -= 1;
+            setItems((prev) => prev.filter((it) => it !== optimisticItem));
+            throw err;
         }
-        return data;
-    }, []);
+    }, [load]);
 
     const updateItem = useCallback(async (productId, quantity) => {
-        const data = await apiUpdate(productId, quantity);
-        const cart = data?.items ? data : await fetchCart();
-        if (cart) {
-            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
-            if (cart?.summary) setSummary(cart.summary);
+        setItems((prev) =>
+            prev.map((it) =>
+                getItemProductId(it) === productId ? { ...it, quantity } : it
+            )
+        );
+
+        try {
+            const data = await apiUpdate(productId, quantity);
+            if (data?.items) {
+                setItems(data.items);
+                if (data?.summary) setSummary(data.summary);
+            }
+        } catch {
+            await load();
         }
-    }, []);
+    }, [load]);
 
     const removeItem = useCallback(async (productId) => {
-        const data = await apiRemove(productId);
-        const cart = data?.items ? data : await fetchCart();
-        if (cart) {
-            setItems(Array.isArray(cart?.items) ? cart.items : (Array.isArray(cart) ? cart : []));
-            if (cart?.summary) setSummary(cart.summary);
+        const removed = [];
+        setItems((prev) => {
+            const kept = prev.filter((it) => {
+                if (getItemProductId(it) === productId) {
+                    removed.push(it);
+                    return false;
+                }
+                return true;
+            });
+            return kept;
+        });
+
+        try {
+            const data = await apiRemove(productId);
+            if (data?.items) {
+                setItems(data.items);
+                if (data?.summary) setSummary(data.summary);
+            }
+        } catch {
+            await load();
         }
-    }, []);
+    }, [load]);
 
     const clear = useCallback(async () => {
-        await apiClear();
         setItems([]);
         setSummary({ itemCount: 0, uniqueItems: 0, subtotal: 0, total: 0 });
-    }, []);
+        try {
+            await apiClear();
+        } catch {
+            await load();
+        }
+    }, [load]);
 
     const value = useMemo(() => {
         const count = items.reduce((s, i) => s + getItemQty(i), 0) || summary.itemCount || 0;
         const computed = items.reduce((s, i) => s + getItemQty(i) * getItemPrice(i), 0);
         const subtotal = items.length > 0 ? computed : (summary?.subtotal ?? 0);
         return {
-            items,
-            count,
-            subtotal,
-            summary,
-            loading,
-            addItem,
-            updateItem,
-            removeItem,
-            clear,
-            load,
-            getItemQty,
-            getItemPrice,
-            getItemProductId,
-            getItemImage,
-            getItemName,
-            getItemCategory
+            items, count, subtotal, summary, loading,
+            addItem, updateItem, removeItem, clear, load,
+            getItemQty, getItemPrice, getItemProductId,
+            getItemImage, getItemName, getItemCategory
         };
     }, [items, summary, loading, addItem, updateItem, removeItem, clear, load]);
 

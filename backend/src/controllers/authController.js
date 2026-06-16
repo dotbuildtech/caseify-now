@@ -19,6 +19,32 @@ const REFRESH_TOKEN_BYTES = 64;
 const REFRESH_TOKEN_EXPIRES_DAYS = 7;
 const RESET_PASSWORD_EXPIRY_MINUTES = 30;
 
+const isProduction = () => process.env.NODE_ENV === 'production';
+
+const TOKEN_COOKIE_OPTS = {
+    httpOnly: true,
+    secure: isProduction(),
+    sameSite: 'Strict',
+    path: '/'
+};
+
+const setTokenCookies = exports.setTokenCookies = (res, accessToken, refreshToken) => {
+    res.cookie('accessToken', accessToken, {
+        ...TOKEN_COOKIE_OPTS,
+        maxAge: 60 * 60 * 1000
+    });
+    res.cookie('refreshToken', refreshToken, {
+        ...TOKEN_COOKIE_OPTS,
+        maxAge: REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
+        path: '/api/auth'
+    });
+};
+
+const clearTokenCookies = exports.clearTokenCookies = (res) => {
+    res.clearCookie('accessToken', { path: '/' });
+    res.clearCookie('refreshToken', { path: '/api/auth' });
+};
+
 const DUMMY_BCRYPT_HASH = '$2a$10$ctVoolAI1URPzipAZ0GzR.Rl/tl5Hn/2ege.6nGJHSwIVajwvM0eS';
 
 const validatePassword = (password) => {
@@ -92,13 +118,11 @@ const issueTokenPair = exports.issueTokenPair = async (user, req) => {
 };
 
 const sanitizeUser = exports.sanitizeUser = (user) => ({
-    _id: user.id,
+    id: user.id,
     name: user.name,
     email: user.email,
-    phone: user.phone || null,
     role: user.role,
-    profileImage: user.profileImage || null,
-    authProvider: user.authProvider || 'local'
+    profileImage: user.profileImage || null
 });
 
 const equalizeTimingWithDummyHash = async (password) => {
@@ -150,11 +174,8 @@ exports.registerUser = asyncHandler(async (req, res) => {
         }
     }
 
-    res.status(201).json({
-        ...sanitizeUser(user),
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-    });
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    res.status(201).json(sanitizeUser(user));
 });
 
 exports.loginUser = asyncHandler(async (req, res) => {
@@ -204,18 +225,16 @@ exports.loginUser = asyncHandler(async (req, res) => {
     const tokens = await issueTokenPair(user, req);
     logSecurityEvent('login.success', { userId: user.id, email: normalizedEmail, ip: req.ip });
 
-    res.json({
-        ...sanitizeUser(user),
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-    });
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    res.json(sanitizeUser(user));
 });
 
 exports.refreshAccessToken = asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
+    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
 
     if (typeof refreshToken !== 'string' || refreshToken.length < 32) {
-        res.status(400);
+        clearTokenCookies(res);
+        res.status(401);
         throw new Error('Invalid refresh token');
     }
 
@@ -228,6 +247,7 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
     });
 
     if (!matched) {
+        clearTokenCookies(res);
         logSecurityEvent('refresh.not_found', { ip: req.ip });
         res.status(401);
         throw new Error('Invalid or expired refresh token');
@@ -236,6 +256,7 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
     if (matched.userAgentHash && incomingUaHash && matched.userAgentHash !== incomingUaHash) {
         matched.revokedAt = new Date();
         await matched.save();
+        clearTokenCookies(res);
         logSecurityEvent('refresh.ua_mismatch_revoke', { userId: matched.userId, ip: req.ip });
         res.status(401);
         throw new Error('Invalid refresh token');
@@ -260,15 +281,13 @@ exports.refreshAccessToken = asyncHandler(async (req, res) => {
 
     logSecurityEvent('refresh.success', { userId: user.id, ip: req.ip });
 
-    res.json({
-        accessToken: generateAccessToken(user),
-        refreshToken: newRefreshValue
-    });
+    const newAccessToken = generateAccessToken(user);
+    setTokenCookies(res, newAccessToken, newRefreshValue);
+    res.json({ message: 'Token refreshed' });
 });
 
 exports.logout = asyncHandler(async (req, res) => {
-    const { refreshToken } = req.body;
-
+    const refreshToken = req.body.refreshToken || req.cookies?.refreshToken;
     if (typeof refreshToken === 'string' && refreshToken.length >= 32) {
         const tokenHash = hashToken(refreshToken);
         const candidate = await RefreshToken.findOne({
@@ -280,6 +299,7 @@ exports.logout = asyncHandler(async (req, res) => {
         }
     }
 
+    clearTokenCookies(res);
     logSecurityEvent('logout', { userId: req.user.id, ip: req.ip });
     res.status(204).send();
 });
@@ -289,6 +309,7 @@ exports.logoutAll = asyncHandler(async (req, res) => {
         { revokedAt: new Date() },
         { where: { userId: req.user.id, revokedAt: null } }
     );
+    clearTokenCookies(res);
     logSecurityEvent('logout_all', { userId: req.user.id, ip: req.ip });
     res.status(204).send();
 });
@@ -342,11 +363,8 @@ exports.changePassword = asyncHandler(async (req, res) => {
     const tokens = await issueTokenPair(user, req);
     logSecurityEvent('change_password.success', { userId: user.id, ip: req.ip });
 
-    res.json({
-        message: 'Password changed successfully',
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-    });
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+    res.json({ message: 'Password changed successfully' });
 });
 
 exports.forgotPassword = asyncHandler(async (req, res) => {

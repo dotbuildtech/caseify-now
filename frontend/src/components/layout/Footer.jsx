@@ -1,12 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { Instagram, Twitter, Facebook, Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
-import { SITE, MARQUEE } from '@/utils/constants';
+import { Instagram, Twitter, Facebook, Mail, Phone, MapPin } from 'lucide-react';
+import { SITE } from '@/utils/constants';
 import { useState, useEffect } from 'react';
 
 export default function Footer() {
-    const [email, setEmail] = useState('');
-    const [submitted, setSubmitted] = useState(false);
     const [year, setYear] = useState(null);
 
     useEffect(() => {
@@ -15,45 +13,6 @@ export default function Footer() {
 
     return (
         <footer className="bg-ink text-cream">
-            <div className="border-b border-cream/10">
-                <div className="container-luxe grid gap-12 py-16 md:grid-cols-2 md:py-20">
-                    <div>
-                        <span className="eyebrow text-cream/60">Stay Updated</span>
-                        <h2 className="mt-4 font-display text-4xl md:text-5xl leading-[0.95] tracking-editorial">
-                            Get <span className="italic-display">exclusive</span> offers.
-                        </h2>
-                        <p className="mt-4 max-w-md text-sm text-cream/70">
-                            New products, sales, and deals delivered to your inbox weekly.
-                        </p>
-                    </div>
-                    <div>
-                        {submitted ? (
-                            <div className="border border-bronze bg-bronze/10 p-6">
-                                <p className="text-sm">Subscribed. Check your inbox.</p>
-                            </div>
-                        ) : (
-                            <form
-                                onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}
-                                className="flex flex-col gap-3 sm:flex-row"
-                            >
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="your@email.com"
-                                    required
-                                    className="input-luxe !bg-cream/5 !text-cream !border-cream/20 placeholder:!text-cream/40"
-                                />
-                                <button type="submit" className="btn-primary !bg-bronze !border-bronze hover:!bg-cream hover:!text-ink">
-                                    Subscribe <ArrowRight className="h-3 w-3" />
-                                </button>
-                            </form>
-                        )}
-                        <p className="mt-4 text-[10px] uppercase tracking-[0.32em] text-cream/50">— NO SPAM. UNSUBSCRIBE ANYTIME.</p>
-                    </div>
-                </div>
-            </div>
-
             <div className="container-luxe grid gap-10 py-16 md:grid-cols-4">
                 <div className="md:col-span-1">
                     <div className="flex items-center gap-2">

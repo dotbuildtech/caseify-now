@@ -30,13 +30,15 @@ const productIdParamSchema = z.object({
 
 const decorateCart = async (cartId) => {
     const cart = await Cart.findByPk(cartId, {
+        attributes: ['id', 'UserId', 'lastActivityAt'],
         include: [
             {
                 model: CartItem,
                 as: 'items',
+                attributes: ['id', 'ProductId', 'ProductVariantId', 'quantity', 'priceAtAdd', 'nameAtAdd', 'imageAtAdd', 'variantLabel', 'designMeta', 'createdAt'],
                 include: [
-                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price', 'stock', 'isActive'] },
-                    { model: ProductVariant, as: 'variant', attributes: ['id', 'name', 'image', 'price', 'stock', 'isActive'] }
+                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price'] },
+                    { model: ProductVariant, as: 'variant', attributes: ['id', 'name', 'image', 'price'] }
                 ]
             }
         ],
@@ -45,7 +47,7 @@ const decorateCart = async (cartId) => {
     if (!cart) return null;
 
     const items = (cart.items || []).map((item) => {
-        const json = item.toJSON();
+        const json = item.get({ plain: true });
         if (json.designMeta && json.imageAtAdd) {
             json.designMeta.thumbnail = json.imageAtAdd;
         }

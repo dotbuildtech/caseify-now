@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Minus, Plus, X, ShoppingBag, Lock } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
@@ -10,23 +10,34 @@ import SmartImage from '@/components/ui/SmartImage';
 
 const SHIPPING_THRESHOLD = 500;
 const SHIPPING_FEE = 49;
+const DEBOUNCE_MS = 400;
 
 export default function CartPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { items, subtotal, summary, updateItem, removeItem, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, getItemCategory } = useCart();
+    const debounceTimers = useRef({});
 
     useEffect(() => {
         if (!authLoading && !user) {
             router.replace('/login?redirect=/cart');
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [authLoading, user]);
+    }, [authLoading, user, router]);
+
+    const debouncedUpdate = useCallback((productId, qty) => {
+        if (debounceTimers.current[productId]) {
+            clearTimeout(debounceTimers.current[productId]);
+        }
+        debounceTimers.current[productId] = setTimeout(() => {
+            updateItem(productId, qty);
+            delete debounceTimers.current[productId];
+        }, DEBOUNCE_MS);
+    }, [updateItem]);
 
     if (authLoading) {
         return (
             <div className="container-luxe py-20 text-center">
-                <p className="text-sm uppercase tracking-[0.18em] text-text-light">Loading…</p>
+                <p className="text-sm uppercase tracking-[0.18em] text-text-light">Loading...</p>
             </div>
         );
     }
@@ -106,7 +117,7 @@ export default function CartPage() {
                                                     )}
                                                     <p className="mt-1 text-xs text-text-light">{category}</p>
                                                 </div>
-                                                <button onClick={() => removeItem(productId)} className="text-text-light hover:text-error" aria-label="Remove">
+                                                <button onClick={() => removeItem(productId)} className="text-text-light hover:text-error shrink-0" aria-label="Remove">
                                                     <X className="h-4 w-4" />
                                                 </button>
                                             </div>
@@ -115,9 +126,19 @@ export default function CartPage() {
                                                     <span className="h-9 text-xs text-text-light leading-[2.25rem] italic">Custom design</span>
                                                 ) : (
                                                     <div className="inline-flex items-center border border-border">
-                                                        <button onClick={() => updateItem(productId, Math.max(1, qty - 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Minus className="h-3 w-3 mx-auto" /></button>
+                                                        <button
+                                                            onClick={() => debouncedUpdate(productId, Math.max(1, qty - 1))}
+                                                            className="h-9 w-9 text-ink hover:bg-background-light"
+                                                        >
+                                                            <Minus className="h-3 w-3 mx-auto" />
+                                                        </button>
                                                         <span className="h-9 w-10 text-center text-sm font-semibold tabular-nums leading-[2.25rem]">{qty}</span>
-                                                        <button onClick={() => updateItem(productId, Math.min(99, qty + 1))} className="h-9 w-9 text-ink hover:bg-background-light"><Plus className="h-3 w-3 mx-auto" /></button>
+                                                        <button
+                                                            onClick={() => debouncedUpdate(productId, Math.min(99, qty + 1))}
+                                                            className="h-9 w-9 text-ink hover:bg-background-light"
+                                                        >
+                                                            <Plus className="h-3 w-3 mx-auto" />
+                                                        </button>
                                                     </div>
                                                 )}
                                                 <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
@@ -145,7 +166,7 @@ export default function CartPage() {
                                 <dd className="font-display text-2xl font-semibold tabular-nums">{formatINR(total)}</dd>
                             </div>
                         </dl>
-                        <Link href="/checkout" className="btn-primary mt-6 w-full">Proceed to Checkout</Link>
+                        <Link href="/checkout" prefetch={true} className="btn-primary mt-6 w-full">Proceed to Checkout</Link>
                         <Link href="/shop" className="btn-ghost mt-3 w-full justify-center">Continue Shopping</Link>
                     </aside>
                 </div>

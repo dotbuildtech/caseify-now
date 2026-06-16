@@ -18,10 +18,14 @@ frontend/.next/
 .env
 .env/backend/
 .env/frontend/
+**/.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Uploads (runtime artifacts)
+backend/uploads/
 
 # Logs
 npm-debug.log*

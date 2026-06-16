@@ -6,6 +6,7 @@ const { audit } = require('../utils/securityLog');
 const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
 const { uploadFromBuffer } = require('../services/cloudinaryService');
+const { sanitizeProduct, sanitizeProductList } = require('../utils/serializers');
 
 const ALLOWED_SORT = new Set([
     'createdAt', '-createdAt',
@@ -168,8 +169,9 @@ exports.getProducts = asyncHandler(async (req, res) => {
         distinct: true
     });
 
+    const adminUser = isAdmin(req);
     res.json({
-        data: rows,
+        data: adminUser ? rows : sanitizeProductList(rows),
         pagination: {
             page: q.page,
             limit: q.limit,
@@ -196,7 +198,7 @@ exports.getProductById = asyncHandler(async (req, res) => {
         res.status(404);
         throw new Error('Product not found');
     }
-    res.json(product);
+    res.json(isAdmin(req) ? product : sanitizeProduct(product));
 });
 
 exports.createProduct = asyncHandler(async (req, res) => {
@@ -345,7 +347,7 @@ exports.searchProducts = asyncHandler(async (req, res) => {
     const q = req.validatedQuery;
     const where = buildProductWhere({ ...q, page: 1, limit: 10 }, isAdmin(req));
     const products = await Product.findAll({ where, limit: 10 });
-    res.json({ data: products });
+    res.json({ data: isAdmin(req) ? products : sanitizeProductList(products) });
 });
 
 exports.productSchemas = {
