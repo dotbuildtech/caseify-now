@@ -10,6 +10,11 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         let mounted = true;
+        const hasAuth = localStorage.getItem('auth_check');
+        if (!hasAuth) {
+            if (mounted) setLoading(false);
+            return;
+        }
         fetchProfile()
             .then((d) => { if (mounted) setUser(d?.data || d); })
             .catch(() => { if (mounted) setUser(null); })
@@ -21,6 +26,7 @@ export function AuthProvider({ children }) {
         const data = await apiLogin(creds);
         const u = data?.user || data?.data?.user || data;
         setUser(u);
+        localStorage.setItem('auth_check', '1');
         return data;
     }, []);
 
@@ -28,6 +34,7 @@ export function AuthProvider({ children }) {
         const data = await apiRegister(payload);
         const u = data?.user || data?.data?.user || data;
         setUser(u);
+        localStorage.setItem('auth_check', '1');
         return data;
     }, []);
 
@@ -35,12 +42,14 @@ export function AuthProvider({ children }) {
         const data = await apiGoogleLogin(credential);
         const u = data?.user || data?.data?.user || data;
         setUser(u);
+        localStorage.setItem('auth_check', '1');
         return data;
     }, []);
 
     const logout = useCallback(async () => {
         await apiLogout();
         setUser(null);
+        localStorage.removeItem('auth_check');
     }, []);
 
     const contextValue = useMemo(() => ({ user, loading, login, register, googleLogin, logout, setUser }), [user, loading, login, register, googleLogin, logout]);
