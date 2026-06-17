@@ -1,7 +1,8 @@
 const PUBLIC_PRODUCT_FIELDS = new Set([
     'id', 'name', 'slug', 'description', 'price', 'compareAtPrice',
     'category', 'phoneModel', 'brand', 'image', 'images', 'isFeatured',
-    'isDeviceSpecific', 'tags', 'materials', 'attributes', 'variants'
+    'isDeviceSpecific', 'tags', 'materials', 'attributes', 'variants',
+    'stock', 'lowStockThreshold'
 ]);
 
 const sanitizeProduct = (product) => {
@@ -18,7 +19,8 @@ const sanitizeProduct = (product) => {
             price: v.price,
             image: v.image,
             attributes: v.attributes,
-            sortOrder: v.sortOrder
+            sortOrder: v.sortOrder,
+            stock: v.stock
         }));
     }
     return sanitized;

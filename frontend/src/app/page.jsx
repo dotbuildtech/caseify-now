@@ -52,9 +52,13 @@ export const revalidate = 300;
 
 async function getHomepageData() {
     try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(`${API_BASE}/api/homepage`, {
-            next: { revalidate: 300 }
+            next: { revalidate: 300 },
+            signal: controller.signal
         });
+        clearTimeout(timeout);
         if (!res.ok) throw new Error('Failed to fetch');
         return res.json();
     } catch {
