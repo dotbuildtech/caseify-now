@@ -15,7 +15,7 @@ import SmartImage from '@/components/ui/SmartImage';
 export default function ProductPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { addItem } = useCart();
+    const { addItem, setDrawerOpen } = useCart();
     const { user, loading: authLoading } = useAuth();
     const toast = useToast();
     const [product, setProduct] = useState(null);
@@ -59,6 +59,7 @@ export default function ProductPage() {
             setAdding(true);
             await addItem(product.id, qty);
             toast.success('Added to cart');
+            setDrawerOpen(true);
         } catch (e) {
             toast.error(e.response?.data?.message || 'Failed to add');
         } finally {

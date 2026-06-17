@@ -31,6 +31,7 @@ export function CartProvider({ children }) {
     const [items, setItems] = useState([]);
     const [summary, setSummary] = useState({ itemCount: 0, uniqueItems: 0, subtotal: 0, total: 0 });
     const [loading, setLoading] = useState(false);
+    const [drawerOpen, setDrawerOpen] = useState(false);
     const pendingOps = useRef(0);
 
     const load = useCallback(async () => {
@@ -145,9 +146,10 @@ export function CartProvider({ children }) {
             items, count, subtotal, summary, loading,
             addItem, updateItem, removeItem, clear, load,
             getItemQty, getItemPrice, getItemProductId,
-            getItemImage, getItemName, getItemCategory
+            getItemImage, getItemName, getItemCategory,
+            drawerOpen, setDrawerOpen
         };
-    }, [items, summary, loading, addItem, updateItem, removeItem, clear, load]);
+    }, [items, summary, loading, addItem, updateItem, removeItem, clear, load, drawerOpen]);
 
     return (
         <CartContext.Provider value={value}>

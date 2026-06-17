@@ -1,6 +1,7 @@
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import CartDrawer from '@/components/cart/CartDrawer';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -20,6 +21,7 @@ export default function RootLayout({ children }) {
                             <Header />
                             <main className="min-h-[60vh]">{children}</main>
                             <Footer />
+                            <CartDrawer />
                         </ToastProvider>
                     </CartProvider>
                 </AuthProvider>

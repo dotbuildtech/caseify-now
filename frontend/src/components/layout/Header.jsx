@@ -14,7 +14,7 @@ export default function Header() {
     const [suggestions, setSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const suggestRef = useRef(null);
-    const { count } = useCart();
+    const { count, setDrawerOpen } = useCart();
     const { user, logout } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
@@ -138,14 +138,14 @@ export default function Header() {
                             Sign In
                         </Link>
                     )}
-                    <Link href="/cart" className="relative inline-flex items-center justify-center h-10 w-10 border border-border bg-surface transition-colors hover:border-ink">
+                    <button onClick={() => setDrawerOpen(true)} className="relative inline-flex items-center justify-center h-10 w-10 border border-border bg-surface transition-colors hover:border-ink">
                         <ShoppingBag className="h-4 w-4" />
                         {count > 0 && (
                             <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-bronze px-1 text-[10px] font-semibold text-cream">
                                 {count}
                             </span>
                         )}
-                    </Link>
+                    </button>
                     <button onClick={() => setOpen(!open)} className="lg:hidden inline-flex h-10 w-10 items-center justify-center border border-border">
                         {open ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                     </button>
