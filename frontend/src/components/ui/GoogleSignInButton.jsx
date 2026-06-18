@@ -63,6 +63,10 @@ export default function GoogleSignInButton({ onSuccess, onError, text = 'continu
         script.async = true;
         script.defer = true;
         script.onload = initGIS;
+        script.onerror = () => {
+            console.error('Failed to load Google Sign-In script');
+            onError?.('Google Sign-In is currently unavailable');
+        };
         document.body.appendChild(script);
     }, []);
 

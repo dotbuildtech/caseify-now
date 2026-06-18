@@ -19,7 +19,8 @@ const cartWriteLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 60,
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false }
 });
 
 router.get('/count', protect, getCartItemCount);

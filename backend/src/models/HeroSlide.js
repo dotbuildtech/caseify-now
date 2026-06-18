@@ -40,7 +40,8 @@ const HeroSlide = sequelize.define('HeroSlide', {
     timestamps: true,
     indexes: [
         { fields: ['sortOrder'] },
-        { fields: ['isActive'] }
+        { fields: ['isActive'] },
+        { fields: ['isActive', 'sortOrder', 'createdAt'] }
     ]
 });
 

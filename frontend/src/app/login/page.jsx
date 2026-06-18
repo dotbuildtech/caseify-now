@@ -99,6 +99,8 @@ function LoginContent() {
     );
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
     return (
         <Suspense fallback={<div className="container-luxe py-20"><div className="h-32 bg-background-light animate-pulse" /></div>}>

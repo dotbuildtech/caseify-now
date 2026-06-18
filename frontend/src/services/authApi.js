@@ -19,4 +19,4 @@ export const logout = async () => {
     try { await api.post('/auth/logout'); } catch {}
 };
 
-export const fetchProfile = () => api.get('/auth/profile', { _skipAuthRetry: true }).then((r) => r.data);
+export const fetchProfile = () => api.get('/auth/profile').then((r) => r.data);

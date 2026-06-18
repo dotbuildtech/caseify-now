@@ -11,6 +11,8 @@ const { logSecurityEvent } = require('./utils/securityLog');
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
+app.set("trust proxy", 1);
+
 
 if (process.env.TRUST_PROXY && process.env.TRUST_PROXY !== 'false') {
     const hops = parseInt(process.env.TRUST_PROXY, 10);
@@ -101,6 +103,26 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 morgan.token('id', (req) => req.id);
 app.use(morgan(isProduction ? ':id :remote-addr :method :url :status :res[content-length] - :response-time ms' : 'dev'));
 
+app.use((req, res, next) => {
+    res.setTimeout(25000, () => {
+        req.destroy();
+    });
+    next();
+});
+
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (duration > 500) {
+            console.log(`[slow] ${req.method} ${req.originalUrl} took ${duration}ms (status ${res.statusCode})`);
+        } else if (process.env.LOG_ALL_RESPONSES === 'true') {
+            console.log(`[api] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+        }
+    });
+    next();
+});
+
 app.use(originCheck);
 
 app.set('etag', false);
@@ -147,6 +169,15 @@ app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 app.use('/uploads', express.static('uploads'));
 
 app.get('/', (req, res) => res.send('Caseify Now API is running...'));
+app.get('/health', async (req, res, next) => {
+    try {
+        const { sequelize: db } = require('./config/db');
+        await db.authenticate();
+        res.json({ status: 'ok', db: 'connected', uptime: process.uptime() });
+    } catch (err) {
+        res.status(503).json({ status: 'error', db: 'disconnected', message: err.message });
+    }
+});
 
 app.use((req, res) => {
     res.status(404).json({ requestId: req.id, message: 'Not found' });
@@ -200,14 +231,20 @@ const PORT = process.env.PORT || 5000;
 
 if (require.main === module) {
     (async () => {
+        const startTime = Date.now();
+        console.log(`[startup] Node.js process started at ${new Date().toISOString()}`);
+
         try {
+            const dbStart = Date.now();
             await connectDB();
+            console.log(`[startup] Database connected in ${Date.now() - dbStart}ms`);
         } catch (e) {
             console.error('Failed to start: connectDB threw:', e);
             process.exit(1);
         }
         app.listen(PORT, () => {
-            console.log(`Server started on port ${PORT}`);
+            const elapsed = Date.now() - startTime;
+            console.log(`[startup] Server started on port ${PORT} in ${elapsed}ms`);
         });
     })();
 }

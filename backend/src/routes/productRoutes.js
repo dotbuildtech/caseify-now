@@ -32,18 +32,18 @@ const productImageUpload = multer({
     }
 });
 
+const rateLimitOpts = { standardHeaders: true, legacyHeaders: false, validate: { xForwardedForHeader: false } };
+
 const publicReadLimiter = rateLimit({
+    ...rateLimitOpts,
     windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false
+    max: 120
 });
 
 const adminWriteLimiter = rateLimit({
+    ...rateLimitOpts,
     windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false
+    max: 60
 });
 
 router.get('/search', optionalAuth, publicReadLimiter, validate({ query: productSchemas.search }), searchProducts);

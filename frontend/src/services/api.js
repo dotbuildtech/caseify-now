@@ -7,29 +7,39 @@ const api = axios.create({
     timeout: 15000
 });
 
-let isRefreshing = false;
-let isRedirectingToLogin = false;
+let refreshPromise = null;
+let redirectingToLogin = false;
+
+api.interceptors.request.use((config) => {
+    config._startTime = Date.now();
+    return config;
+});
 
 api.interceptors.response.use(
-    (res) => res,
+    (res) => {
+        const duration = Date.now() - (res.config._startTime || Date.now());
+        if (duration > 1000) {
+            console.warn(`[slow api] ${res.config.method?.toUpperCase()} ${res.config.url} took ${duration}ms`);
+        }
+        return res;
+    },
     async (err) => {
         const original = err.config;
-        if (err.response?.status === 401 && original && !original._retry && !original._skipAuthRetry && !original.url?.includes('/auth/')) {
+        if (err.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/')) {
             original._retry = true;
-            if (isRefreshing) return Promise.reject(err);
-            isRefreshing = true;
-            try {
-                await axios.post('/api/auth/refresh');
-                return api(original);
-            } catch {
-                if (!isRedirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-                    isRedirectingToLogin = true;
-                    window.location.href = '/login';
-                }
-                return Promise.reject(err);
-            } finally {
-                isRefreshing = false;
+            if (!refreshPromise) {
+                refreshPromise = axios.post('/api/auth/refresh').then(() => true).catch(() => false);
             }
+            const refreshed = await refreshPromise;
+            refreshPromise = null;
+            if (refreshed) {
+                return api(original);
+            }
+            if (!redirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+                redirectingToLogin = true;
+                window.location.href = '/login';
+            }
+            return Promise.reject(err);
         }
         return Promise.reject(err);
     }

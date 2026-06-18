@@ -48,10 +48,15 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
 
 const connectDB = async () => {
     try {
+        const dbStart = Date.now();
         await sequelize.authenticate();
-        console.log('PostgreSQL Connected...');
+        const authTime = Date.now() - dbStart;
+        console.log(`PostgreSQL Connected... (${authTime}ms)`);
 
+        const assoStart = Date.now();
         require('../models/associations');
+        const assoTime = Date.now() - assoStart;
+        if (assoTime > 100) console.log(`[startup] Associations loaded in ${assoTime}ms`);
 
         const skipSync = process.env.SKIP_DB_SYNC === 'true' || process.env.NODE_ENV === 'production';
         if (skipSync) {

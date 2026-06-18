@@ -33,7 +33,8 @@ const Category = sequelize.define('Category', {
     paranoid: true,
     indexes: [
         { fields: ['name'], unique: true },
-        { fields: ['slug'], unique: true }
+        { fields: ['slug'], unique: true },
+        { fields: ['isActive', 'name'] }
     ]
 });
 

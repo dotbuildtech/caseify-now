@@ -8,6 +8,7 @@ const homepageLimiter = rateLimit({
     max: 30,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     message: { message: 'Too many requests, please try again later' }
 });
 
