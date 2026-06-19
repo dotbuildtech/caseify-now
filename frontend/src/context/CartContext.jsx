@@ -25,6 +25,7 @@ const getItemImage = (i) => {
 };
 const getItemName = (i) => i.Product?.name || i.nameAtAdd || i.name || '';
 const getItemCategory = (i) => i.Product?.category || i.variantLabel || i.designMeta?.brand || i.category || '';
+const getItemAttributes = (i) => i.Product?.attributes || i.attributes || {};
 
 export function CartProvider({ children }) {
     const { user, loading: authLoading } = useAuth();
@@ -146,7 +147,7 @@ export function CartProvider({ children }) {
             items, count, subtotal, summary, loading,
             addItem, updateItem, removeItem, clear, load,
             getItemQty, getItemPrice, getItemProductId,
-            getItemImage, getItemName, getItemCategory,
+            getItemImage, getItemName, getItemCategory, getItemAttributes,
             drawerOpen, setDrawerOpen
         };
     }, [items, summary, loading, addItem, updateItem, removeItem, clear, load, drawerOpen]);

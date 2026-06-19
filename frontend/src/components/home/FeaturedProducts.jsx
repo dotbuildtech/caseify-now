@@ -5,8 +5,8 @@ import { formatINR } from '@/utils/format';
 import SmartImage from '@/components/ui/SmartImage';
 
 function ProductCard({ p }) {
-    const sale = p.compareAtPrice && p.compareAtPrice < p.price ? p.compareAtPrice : p.price;
-    const original = p.compareAtPrice && p.compareAtPrice < p.price ? p.price : null;
+    const sale = Number(p.price) || 0;
+    const original = p.compareAtPrice && Number(p.compareAtPrice) > Number(p.price) ? Number(p.compareAtPrice) : null;
     const discount = original ? Math.round((1 - sale / original) * 100) : null;
     const img = Array.isArray(p.images) && p.images.length
         ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0]?.url)

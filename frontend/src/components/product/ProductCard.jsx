@@ -16,20 +16,25 @@ export const getProductImage = (p) => {
 
 export const getProductPrice = (p) => {
     if (!p) return 0;
-    const sale = p.compareAtPrice ?? p.discount_price;
-    return sale && sale < p.price ? sale : p.price;
+    return Number(p.price) || 0;
 };
 
 export const getProductOriginalPrice = (p) => {
     if (!p) return null;
-    const sale = p.compareAtPrice ?? p.discount_price;
-    return sale && sale < p.price ? p.price : null;
+    const cap = p.compareAtPrice ?? p.discount_price;
+    return cap && Number(cap) > Number(p.price) ? Number(cap) : null;
+};
+
+export const getProductDiscountPercent = (p) => {
+    const original = getProductOriginalPrice(p);
+    if (!original) return null;
+    return Math.round((1 - Number(p.price) / original) * 100);
 };
 
 export default memo(function ProductCard({ p }) {
     const sale = getProductPrice(p);
     const original = getProductOriginalPrice(p);
-    const discount = original ? Math.round((1 - sale / original) * 100) : null;
+    const discount = getProductDiscountPercent(p);
     const img = getProductImage(p);
     const outOfStock = p.stock != null && p.stock <= 0;
     return (

@@ -48,11 +48,19 @@ const Product = sequelize.define('Product', {
     compareAtPrice: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: true,
+        defaultValue: 0,
         get() {
             const v = this.getDataValue('compareAtPrice');
             return v == null ? null : Number(v);
         },
-        validate: { min: 0 }
+        validate: {
+            min: 0,
+            isGreaterThanOrEqualToPrice(value) {
+                if (value != null && this.price != null && Number(value) < Number(this.price)) {
+                    throw new Error('Compare-at price must be greater than or equal to price');
+                }
+            }
+        }
     },
     category: {
         type: DataTypes.STRING(80),
@@ -146,7 +154,7 @@ const Product = sequelize.define('Product', {
             }
             if (product.compareAtPrice != null && product.price != null
                 && Number(product.compareAtPrice) < Number(product.price)) {
-                product.compareAtPrice = null;
+                throw new Error('Compare-at price must be greater than or equal to price');
             }
         }
     }

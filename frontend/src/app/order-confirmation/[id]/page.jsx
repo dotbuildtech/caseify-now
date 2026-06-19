@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { CheckCircle2, Package, Truck, MapPin } from 'lucide-react';
 import { fetchOrderById } from '@/services/orderApi';
 import { formatINR, formatDate } from '@/utils/format';
+import { FORM_FIELD_LABELS } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
 
 const getItemImage = (i) => {
@@ -97,6 +98,20 @@ export default function OrderConfirmationPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="truncate text-sm font-medium">{getItemName(it)}</p>
+                                        {(() => {
+                                            const snap = it.productSnapshot || {};
+                                            const attrs = snap.attributes || {};
+                                            const entries = Object.entries(attrs).filter(([k, v]) => v && !['color', 'size', 'designType'].includes(k));
+                                            if (!entries.length) return null;
+                                            return (
+                                                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-text-light">
+                                                    {entries.map(([k, v]) => {
+                                                        const label = FORM_FIELD_LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                                                        return <span key={k}>{label}: <span className="text-ink font-medium">{v}</span></span>;
+                                                    })}
+                                                </div>
+                                            );
+                                        })()}
                                         <p className="text-xs text-text-light">Qty: {qty}</p>
                                     </div>
                                     <p className="text-sm font-semibold tabular-nums">{formatINR(price * qty)}</p>

@@ -37,7 +37,7 @@ const decorateCart = async (cartId) => {
                 as: 'items',
                 attributes: ['id', 'ProductId', 'ProductVariantId', 'quantity', 'priceAtAdd', 'nameAtAdd', 'imageAtAdd', 'variantLabel', 'designMeta', 'createdAt'],
                 include: [
-                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price'] },
+                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'category', 'brand', 'phoneModel', 'attributes', 'materials'] },
                     { model: ProductVariant, as: 'variant', attributes: ['id', 'name', 'image', 'price'] }
                 ]
             }

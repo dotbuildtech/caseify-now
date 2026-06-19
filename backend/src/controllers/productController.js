@@ -7,6 +7,7 @@ const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
 const { uploadFromBuffer } = require('../services/cloudinaryService');
 const { sanitizeProduct, sanitizeProductList } = require('../utils/serializers');
+const { invalidateFilterCache, invalidatePriceCache } = require('../utils/cacheManager');
 
 const ALLOWED_SORT = new Set([
     'createdAt', '-createdAt',
@@ -33,7 +34,7 @@ const productCreateSchema = z.object({
     sku: z.string().min(1).max(64).optional(),
     description: z.string().min(1),
     price: z.number().nonnegative(),
-    compareAtPrice: z.number().nonnegative().optional(),
+    compareAtPrice: z.number().nonnegative(),
     category: z.string().min(1).max(80),
     phoneModel: z.string().max(80).optional(),
     brand: z.string().max(80).optional(),
@@ -46,7 +47,15 @@ const productCreateSchema = z.object({
     isDeviceSpecific: z.boolean().default(false),
     tags: z.array(z.string().max(40)).default([]),
     materials: z.array(z.string().max(80)).default([]),
-    attributes: z.record(z.any()).default({}),
+    attributes: z.object({
+        protectorType: z.string().optional(),
+        connectorType: z.string().optional(),
+        chargingSpeed: z.string().optional(),
+        cableType: z.string().optional(),
+        cableConnector: z.string().optional(),
+        earphoneType: z.string().optional(),
+        capacity: z.string().optional()
+    }).optional().default({}),
     variants: z.array(variantSchema).optional()
 });
 
@@ -81,8 +90,15 @@ const productQuerySchema = z.object({
     port_type: z.string().optional(),
     wattage: z.string().optional(),
     capacity: z.string().optional(),
+    cableType: z.string().optional(),
+    cableConnector: z.string().optional(),
     cable_type: z.string().optional(),
-    length: z.string().optional()
+    cable_connector: z.string().optional(),
+    length: z.string().optional(),
+    protectorType: z.string().optional(),
+    connectorType: z.string().optional(),
+    chargingSpeed: z.string().optional(),
+    earphoneType: z.string().optional()
 });
 
 const buildProductWhere = (q, isAdmin) => {
@@ -132,7 +148,7 @@ const buildProductWhere = (q, isAdmin) => {
             sequelize.literal(`"Product"."tags" ? '${term}'`)
         ];
     }
-    const attrFields = ['material', 'device_type', 'port_type', 'wattage', 'capacity', 'cable_type', 'length'];
+    const attrFields = ['material', 'device_type', 'port_type', 'wattage', 'capacity', 'cableType', 'cableConnector', 'cable_type', 'cable_connector', 'length', 'protectorType', 'connectorType', 'chargingSpeed', 'earphoneType'];
     for (const field of attrFields) {
         if (q[field]) {
             where.attributes = { ...where.attributes, [field]: q[field] };
@@ -204,6 +220,10 @@ exports.getProductById = asyncHandler(async (req, res) => {
 exports.createProduct = asyncHandler(async (req, res) => {
     const data = req.body;
     const { variants, ...productData } = data;
+    if (productData.compareAtPrice < productData.price) {
+        res.status(400);
+        throw new Error('Compare-at price must be greater than or equal to price');
+    }
     const product = await Product.create(productData);
     if (Array.isArray(variants) && variants.length) {
         await ProductVariant.bulkCreate(
@@ -214,6 +234,8 @@ exports.createProduct = asyncHandler(async (req, res) => {
     const full = await Product.findByPk(product.id, {
         include: [{ model: ProductVariant, as: 'variants' }]
     });
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.status(201).json(full);
 });
 
@@ -226,6 +248,14 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     if (!product) {
         res.status(404);
         throw new Error('Product not found');
+    }
+
+    if (productData.compareAtPrice != null) {
+        const price = productData.price != null ? productData.price : Number(product.price);
+        if (Number(productData.compareAtPrice) < Number(price)) {
+            res.status(400);
+            throw new Error('Compare-at price must be greater than or equal to price');
+        }
     }
 
     const before = product.toJSON();
@@ -248,6 +278,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     const full = await Product.findByPk(product.id, {
         include: [{ model: ProductVariant, as: 'variants' }]
     });
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.json(full);
 });
 
@@ -261,6 +293,8 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
     }
     await product.destroy({ force });
     audit(req, force ? 'product.hardDelete' : 'product.softDelete', `Product:${id}`);
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.json({ message: force ? 'Product permanently deleted' : 'Product archived' });
 });
 
@@ -272,6 +306,8 @@ exports.bulkCreateProducts = asyncHandler(async (req, res) => {
     }
     const created = await Product.bulkCreate(items, { validate: true });
     audit(req, 'product.bulkCreate', null, { count: created.length, ids: created.map((p) => p.id) });
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.status(201).json({ count: created.length, data: created });
 });
 
@@ -280,6 +316,8 @@ exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
     const [count] = await Product.update(updates, { where: { id: { [Op.in]: ids } } });
     const updated = await Product.findAll({ where: { id: { [Op.in]: ids } } });
     audit(req, 'product.bulkUpdate', null, { ids, changedFields: Object.keys(updates) });
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.json({ count, data: updated });
 });
 
@@ -288,6 +326,8 @@ exports.bulkDeleteProducts = asyncHandler(async (req, res) => {
     const force = req.query.force === 'true';
     const count = await Product.destroy({ where: { id: { [Op.in]: ids } }, force });
     audit(req, force ? 'product.bulkHardDelete' : 'product.bulkSoftDelete', null, { ids, count });
+    invalidateFilterCache();
+    invalidatePriceCache();
     res.json({ count, message: `Deleted ${count} product(s)` });
 });
 

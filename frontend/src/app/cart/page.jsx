@@ -6,6 +6,7 @@ import { Minus, Plus, X, ShoppingBag, Lock } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatINR } from '@/utils/format';
+import { FORM_FIELD_LABELS } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
 
 const SHIPPING_THRESHOLD = 500;
@@ -15,7 +16,7 @@ const DEBOUNCE_MS = 400;
 export default function CartPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { items, subtotal, summary, updateItem, removeItem, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, getItemCategory } = useCart();
+    const { items, subtotal, summary, updateItem, removeItem, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, getItemCategory, getItemAttributes } = useCart();
     const debounceTimers = useRef({});
 
     useEffect(() => {
@@ -116,6 +117,19 @@ export default function CartPage() {
                                                         <Link href={`/product/${productId}`} className="text-sm font-medium text-ink hover:text-bronze">{name}</Link>
                                                     )}
                                                     <p className="mt-1 text-xs text-text-light">{category}</p>
+                                                {(() => {
+                                                    const attrs = getItemAttributes(item);
+                                                    const entries = Object.entries(attrs).filter(([, v]) => v);
+                                                    if (!entries.length) return null;
+                                                    return (
+                                                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-text-light">
+                                                            {entries.map(([k, v]) => {
+                                                                const label = FORM_FIELD_LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                                                                return <span key={k}>{label}: <span className="text-ink font-medium">{v}</span></span>;
+                                                            })}
+                                                        </div>
+                                                    );
+                                                })()}
                                                 </div>
                                                 <button onClick={() => removeItem(productId)} className="text-text-light hover:text-error shrink-0" aria-label="Remove">
                                                     <X className="h-4 w-4" />
@@ -141,7 +155,22 @@ export default function CartPage() {
                                                         </button>
                                                     </div>
                                                 )}
-                                                <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
+                                                <div className="text-right shrink-0">
+                                                    {(() => {
+                                                        const cap = item.Product?.compareAtPrice;
+                                                        if (cap && Number(cap) > price) {
+                                                            const pct = Math.round((1 - price / Number(cap)) * 100);
+                                                            return (
+                                                                <>
+                                                                    <p className="text-xs text-text-light line-through tabular-nums">{formatINR(cap)}</p>
+                                                                    <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
+                                                                    <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-bronze">-{pct}%</p>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>;
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
                                     </li>

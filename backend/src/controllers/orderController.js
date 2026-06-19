@@ -178,7 +178,7 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                     qty: item.qty,
                     image: product.image || '',
                     price: product.price,
-                    productSnapshot: {
+                        productSnapshot: {
                         isCustom: false,
                         productName: product.name,
                         brand: product.brand || null,
@@ -191,7 +191,8 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                         color: item.color || product.attributes?.color || null,
                         material: item.material || product.materials?.[0] || null,
                         size: item.size || product.attributes?.size || null,
-                        designType: product.attributes?.designType || null
+                        designType: product.attributes?.designType || null,
+                        attributes: product.attributes || {}
                     }
                 });
             }

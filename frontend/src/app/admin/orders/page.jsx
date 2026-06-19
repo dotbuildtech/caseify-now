@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers } from 'lucide-react';
+import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers, Zap, Shield, Headphones, Battery, Cable } from 'lucide-react';
+import { FORM_FIELD_LABELS } from '@/utils/constants';
 import { adminListOrders, adminUpdateOrderStatus, adminGetInvoiceByOrder, adminGenerateInvoice, adminDownloadInvoice } from '@/services/adminApi';
 import { formatINR, formatDate } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
@@ -273,6 +274,11 @@ export default function AdminOrdersPage() {
                                                                 {snap.color && <span>Color: <span className="text-ink font-medium">{snap.color}</span></span>}
                                                                 {snap.size && <span>Size: <span className="text-ink font-medium">{snap.size}</span></span>}
                                                                 {snap.designType && <span>Design: <span className="text-ink font-medium">{snap.designType}</span></span>}
+                                                            {snap.attributes && Object.entries(snap.attributes).map(([key, val]) => {
+                                                                if (!val || ['color', 'size', 'designType'].includes(key)) return null;
+                                                                const label = FORM_FIELD_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                                                                return <span key={key}>{label}: <span className="text-ink font-medium">{val}</span></span>;
+                                                            })}
                                                             </div>
                                                             {snap.selectedVariant && (
                                                                 <p className="mt-0.5 text-xs text-text-light">Variant: <span className="text-ink font-medium">{snap.selectedVariant}</span></p>

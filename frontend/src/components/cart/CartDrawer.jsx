@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, ShoppingBag, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatINR } from '@/utils/format';
+import { FORM_FIELD_LABELS } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
 
 export default function CartDrawer() {
@@ -12,7 +13,7 @@ export default function CartDrawer() {
     const {
         items, count, subtotal, summary, drawerOpen, setDrawerOpen,
         updateItem, removeItem, getItemQty, getItemPrice,
-        getItemProductId, getItemImage, getItemName, getItemCategory
+        getItemProductId, getItemImage, getItemName, getItemCategory, getItemAttributes
     } = useCart();
 
     useEffect(() => {
@@ -107,6 +108,19 @@ export default function CartDrawer() {
                                                 </button>
                                             </div>
                                             <p className="mt-0.5 text-xs text-text-light truncate">{category}</p>
+                                            {(() => {
+                                                const attrs = getItemAttributes(item);
+                                                const entries = Object.entries(attrs).filter(([, v]) => v);
+                                                if (!entries.length) return null;
+                                                return (
+                                                    <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-text-light">
+                                                        {entries.map(([k, v]) => {
+                                                            const label = FORM_FIELD_LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+                                                            return <span key={k}>{label}: <span className="text-ink font-medium">{v}</span></span>;
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
                                             <div className="mt-auto flex items-end justify-between gap-2">
                                                 <div className="inline-flex items-center border border-border">
                                                     <button
@@ -123,7 +137,22 @@ export default function CartDrawer() {
                                                         <Plus className="h-3 w-3 mx-auto" />
                                                     </button>
                                                 </div>
-                                                <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
+                                                <div className="text-right shrink-0">
+                                                    {(() => {
+                                                        const cap = item.Product?.compareAtPrice;
+                                                        if (cap && Number(cap) > price) {
+                                                            const pct = Math.round((1 - price / Number(cap)) * 100);
+                                                            return (
+                                                                <>
+                                                                    <p className="text-xs text-text-light line-through tabular-nums">{formatINR(cap)}</p>
+                                                                    <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
+                                                                    <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-bronze">-{pct}%</p>
+                                                                </>
+                                                            );
+                                                        }
+                                                        return <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>;
+                                                    })()}
+                                                </div>
                                             </div>
                                         </div>
                                     </li>

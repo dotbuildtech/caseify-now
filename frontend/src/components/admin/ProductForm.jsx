@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation';
 import { Save, X, Trash2, ImagePlus } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
-import SearchableSelect from '@/components/ui/SearchableSelect';
 import { adminCreateProduct, adminUpdateProduct, adminListBrands } from '@/services/adminApi';
-import { CATEGORIES, CATEGORY_NAMES, SUBCATEGORY_NAMES, ALL_CATEGORY_NAMES, isDeviceSpecificCategory, getCategoryConfig } from '@/utils/constants';
+import { CATEGORIES, getCategoryConfig, FORM_FIELD_LABELS, FORM_FIELD_PLACEHOLDERS } from '@/utils/constants';
 import api from '@/services/api';
 import compressImage from '@/utils/compressImage';
+import { fetchFilterOptions } from '@/services/productApi';
 
 const blank = {
     name: '',
@@ -25,9 +25,8 @@ const blank = {
     lowStockThreshold: 5,
     isActive: true,
     isFeatured: false,
-    isDeviceSpecific: false,
     tags: [],
-    materials: []
+    attributes: {}
 };
 
 const normalize = (p) => {
@@ -40,7 +39,7 @@ const normalize = (p) => {
         ...p,
         images: imgs,
         tags: Array.isArray(p.tags) ? p.tags : [],
-        materials: Array.isArray(p.materials) ? p.materials : []
+        attributes: p.attributes || {}
     };
 };
 
@@ -73,38 +72,65 @@ export default function ProductForm({ initial, mode = 'create' }) {
     }, [initial?.tags]);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState({});
+
     const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
-    const [availableMaterials, setAvailableMaterials] = useState([]);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [filterOptions, setFilterOptions] = useState({});
+
+    const catConfig = form.category ? getCategoryConfig(form.category) : null;
+    const formFields = catConfig?.formFields || [];
 
     useEffect(() => {
-        const p = { isActive: 'true' };
-        if (form.category) p.category = form.category;
+        if (!form.category) {
+            setBrands([]);
+            setModels([]);
+            setFilterOptions({});
+            return;
+        }
+        const p = { isActive: 'true', category: form.category };
         adminListBrands(p).then(setBrands).catch(() => {});
-    }, [form.category]);
-
-    useEffect(() => {
-        if (form.category) {
-            api.get(`/category-materials/${encodeURIComponent(form.category)}`)
-                .then((r) => setAvailableMaterials(r.data?.data || [])).catch(() => setAvailableMaterials([]));
-        } else {
-            setAvailableMaterials([]);
+        const attrKeys = catConfig?.attrKeys || [];
+        for (const key of attrKeys) {
+            fetchFilterOptions(key).then((opts) => {
+                setFilterOptions((prev) => ({ ...prev, [key]: opts }));
+            }).catch(() => {});
         }
     }, [form.category]);
 
     useEffect(() => {
-        if (!form.brand) { setModels([]); return; }
+        if (!form.brand || !formFields.includes('model')) { setModels([]); return; }
+        setModelsLoading(true);
         const found = brands.find((b) => b.name === form.brand || String(b.id) === form.brand);
         if (found) {
-            const p = {};
-            if (form.category) p.category = form.category;
-            api.get(`/brands/${found.id}/models`, { params: p }).then((r) => setModels(r.data?.data || [])).catch(() => setModels([]));
+            api.get(`/brands/${found.id}/models`, { params: { category: form.category } })
+                .then((r) => setModels(r.data?.data || []))
+                .catch(() => setModels([]))
+                .finally(() => setModelsLoading(false));
+        } else {
+            setModels([]);
+            setModelsLoading(false);
         }
     }, [form.brand, brands, form.category]);
 
     const set = (k) => (e) => {
         const v = e?.target?.type === 'checkbox' ? e.target.checked : e?.target?.value ?? e;
         setForm((f) => ({ ...f, [k]: v }));
+    };
+
+    const setAttr = (key) => (e) => {
+        const v = e?.target?.value ?? e;
+        setForm((f) => ({ ...f, attributes: { ...f.attributes, [key]: v } }));
+    };
+
+    const setCategory = (v) => {
+        setForm((f) => ({
+            ...f,
+            category: v,
+            brand: '',
+            phoneModel: '',
+            attributes: {}
+        }));
     };
 
     const addImage = () => {
@@ -167,6 +193,12 @@ export default function ProductForm({ initial, mode = 'create' }) {
         if (!form.category?.trim()) errs.category = 'Required';
         const price = numOrUndefined(form.price);
         if (price === undefined || price < 0) errs.price = 'Enter a valid price';
+        const compareAtPrice = numOrUndefined(form.compareAtPrice);
+        if (compareAtPrice === undefined || compareAtPrice < 0) {
+            errs.compareAtPrice = 'Required';
+        } else if (price !== undefined && compareAtPrice < price) {
+            errs.compareAtPrice = 'Must be ≥ Price';
+        }
         setErrors(errs);
         if (Object.keys(errs).length) return;
 
@@ -176,7 +208,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
             sku: form.sku?.trim() || undefined,
             description: form.description.trim(),
             price,
-            compareAtPrice: numOrUndefined(form.compareAtPrice),
+            compareAtPrice,
             category: form.category.trim(),
             phoneModel: form.phoneModel?.trim() || undefined,
             brand: form.brand?.trim() || undefined,
@@ -186,10 +218,12 @@ export default function ProductForm({ initial, mode = 'create' }) {
             lowStockThreshold: numOrUndefined(form.lowStockThreshold) ?? 5,
             isActive: !!form.isActive,
             isFeatured: !!form.isFeatured,
-            isDeviceSpecific: !!form.isDeviceSpecific,
-            materials: Array.isArray(form.materials) ? form.materials : [],
-            tags
+            tags,
+            attributes: form.attributes || {}
         };
+        Object.keys(payload.attributes).forEach((k) => {
+            if (!payload.attributes[k]) delete payload.attributes[k];
+        });
 
         setSaving(true);
         try {
@@ -216,10 +250,41 @@ export default function ProductForm({ initial, mode = 'create' }) {
         }
     };
 
-    const categoryConfig = form.category ? getCategoryConfig(form.category) : null;
-    const isDeviceCategory = form.category && isDeviceSpecificCategory(form.category);
-    const categoryGroup = categoryConfig?.name || null;
-    const showDeviceFields = form.isDeviceSpecific && isDeviceCategory;
+    const renderFormField = (fieldKey) => {
+        if (fieldKey === 'brand') {
+            return (
+                <Field key="brand" label={FORM_FIELD_LABELS.brand} error={errors.brand}>
+                    <select value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value, phoneModel: '' }))} className="input-luxe">
+                        <option value="">{FORM_FIELD_PLACEHOLDERS.brand}</option>
+                        {brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+                    </select>
+                </Field>
+            );
+        }
+        if (fieldKey === 'model') {
+            return (
+                <Field key="model" label={FORM_FIELD_LABELS.model} hint="Select brand first" error={errors.phoneModel}>
+                    <select value={form.phoneModel} onChange={set('phoneModel')} className="input-luxe" disabled={!form.brand}>
+                        <option value="">{!form.brand ? 'Select brand first' : modelsLoading ? 'Loading...' : FORM_FIELD_PLACEHOLDERS.model}</option>
+                        {models.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                    </select>
+                </Field>
+            );
+        }
+        if (fieldKey === 'protectorType' || fieldKey === 'connectorType' || fieldKey === 'chargingSpeed' || fieldKey === 'cableType' || fieldKey === 'cableConnector' || fieldKey === 'earphoneType' || fieldKey === 'capacity') {
+            const options = filterOptions[fieldKey] || [];
+            const attrValue = form.attributes?.[fieldKey] || '';
+            return (
+                <Field key={fieldKey} label={FORM_FIELD_LABELS[fieldKey]} error={errors[`attributes.${fieldKey}`]}>
+                    <select value={attrValue} onChange={setAttr(fieldKey)} className="input-luxe">
+                        <option value="">{FORM_FIELD_PLACEHOLDERS[fieldKey]}</option>
+                        {options.map((opt) => <option key={opt.id} value={opt.value}>{opt.label || opt.value}</option>)}
+                    </select>
+                </Field>
+            );
+        }
+        return null;
+    };
 
     return (
         <form onSubmit={submit} className="space-y-6">
@@ -232,69 +297,17 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <Field label="SKU" hint="Auto-generated from name if blank" error={errors.sku}>
                         <input value={form.sku} onChange={set('sku')} className="input-luxe" />
                     </Field>
-                    <Field label="Category *" error={errors.category} hint={categoryGroup ? `Section: ${categoryGroup}` : 'Select the product category'}>
-                        <SearchableSelect
-                            value={form.category}
-                            onChange={(v) => setForm((f) => ({ ...f, category: v, brand: '', phoneModel: '' }))}
-                            options={ALL_CATEGORY_NAMES}
-                            placeholder="Select category"
-                        />
+                    <Field label="Category *" error={errors.category}>
+                        <select value={form.category} onChange={(e) => setCategory(e.target.value)} className="input-luxe">
+                            <option value="">Select category...</option>
+                            {CATEGORIES.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
                     </Field>
-                    {isDeviceCategory && (
-                        <div className="md:col-span-2">
-                            <label className="flex cursor-pointer items-center gap-3 border border-border bg-cream px-4 py-3 hover:border-ink transition-colors">
-                                <input type="checkbox" checked={form.isDeviceSpecific}
-                                    onChange={(e) => setForm((f) => ({ ...f, isDeviceSpecific: e.target.checked, brand: '', phoneModel: '' }))}
-                                    className="h-4 w-4 accent-ink" />
-                                <div>
-                                    <span className="text-sm font-medium">Device-specific product</span>
-                                    <p className="text-[11px] text-text-light">Enable to associate this product with a specific brand and device model</p>
-                                </div>
-                            </label>
-                        </div>
-                    )}
-                    {showDeviceFields && (
-                        <>
-                            <Field label="Brand" hint="Device brand" error={errors.brand}>
-                                <select value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value, phoneModel: '' }))} className="input-luxe">
-                                    <option value="">Select brand…</option>
-                                    {brands.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
-                                </select>
-                            </Field>
-                            <Field label="Compatible Model" hint="Specific device model" error={errors.phoneModel}>
-                                <select value={form.phoneModel} onChange={set('phoneModel')} className="input-luxe" disabled={!form.brand}>
-                                    <option value="">{form.brand ? 'Select model…' : 'Select brand first'}</option>
-                                    {models.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
-                                </select>
-                            </Field>
-                        </>
-                    )}
-                    {form.category && availableMaterials.length > 0 && (
-                        <Field label="Materials" hint="Select one or more materials" error={errors.materials}>
-                            <div className="flex flex-wrap gap-1.5">
-                                {availableMaterials.map((m) => {
-                                    const selected = form.materials?.includes(m.name);
-                                    return (
-                                        <button key={m.id} type="button" onClick={() => {
-                                            setForm((f) => ({
-                                                ...f,
-                                                materials: selected
-                                                    ? f.materials.filter((x) => x !== m.name)
-                                                    : [...(f.materials || []), m.name]
-                                            }));
-                                        }}
-                                            className={`px-3 py-1.5 text-xs border transition-colors ${
-                                                selected ? 'bg-ink text-cream border-ink' : 'border-border bg-cream text-ink hover:border-ink'
-                                            }`}>
-                                            {m.name}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </Field>
-                    )}
+
+                    {form.category && formFields.map((f) => renderFormField(f))}
+
                     <Field label="Tags" hint="Comma-separated">
-                        <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="input-luxe" placeholder="bestseller, slim, matte" />
+                        <input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} className="input-luxe" placeholder="bestseller, slim, fast-charging" />
                     </Field>
                 </div>
                 <div className="mt-5">
@@ -310,7 +323,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <Field label="Price (INR) *" error={errors.price}>
                         <input type="number" min="0" step="0.01" value={form.price} onChange={set('price')} className="input-luxe tabular-nums" />
                     </Field>
-                    <Field label="Compare-at price" hint="Show as struck-through" error={errors.compareAtPrice}>
+                    <Field label="MRP / Compare-at price *" hint="Must be ≥ Price. Shows strikethrough & discount badge" error={errors.compareAtPrice}>
                         <input type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={set('compareAtPrice')} className="input-luxe tabular-nums" />
                     </Field>
                     <Field label="Stock" error={errors.stock}>
@@ -339,14 +352,14 @@ export default function ProductForm({ initial, mode = 'create' }) {
                         value={imageUrl}
                         onChange={(e) => setImageUrl(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addImage(); } }}
-                        placeholder="https://…"
+                        placeholder="https://..."
                         className="input-luxe min-w-[260px] flex-1"
                     />
                     <button type="button" onClick={addImage} className="btn-secondary !px-5">
                         <ImagePlus className="h-4 w-4" /> Add URL
                     </button>
                     <label className={`btn-secondary !px-5 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {uploading ? 'Uploading…' : 'Upload file'}
+                        {uploading ? 'Uploading...' : 'Upload file'}
                         <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" disabled={uploading} />
                     </label>
                 </div>
@@ -384,7 +397,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
                     <X className="h-4 w-4" /> Cancel
                 </button>
                 <button type="submit" disabled={saving} className="btn-primary disabled:opacity-50">
-                    <Save className="h-4 w-4" /> {saving ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Create product'}
+                    <Save className="h-4 w-4" /> {saving ? 'Saving...' : mode === 'edit' ? 'Save changes' : 'Create product'}
                 </button>
             </div>
         </form>
