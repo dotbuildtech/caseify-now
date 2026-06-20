@@ -9,6 +9,12 @@ const normalize = (d) => {
     return { data: [], total: 0 };
 };
 
+const EXTRA_FILTER_KEYS = [
+    'phoneModel', 'protectorType', 'connectorType', 'chargingSpeed',
+    'cableType', 'cableConnector', 'earphoneType', 'capacity',
+    'material', 'device_type', 'port_type', 'wattage', 'length'
+];
+
 export const fetchProducts = async (params = {}) => {
     const p = { limit: 50 };
     if (params.q) p.q = params.q;
@@ -32,6 +38,9 @@ export const fetchProducts = async (params = {}) => {
     }
     if (params.page) p.page = params.page;
     if (params.limit) p.limit = params.limit;
+    for (const key of EXTRA_FILTER_KEYS) {
+        if (params[key] != null && params[key] !== '') p[key] = params[key];
+    }
     const res = await api.get('/products', { params: p });
     return normalize(res.data);
 };
@@ -42,3 +51,9 @@ export const searchProducts = (q) => api.get('/products/search', { params: { q }
 
 export const fetchFeaturedProducts = () =>
     api.get('/products', { params: { isFeatured: true, limit: 8 } }).then((r) => normalize(r.data));
+
+export const fetchFilterOptions = (key) =>
+    api.get('/filter-options', { params: key ? { key } : {} }).then((r) => r.data?.data || []);
+
+export const fetchFilters = (params = {}) =>
+    api.get('/filters', { params }).then((r) => r.data?.data || {});

@@ -8,7 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatINR } from '@/utils/format';
 import ProductCard, { getProductImage, getProductPrice, getProductOriginalPrice } from '@/components/product/ProductCard';
-import { isDeviceSpecificCategory } from '@/utils/constants';
+import { getCategoryConfig } from '@/utils/constants';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 
@@ -141,7 +141,7 @@ export default function ProductPage() {
                             </span>}
                         </div>
                     )}
-                    {isDeviceSpecificCategory(product.category) && (
+                    {product.brand && (
                         <p className="mt-2 text-[11px] text-text-light/60 italic">This product is designed for specific devices. Please ensure compatibility before purchasing.</p>
                     )}
 

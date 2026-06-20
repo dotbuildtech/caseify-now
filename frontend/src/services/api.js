@@ -9,6 +9,7 @@ const api = axios.create({
 
 let refreshPromise = null;
 let redirectingToLogin = false;
+let loginRedirectTime = 0;
 
 api.interceptors.request.use((config) => {
     config._startTime = Date.now();
@@ -35,8 +36,10 @@ api.interceptors.response.use(
             if (refreshed) {
                 return api(original);
             }
-            if (!redirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            const now = Date.now();
+            if (!redirectingToLogin && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && now - loginRedirectTime > 5000) {
                 redirectingToLogin = true;
+                loginRedirectTime = now;
                 window.location.href = '/login';
             }
             return Promise.reject(err);

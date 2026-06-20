@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const compression = require('compression');
 const { connectDB } = require('./config/db');
 const originCheck = require('./middleware/originCheck');
 const requestId = require('./middleware/requestId');
@@ -32,6 +33,15 @@ if (isProduction) {
 app.use(requestId);
 
 app.use(cookieParser());
+
+app.use(compression({
+    level: 6,
+    threshold: 512,
+    filter: (req, res) => {
+        if (req.headers['x-no-compression']) return false;
+        return compression.filter(req, res);
+    }
+}));
 
 app.use(helmet({
     contentSecurityPolicy: isProduction ? {
@@ -164,6 +174,8 @@ app.use('/api/contact', require('./routes/contactRoutes'));
 app.use('/api/filters', require('./routes/filterRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
 app.use('/api/homepage', require('./routes/homepageRoutes'));
+app.use('/api/filter-options', require('./routes/filterOptionRoutes'));
+app.use('/api/admin/filter-options', require('./routes/adminFilterOptionRoutes'));
 app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 
 app.use('/uploads', express.static('uploads'));

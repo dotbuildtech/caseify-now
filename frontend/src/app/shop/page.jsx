@@ -2,20 +2,20 @@
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { fetchProducts } from '@/services/productApi';
+import { fetchCachedFilters } from '@/services/filterCache';
 import ProductCard from '@/components/product/ProductCard';
 import SearchBar from '@/components/shop/SearchBar';
-import { CATEGORIES, getCategoryConfig } from '@/utils/constants';
-import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor, Search, SlidersHorizontal, X, RotateCcw, ChevronDown } from 'lucide-react';
-import api from '@/services/api';
+import { CATEGORIES, FORM_FIELD_LABELS } from '@/utils/constants';
+import { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Search, SlidersHorizontal, X, RotateCcw, ChevronDown } from 'lucide-react';
 
-const ICON_MAP = { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch, Monitor };
+const ICON_MAP = { Smartphone, Shield, Zap, Headphones, Battery, Cable, Watch };
 
 const SORTS = [
-    { v: 'featured', label: 'Featured', sort: '-createdAt' },
     { v: 'newest', label: 'Newest First', sort: '-createdAt' },
     { v: 'price_asc', label: 'Price: Low to High', sort: 'price' },
     { v: 'price_desc', label: 'Price: High to Low', sort: '-price' },
-    { v: 'rating', label: 'Best Rating', sort: '-createdAt' }
+    { v: 'name_asc', label: 'Name: A to Z', sort: 'name' },
+    { v: 'name_desc', label: 'Name: Z to A', sort: '-name' }
 ];
 
 function ActiveFilters({ filters, onRemove, onClear }) {
@@ -28,7 +28,10 @@ function ActiveFilters({ filters, onRemove, onClear }) {
     if (filters.inStock) chips.push({ key: 'inStock', label: 'In Stock' });
     Object.entries(filters).forEach(([k, v]) => {
         if (['q', 'category', 'brand', 'phoneModel', 'priceMin', 'priceMax', 'inStock', 'materials', 'sort'].includes(k)) return;
-        if (v) chips.push({ key: k, label: `${k.replace(/_/g, ' ')}: ${v}` });
+        if (v) {
+            const label = FORM_FIELD_LABELS[k] || k.replace(/_/g, ' ');
+            chips.push({ key: k, label: `${label}: ${v}` });
+        }
     });
     if (chips.length === 0) return null;
     return (
@@ -58,7 +61,7 @@ function ShopContent() {
     const [priceMin, setPriceMin] = useState(params.get('priceMin') || '');
     const [priceMax, setPriceMax] = useState(params.get('priceMax') || '');
     const [inStock, setInStock] = useState(params.get('inStock') === 'true');
-    const [sort, setSort] = useState(params.get('sort') || 'featured');
+    const [sort, setSort] = useState(params.get('sort') || 'newest');
     const [attrFilters, setAttrFilters] = useState({});
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
@@ -68,36 +71,44 @@ function ShopContent() {
     const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
     const [modelsLoading, setModelsLoading] = useState(false);
-    const [availableMaterials, setAvailableMaterials] = useState([]);
-    const [selectedMaterials, setSelectedMaterials] = useState([]);
+    const [filterOptions, setFilterOptions] = useState({});
 
-    const catConfig = useMemo(() => getCategoryConfig(category), [category]);
-    const isDeviceSpecific = catConfig?.deviceSpecific ?? false;
-    const filterDefs = catConfig?.filters || [];
-
-    useEffect(() => {
-        const p = { isActive: 'true' };
-        if (category) p.category = category;
-        api.get('/brands', { params: p }).then((r) => setBrands(r.data?.data || [])).catch(() => {});
+    const catConfig = useMemo(() => {
+        if (!category) return null;
+        return CATEGORIES.find((c) => c.name === category) || null;
     }, [category]);
 
+    const filterFields = catConfig?.filterFields || [];
+    const attrKeys = catConfig?.attrKeys || [];
+
     useEffect(() => {
-        if (category) {
-            api.get(`/category-materials/${encodeURIComponent(category)}`)
-                .then((r) => setAvailableMaterials(r.data?.data || [])).catch(() => setAvailableMaterials([]));
-        } else {
-            setAvailableMaterials([]);
+        if (!category) {
+            setBrands([]);
+            setModels([]);
+            setFilterOptions({});
+            return;
         }
+        fetchCachedFilters({ category }).then((data) => {
+            if (data.brands) setBrands(data.brands);
+            if (data.models) setModels(data.models);
+            if (data.filterOptions) setFilterOptions(data.filterOptions);
+        }).catch(() => {});
     }, [category]);
 
     useEffect(() => {
-        if (!brand) { setModels([]); setPhoneModel(''); return; }
+        if (!brand || !filterFields.includes('model')) { setModels([]); return; }
         setModelsLoading(true);
         const found = brands.find((b) => b.name === brand || String(b.id) === brand);
-        const brandId = found?.id || brand;
-        const p = {};
-        if (category) p.category = category;
-        api.get(`/brands/${brandId}/models`, { params: p }).then((r) => setModels(r.data?.data || [])).catch(() => setModels([])).finally(() => setModelsLoading(false));
+        if (found) {
+            fetch(`/api/brands/${found.id}/models?category=${encodeURIComponent(category || '')}`)
+                .then((r) => r.json())
+                .then((d) => setModels(d.data || []))
+                .catch(() => setModels([]))
+                .finally(() => setModelsLoading(false));
+        } else {
+            setModels([]);
+            setModelsLoading(false);
+        }
     }, [brand, brands, category]);
 
     const filterParams = useMemo(() => {
@@ -112,9 +123,8 @@ function ShopContent() {
         const s = SORTS.find((x) => x.v === sort);
         if (s) p.sort = s.sort;
         Object.entries(attrFilters).forEach(([k, v]) => { if (v) p[k] = v; });
-        if (selectedMaterials.length > 0) p.materials = selectedMaterials.join(',');
         return p;
-    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, attrFilters, selectedMaterials]);
+    }, [q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, attrFilters]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -141,8 +151,7 @@ function ShopContent() {
             if (priceMin) sp.set('priceMin', priceMin);
             if (priceMax) sp.set('priceMax', priceMax);
             if (inStock) sp.set('inStock', 'true');
-            if (selectedMaterials.length > 0) sp.set('materials', selectedMaterials.join(','));
-            if (sort && sort !== 'featured') sp.set('sort', sort);
+            if (sort && sort !== 'newest') sp.set('sort', sort);
             const qs = sp.toString();
             const url = qs ? `/shop?${qs}` : '/shop';
             router.replace(url, { scroll: false });
@@ -154,11 +163,12 @@ function ShopContent() {
         setCategory(cat);
         setBrand('');
         setPhoneModel('');
+        setAttrFilters({});
     };
 
     const clearFilters = () => {
         setQ(''); setCategory(''); setBrand(''); setPhoneModel('');
-        setPriceMin(''); setPriceMax(''); setInStock(false); setSort('featured'); setAttrFilters({}); setSelectedMaterials([]);
+        setPriceMin(''); setPriceMax(''); setInStock(false); setSort('newest'); setAttrFilters({});
     };
 
     const removeFilter = (key) => {
@@ -168,8 +178,7 @@ function ShopContent() {
         else if (key === 'phoneModel') setPhoneModel('');
         else if (key === 'price_range') { setPriceMin(''); setPriceMax(''); }
         else if (key === 'inStock') setInStock(false);
-        else if (key === 'materials') setSelectedMaterials([]);
-        else if (key === 'sort') setSort('featured');
+        else if (key === 'sort') setSort('newest');
         else setAttrFilters((prev) => { const n = { ...prev }; delete n[key]; return n; });
     };
 
@@ -191,79 +200,50 @@ function ShopContent() {
         return brands.filter((b) => b.name.toLowerCase().includes(s));
     }, [brands, brandSearch]);
 
-    const renderFilter = (fdef, idx) => {
-        if (fdef.type === 'range') {
-            return (
-                <div key={fdef.key} className="pb-4 border-b border-border last:border-0">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{fdef.label}</h4>
-                    <div className="flex items-center gap-2">
-                        <input type="number" placeholder="Min" value={fdef.key === 'price_range' ? priceMin : ''}
-                            onChange={(e) => { if (fdef.key === 'price_range') setPriceMin(e.target.value); }}
-                            className="w-full input-luxe !py-2 text-xs" />
-                        <span className="text-text-light text-xs">—</span>
-                        <input type="number" placeholder="Max" value={fdef.key === 'price_range' ? priceMax : ''}
-                            onChange={(e) => { if (fdef.key === 'price_range') setPriceMax(e.target.value); }}
-                            className="w-full input-luxe !py-2 text-xs" />
-                    </div>
-                </div>
-            );
-        }
-        if (fdef.type === 'checkbox') {
-            return (
-                <div key={fdef.key} className="pb-4 border-b border-border last:border-0">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{fdef.label}</h4>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                        {fdef.options.map((opt) => (
-                            <label key={opt} className="flex items-center gap-2 cursor-pointer text-xs py-0.5 hover:text-ink transition-colors">
-                                <input type="checkbox"
-                                    checked={attrFilters[fdef.key] === opt}
-                                    onChange={(e) => {
-                                        setAttrFilters((prev) => ({ ...prev, [fdef.key]: e.target.checked ? opt : '' }));
-                                    }}
-                                    className="h-3.5 w-3.5 accent-ink" />
-                                {opt}
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            );
-        }
-        if (fdef.type === 'select') {
-            let options = fdef.options || [];
-            let value = '';
-            let onChange = null;
-            let placeholder = `All ${fdef.label}`;
-            let loading = false;
+    const renderAttrFilter = (attrKey) => {
+        const options = filterOptions[attrKey] || [];
+        const value = attrFilters[attrKey] || '';
+        const label = FORM_FIELD_LABELS[attrKey] || attrKey;
+        return (
+            <div key={attrKey} className="pb-4 border-b border-border last:border-0">
+                <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{label}</h4>
+                <select value={value} onChange={(e) => setAttrFilters((prev) => ({ ...prev, [attrKey]: e.target.value }))} className="input-luxe text-xs">
+                    <option value="">All {label}</option>
+                    {options.map((opt) => <option key={opt.id} value={opt.value}>{opt.label || opt.value}</option>)}
+                </select>
+            </div>
+        );
+    };
 
-            if (fdef.source === 'brands') {
-                value = brand;
-                placeholder = value || 'All Brands';
-                const selectedBrand = brands.find((b) => b.name === value);
-                return (
-                    <div key={fdef.key} className="pb-4 border-b border-border last:border-0">
-                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{fdef.label}</h4>
+    const renderFilters = () => {
+        const items = [];
+        for (const field of filterFields) {
+            if (field === 'brand') {
+                items.push(
+                    <div key="brand" className="pb-4 border-b border-border last:border-0">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Brand</h4>
                         <div ref={brandRef} className="relative">
                             <button onClick={() => setBrandDropdownOpen(!brandDropdownOpen)}
                                 className="input-luxe text-xs flex items-center justify-between w-full">
-                                <span className={value ? '' : 'text-text-light'}>{placeholder}</span>
+                                <span className={brand ? '' : 'text-text-light'}>{brand || 'All Brands'}</span>
                                 <ChevronDown className={`h-3 w-3 transition-transform ${brandDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
                             {brandDropdownOpen && (
                                 <div className="absolute top-full left-0 right-0 z-50 mt-1 border border-border bg-surface shadow-lg max-h-56 overflow-hidden">
                                     <div className="p-2 border-b border-border">
                                         <input value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)}
-                                            placeholder="Search brands…"
+                                            placeholder="Search brands..."
                                             className="w-full border border-border bg-background-light px-2 py-1.5 text-xs outline-none"
                                             autoFocus />
                                     </div>
                                     <div className="max-h-40 overflow-y-auto">
                                         <button onClick={() => { setBrand(''); setPhoneModel(''); setBrandDropdownOpen(false); setBrandSearch(''); }}
-                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${!value ? 'bg-ink text-cream' : ''}`}>
+                                            className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${!brand ? 'bg-ink text-cream' : ''}`}>
                                             All Brands
                                         </button>
                                         {filteredBrands.map((b) => (
                                             <button key={b.id} onClick={() => { setBrand(b.name); setPhoneModel(''); setBrandDropdownOpen(false); setBrandSearch(''); }}
-                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${value === b.name ? 'bg-ink text-cream' : ''}`}>
+                                                className={`w-full text-left px-3 py-2 text-xs hover:bg-background-light transition-colors ${brand === b.name ? 'bg-ink text-cream' : ''}`}>
                                                 {b.name}
                                             </button>
                                         ))}
@@ -276,31 +256,23 @@ function ShopContent() {
                         </div>
                     </div>
                 );
-            } else if (fdef.source === 'models') {
-                options = models.map((m) => m.name);
-                value = phoneModel;
-                onChange = setPhoneModel;
-                placeholder = !brand ? 'Select brand first' : (modelsLoading ? 'Loading…' : 'All Models');
-                loading = modelsLoading;
-            } else {
-                value = attrFilters[fdef.key] || '';
-                onChange = (v) => setAttrFilters((prev) => ({ ...prev, [fdef.key]: v }));
+            } else if (field === 'model') {
+                items.push(
+                    <div key="model" className="pb-4 border-b border-border last:border-0">
+                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Model</h4>
+                        <select value={phoneModel} onChange={(e) => setPhoneModel(e.target.value)}
+                            disabled={!brand} className={`input-luxe text-xs ${!brand ? 'opacity-40 cursor-not-allowed' : ''}`}>
+                            <option value="">{!brand ? 'Select brand first' : modelsLoading ? 'Loading...' : 'All Models'}</option>
+                            {models.map((m) => <option key={m.id} value={m.name}>{m.name}</option>)}
+                        </select>
+                    </div>
+                );
             }
-
-            const isDisabled = fdef.source === 'models' && !brand;
-            return (
-                <div key={fdef.key} className="pb-4 border-b border-border last:border-0">
-                    <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">{fdef.label}</h4>
-                    <select value={value} onChange={(e) => onChange && onChange(e.target.value)}
-                        disabled={isDisabled}
-                        className={`input-luxe text-xs ${loading ? 'opacity-60' : ''} ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}>
-                        <option value="">{placeholder}</option>
-                        {options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                </div>
-            );
         }
-        return null;
+        for (const attrKey of attrKeys) {
+            items.push(renderAttrFilter(attrKey));
+        }
+        return items;
     };
 
     return (
@@ -340,7 +312,7 @@ function ShopContent() {
                         <div className="flex-1 flex items-center border border-border bg-surface px-3 py-2.5 focus-within:border-ink">
                             <Search className="h-4 w-4 text-text-light shrink-0" />
                             <input value={q} onChange={(e) => setQ(e.target.value)}
-                                placeholder="Search…" className="w-full bg-transparent px-2 text-sm outline-none placeholder:text-text-light" />
+                                placeholder="Search..." className="w-full bg-transparent px-2 text-sm outline-none placeholder:text-text-light" />
                         </div>
                         <button onClick={() => setMobileFilterOpen(true)} className="btn-ghost !px-3 !py-2.5 flex items-center gap-2 text-xs">
                             <SlidersHorizontal className="h-4 w-4" /> Filters
@@ -366,27 +338,7 @@ function ShopContent() {
                                         <span>In stock only</span>
                                     </label>
                                 </div>
-                                {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
-                                {availableMaterials.length > 0 && (
-                                    <div className="pb-4 border-b border-border">
-                                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Material</h4>
-                                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                                            {availableMaterials.map((m) => (
-                                                <label key={m.id} className="flex items-center gap-2 cursor-pointer text-xs py-0.5 hover:text-ink transition-colors">
-                                                    <input type="checkbox"
-                                                        checked={selectedMaterials.includes(m.name)}
-                                                        onChange={(e) => {
-                                                            setSelectedMaterials((prev) =>
-                                                                e.target.checked ? [...prev, m.name] : prev.filter((x) => x !== m.name)
-                                                            );
-                                                        }}
-                                                        className="h-3.5 w-3.5 accent-ink" />
-                                                    {m.name}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                                {renderFilters()}
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="w-full btn-ghost text-xs">
                                         <RotateCcw className="h-3 w-3" /> Clear all filters
@@ -410,27 +362,7 @@ function ShopContent() {
                                         <span>In stock only</span>
                                     </label>
                                 </div>
-                                {filterDefs.map((fdef, i) => renderFilter(fdef, i))}
-                                {availableMaterials.length > 0 && (
-                                    <div className="pb-4 border-b border-border last:border-0">
-                                        <h4 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light mb-2">Material</h4>
-                                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                                            {availableMaterials.map((m) => (
-                                                <label key={m.id} className="flex items-center gap-2 cursor-pointer text-xs py-0.5 hover:text-ink transition-colors">
-                                                    <input type="checkbox"
-                                                        checked={selectedMaterials.includes(m.name)}
-                                                        onChange={(e) => {
-                                                            setSelectedMaterials((prev) =>
-                                                                e.target.checked ? [...prev, m.name] : prev.filter((x) => x !== m.name)
-                                                            );
-                                                        }}
-                                                        className="h-3.5 w-3.5 accent-ink" />
-                                                    {m.name}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
+                                {renderFilters()}
                                 {hasActiveFilters && (
                                     <button onClick={clearFilters} className="w-full btn-ghost text-xs">
                                         <RotateCcw className="h-3 w-3" /> Clear all filters
@@ -442,7 +374,7 @@ function ShopContent() {
 
                     <div className="min-w-0">
                         <div className="hidden md:flex items-center justify-between mb-6">
-                            <p className="text-xs text-text-light">{loading ? 'Searching…' : `${total} ${total === 1 ? 'product' : 'products'} found`}</p>
+                            <p className="text-xs text-text-light">{loading ? 'Searching...' : `${total} ${total === 1 ? 'product' : 'products'} found`}</p>
                             <div className="flex items-center gap-3">
                                 <select value={sort} onChange={(e) => setSort(e.target.value)} className="input-luxe !py-2 text-xs">
                                     {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
@@ -450,7 +382,7 @@ function ShopContent() {
                             </div>
                         </div>
 
-                        <ActiveFilters filters={{ q, category, brand, phoneModel, priceMin, priceMax, inStock, materials: selectedMaterials.join(','), sort }} onRemove={removeFilter} onClear={clearFilters} />
+                        <ActiveFilters filters={{ q, category, brand, phoneModel, priceMin, priceMax, inStock, sort, ...attrFilters }} onRemove={removeFilter} onClear={clearFilters} />
 
                         {loading ? (
                             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5">

@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const DeviceModel = require('../models/DeviceModel');
 const Brand = require('../models/Brand');
+const { invalidateFilterCache } = require('../utils/cacheManager');
 
 exports.listDeviceModels = asyncHandler(async (req, res) => {
     const where = {};
@@ -38,6 +39,7 @@ exports.createDeviceModel = asyncHandler(async (req, res) => {
     if (!brand) { res.status(404); throw new Error('Brand not found'); }
     const slug = `${brand.slug}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
     const model = await DeviceModel.create({ name, slug, BrandId, deviceType: deviceType || 'phone' });
+    invalidateFilterCache();
     res.status(201).json(model);
 });
 
@@ -60,6 +62,7 @@ exports.updateDeviceModel = asyncHandler(async (req, res) => {
     if (deviceType !== undefined) updates.deviceType = deviceType;
     if (isActive !== undefined) updates.isActive = isActive;
     await model.update(updates);
+    invalidateFilterCache();
     res.json(model);
 });
 
@@ -67,5 +70,6 @@ exports.deleteDeviceModel = asyncHandler(async (req, res) => {
     const model = await DeviceModel.findByPk(req.params.id);
     if (!model) { res.status(404); throw new Error('Device model not found'); }
     await model.destroy({ force: req.query.force === 'true' });
+    invalidateFilterCache();
     res.json({ message: 'Device model deleted' });
 });

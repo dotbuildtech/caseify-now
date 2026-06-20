@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getUnreadCount } from '@/services/contactApi';
 
@@ -52,6 +52,7 @@ const NAV = [
     { href: '/admin/models', label: 'Models', Icon: Smartphone },
     { href: '/admin/category-brands', label: 'Category Links', Icon: Link2 },
     { href: '/admin/materials', label: 'Materials', Icon: Layers },
+    { href: '/admin/filter-options', label: 'Filter Options', Icon: SlidersHorizontal },
     { href: '/admin/hero-slides', label: 'Hero Slides', Icon: Image },
     { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 }
 ];

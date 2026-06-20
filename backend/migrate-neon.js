@@ -63,6 +63,50 @@ const run = async (sql) => {
         // Add UserId FK index for Orders if missing
         await run(`CREATE INDEX IF NOT EXISTS idx_orders_userid_fk ON "Orders" ("UserId");`);
 
+        // ============================================================
+        // Migration: Filter Performance Indexes
+        // ============================================================
+
+        // 1. Brand indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_brands_is_active ON "Brands" ("isActive") WHERE "isActive" = true;`);
+        await run(`CREATE INDEX IF NOT EXISTS idx_brands_is_active_name ON "Brands" ("isActive", "name") WHERE "isActive" = true;`);
+
+        // 2. Category indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_categories_is_active ON "Categories" ("isActive") WHERE "isActive" = true;`);
+
+        // 3. CategoryBrand indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_category_brands_active ON "CategoryBrands" ("categoryName", "isActive") WHERE "isActive" = true;`);
+        await run(`CREATE INDEX IF NOT EXISTS idx_category_brands_active_brand ON "CategoryBrands" ("categoryName", "isActive", "BrandId") WHERE "isActive" = true;`);
+
+        // 4. DeviceModel indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_device_models_brand_active ON "DeviceModels" ("BrandId", "isActive") WHERE "isActive" = true;`);
+        await run(`CREATE INDEX IF NOT EXISTS idx_device_models_brand_active_name ON "DeviceModels" ("BrandId", "isActive", "name") WHERE "isActive" = true;`);
+
+        // 5. FilterOption indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_filter_options_key_active ON "FilterOptions" ("key", "isActive", "sortOrder", "value") WHERE "isActive" = true;`);
+
+        // 6. Product indexes for MIN/MAX price aggregation
+        await run(`CREATE INDEX IF NOT EXISTS idx_products_active_price ON "Products" ("isActive", "price") WHERE "isActive" = true;`);
+        // idx_products_active_category_price already exists from migration above
+
+        // 7. Product attribute JSONB GIN index
+        await run(`CREATE INDEX IF NOT EXISTS idx_products_attributes_gin ON "Products" USING gin ("attributes" jsonb_path_ops);`);
+
+        // 8. Product brand + category indexes
+        await run(`CREATE INDEX IF NOT EXISTS idx_products_active_brand ON "Products" ("isActive", "brand") WHERE "isActive" = true AND "brand" IS NOT NULL;`);
+        await run(`CREATE INDEX IF NOT EXISTS idx_products_active_category ON "Products" ("isActive", "category") WHERE "isActive" = true;`);
+
+        // 9. Composite covering index for price-range query
+        await run(`CREATE INDEX IF NOT EXISTS idx_products_price_active_covering ON "Products" ("isActive", "price") INCLUDE ("id") WHERE "isActive" = true;`);
+
+        // 10. Analyze tables to update query planner statistics
+        await run(`ANALYZE "Brands";`);
+        await run(`ANALYZE "Categories";`);
+        await run(`ANALYZE "CategoryBrands";`);
+        await run(`ANALYZE "DeviceModels";`);
+        await run(`ANALYZE "FilterOptions";`);
+        await run(`ANALYZE "Products";`);
+
         console.log('Migration complete');
         process.exit(0);
     } catch (err) {

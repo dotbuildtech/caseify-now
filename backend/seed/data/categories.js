@@ -5,8 +5,7 @@ const CATEGORIES = [
     { name: 'Earphones & Earbuds', slug: 'earphones-earbuds', description: 'Wired and wireless earphones, earbuds, and headphones' },
     { name: 'Power Banks', slug: 'power-banks', description: 'Portable chargers and power banks' },
     { name: 'Cables', slug: 'cables', description: 'Charging cables, data cables, adapters' },
-    { name: 'Smart Watches', slug: 'smart-watches', description: 'Smartwatches and fitness bands' },
-    { name: 'Laptop Accessories', slug: 'laptop-accessories', description: 'Laptop cases, sleeves, stands, and peripherals' }
+    { name: 'Smart Watches', slug: 'smart-watches', description: 'Smartwatches and fitness bands' }
 ];
 
 module.exports = CATEGORIES;

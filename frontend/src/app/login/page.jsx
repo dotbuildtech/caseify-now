@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -10,8 +10,12 @@ function LoginContent() {
     const router = useRouter();
     const params = useSearchParams();
     const redirect = params.get('redirect') || '/';
-    const { login, googleLogin } = useAuth();
+    const { user, login, googleLogin } = useAuth();
     const toast = useToast();
+
+    useEffect(() => {
+        if (user) router.replace(redirect);
+    }, [user, redirect, router]);
     const [form, setForm] = useState({ email: '', password: '' });
     const [submitting, setSubmitting] = useState(false);
     const [googleSubmitting, setGoogleSubmitting] = useState(false);

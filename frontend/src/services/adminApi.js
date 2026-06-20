@@ -159,3 +159,19 @@ export const adminGetCategoryMaterials = (categoryName) =>
 export const adminSetCategoryMaterials = (categoryName, materialIds) =>
     api.post('/category-materials/bulk', { categoryName, materialIds })
         .then((r) => { clearApiCache(); return r.data?.data || []; });
+
+// ---------- Filter Options (admin) ----------
+export const adminListFilterOptions = (params = {}) =>
+    api.get('/admin/filter-options', { params }).then((r) => r.data?.data || []);
+
+export const adminGetFilterOption = (id) =>
+    api.get(`/admin/filter-options/${id}`).then((r) => r.data);
+
+export const adminCreateFilterOption = (payload) =>
+    api.post('/admin/filter-options', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminUpdateFilterOption = (id, payload) =>
+    api.put(`/admin/filter-options/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminDeleteFilterOption = (id) =>
+    api.delete(`/admin/filter-options/${id}`).then((r) => { clearApiCache(); return r.data; });

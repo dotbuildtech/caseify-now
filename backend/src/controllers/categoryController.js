@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const Category = require('../models/Category');
+const { invalidateFilterCache, invalidateCategoryCache } = require('../utils/cacheManager');
 
 exports.listCategories = asyncHandler(async (req, res) => {
     const where = {};
@@ -32,6 +33,8 @@ exports.createCategory = asyncHandler(async (req, res) => {
     }
     const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'category';
     const category = await Category.create({ name: name.trim(), slug, description, image });
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.status(201).json(category);
 });
 
@@ -48,6 +51,8 @@ exports.updateCategory = asyncHandler(async (req, res) => {
     if (image !== undefined) updates.image = image;
     if (isActive !== undefined) updates.isActive = isActive;
     await category.update(updates);
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.json(category);
 });
 
@@ -55,5 +60,7 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
     const category = await Category.findByPk(req.params.id);
     if (!category) { res.status(404); throw new Error('Category not found'); }
     await category.destroy({ force: req.query.force === 'true' });
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.json({ message: 'Category deleted' });
 });

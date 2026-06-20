@@ -36,11 +36,6 @@ const CATEGORY_BRANDS = {
         'realme', 'xiaomi', 'ptron', 'boult-audio',
         'huawei', 'sony',
         'spigen', 'esr', 'ringke', 'belkin', 'uag'
-    ],
-    'Laptop Accessories': [
-        'dell', 'hp', 'lenovo', 'acer', 'asus', 'apple', 'samsung',
-        'microsoft', 'xiaomi', 'huawei',
-        'anker', 'belkin', 'portronics', 'mi', 'spigen', 'ambrane', 'urbn'
     ]
 };
 

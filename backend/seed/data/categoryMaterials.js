@@ -28,10 +28,6 @@ const CATEGORY_MATERIALS = {
     'Smart Watches': [
         'Silicone', 'Leather', 'Metal', 'Stainless Steel', 'Fabric',
         'Plastic', 'Rubber', 'Ceramic', 'Wood', 'Nylon Braided'
-    ],
-    'Laptop Accessories': [
-        'Plastic', 'Aluminum', 'Polycarbonate', 'Fabric', 'Leather',
-        'Rubber', 'Metal', 'Carbon Fiber', 'Canvas', 'Neoprene'
     ]
 };
 

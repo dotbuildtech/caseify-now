@@ -2,6 +2,7 @@ const { Op } = require('sequelize');
 const asyncHandler = require('../utils/asyncHandler');
 const CategoryBrand = require('../models/CategoryBrand');
 const Brand = require('../models/Brand');
+const { invalidateFilterCache } = require('../utils/cacheManager');
 
 exports.listForCategory = asyncHandler(async (req, res) => {
     const { categoryName } = req.params;
@@ -36,10 +37,12 @@ exports.create = asyncHandler(async (req, res) => {
     if (!created) {
         if (!link.isActive) {
             await link.update({ isActive: true });
+            invalidateFilterCache();
             return res.json(link);
         }
         return res.status(200).json(link);
     }
+    invalidateFilterCache();
     res.status(201).json(link);
 });
 
@@ -48,6 +51,7 @@ exports.remove = asyncHandler(async (req, res) => {
     const link = await CategoryBrand.findByPk(id);
     if (!link) { res.status(404); throw new Error('Link not found'); }
     await link.destroy();
+    invalidateFilterCache();
     res.json({ message: 'Brand removed from category' });
 });
 
@@ -62,6 +66,7 @@ exports.bulkSet = asyncHandler(async (req, res) => {
             brandIds.map((BrandId) => ({ categoryName, BrandId }))
         );
     }
+    invalidateFilterCache();
     const links = await CategoryBrand.findAll({
         where: { categoryName },
         include: [{ model: Brand, attributes: ['id', 'name', 'slug'] }]

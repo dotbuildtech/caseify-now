@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const Brand = require('../models/Brand');
 const DeviceModel = require('../models/DeviceModel');
 const CategoryBrand = require('../models/CategoryBrand');
+const { invalidateFilterCache, invalidateCategoryCache } = require('../utils/cacheManager');
 
 exports.listBrands = asyncHandler(async (req, res) => {
     const where = {};
@@ -40,6 +41,8 @@ exports.createBrand = asyncHandler(async (req, res) => {
     }
     const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'brand';
     const brand = await Brand.create({ name: name.trim(), slug, logo, description });
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.status(201).json(brand);
 });
 
@@ -53,6 +56,8 @@ exports.updateBrand = asyncHandler(async (req, res) => {
     if (description !== undefined) updates.description = description;
     if (isActive !== undefined) updates.isActive = isActive;
     await brand.update(updates);
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.json(brand);
 });
 
@@ -60,6 +65,8 @@ exports.deleteBrand = asyncHandler(async (req, res) => {
     const brand = await Brand.findByPk(req.params.id);
     if (!brand) { res.status(404); throw new Error('Brand not found'); }
     await brand.destroy({ force: req.query.force === 'true' });
+    invalidateFilterCache();
+    invalidateCategoryCache();
     res.json({ message: 'Brand deleted' });
 });
 

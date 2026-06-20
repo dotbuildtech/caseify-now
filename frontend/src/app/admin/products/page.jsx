@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Search, Plus, Pencil, Trash2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { adminListProducts, adminDeleteProduct } from '@/services/adminApi';
 import { formatINR, formatDate } from '@/utils/format';
-import { PRODUCT_CATEGORIES } from '@/utils/constants';
+import { CATEGORY_NAMES } from '@/utils/constants';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 import SearchableSelect from '@/components/ui/SearchableSelect';
@@ -87,7 +87,7 @@ function AdminProductsPageContent() {
                 <SearchableSelect
                     value={category}
                     onChange={(v) => { setPage(1); setCategory(v); }}
-                    options={PRODUCT_CATEGORIES}
+                    options={CATEGORY_NAMES}
                     placeholder="All categories"
                 />
             </div>

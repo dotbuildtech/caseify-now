@@ -14,10 +14,6 @@ export function middleware(request) {
     const isPublic = [...PUBLIC_PATHS].some((p) => pathname === p || pathname.startsWith(p + '/'));
     const isAuthPage = [...AUTH_PATHS].some((p) => pathname === p);
 
-    if (isAuthPage && accessToken) {
-        return NextResponse.redirect(new URL('/', request.url));
-    }
-
     if (!isPublic && !accessToken && !pathname.startsWith('/_next') && !pathname.startsWith('/api') && !pathname.startsWith('/admin')) {
         const loginUrl = new URL('/login', request.url);
         loginUrl.searchParams.set('redirect', pathname);

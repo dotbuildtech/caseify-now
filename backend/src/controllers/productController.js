@@ -149,10 +149,14 @@ const buildProductWhere = (q, isAdmin) => {
         ];
     }
     const attrFields = ['material', 'device_type', 'port_type', 'wattage', 'capacity', 'cableType', 'cableConnector', 'cable_type', 'cable_connector', 'length', 'protectorType', 'connectorType', 'chargingSpeed', 'earphoneType'];
+    const attrValues = {};
     for (const field of attrFields) {
         if (q[field]) {
-            where.attributes = { ...where.attributes, [field]: q[field] };
+            attrValues[field] = q[field];
         }
+    }
+    if (Object.keys(attrValues).length > 0) {
+        where.attributes = { [Op.contains]: attrValues };
     }
     return where;
 };

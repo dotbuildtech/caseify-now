@@ -73,6 +73,7 @@ const CategoryBrand = require('./CategoryBrand');
 const Material = require('./Material');
 const CategoryMaterial = require('./CategoryMaterial');
 const Category = require('./Category');
+const FilterOption = require('./FilterOption');
 
 Brand.hasMany(DeviceModel, { foreignKey: 'BrandId', as: 'models' });
 DeviceModel.belongsTo(Brand, { foreignKey: 'BrandId' });
@@ -116,5 +117,6 @@ module.exports = {
     CategoryBrand,
     Material,
     CategoryMaterial,
-    Category
+    Category,
+    FilterOption
 };
