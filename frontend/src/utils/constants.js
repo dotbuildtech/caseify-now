@@ -1,9 +1,9 @@
 export const SITE = {
-    name: 'DotBuild',
+    name: 'Caseify Now',
     tagline: 'Premium Mobile Accessories',
     contact: {
         phone: '+91 98765 43210',
-        email: 'support@dotbuild.example',
+        email: 'support@caesifyNow.example',
         address: '456 Electronics Hub, Bangalore 560001'
     },
     social: { facebook: '', instagram: '', twitter: '' }
