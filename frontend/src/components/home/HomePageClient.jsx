@@ -15,10 +15,11 @@ const CategoryShowcase = dynamic(() => import('@/components/home/CategoryShowcas
                     <span className="eyebrow">— Browse Categories</span>
                     <h2 className="mt-4 mx-auto max-w-3xl font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl lg:text-7xl">Loading...</h2>
                 </div>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="aspect-[4/5] animate-pulse bg-background-light" />
-                    ))}
+                <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 [&>*]:mb-6">
+                    {Array.from({ length: 6 }).map((_, i) => {
+                        const sizes = ['aspect-[3/4]', 'aspect-[4/5]', 'aspect-square', 'aspect-[5/7]', 'aspect-[4/3]', 'aspect-[3/4]'];
+                        return <div key={i} className={`${sizes[i]} animate-pulse bg-background-light break-inside-avoid`} />;
+                    })}
                 </div>
             </div>
         </section>
@@ -95,10 +96,11 @@ export default function HomePageClient({ initialData }) {
                                 <span className="eyebrow">— Browse Categories</span>
                                 <h2 className="mt-4 mx-auto max-w-3xl font-display text-4xl leading-[1.05] tracking-editorial md:text-6xl lg:text-7xl">Loading...</h2>
                             </div>
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                {Array.from({ length: 6 }).map((_, i) => (
-                                    <div key={i} className="aspect-[4/5] animate-pulse bg-background-light" />
-                                ))}
+                            <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 [&>*]:mb-6">
+                                {Array.from({ length: 6 }).map((_, i) => {
+                                    const sizes = ['aspect-[3/4]', 'aspect-[4/5]', 'aspect-square', 'aspect-[5/7]', 'aspect-[4/3]', 'aspect-[3/4]'];
+                                    return <div key={i} className={`${sizes[i]} animate-pulse bg-background-light break-inside-avoid`} />;
+                                })}
                             </div>
                         </div>
                     </div>

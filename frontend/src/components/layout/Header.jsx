@@ -64,8 +64,8 @@ export default function Header() {
                 <Link href="/" className="flex items-center gap-2 shrink-0">
                     <img src="/logo.png" alt="Caseify Now" className="h-9 w-auto" />
                     <div className="flex flex-col leading-tight">
-                        <span className="font-display text-lg font-semibold tracking-editorial">{SITE.name}</span>
-                        <span className="text-[9px] font-medium uppercase tracking-[0.28em] text-text-light">Official Store</span>
+                        <span className="font-display text-[#5074D4] text-lg font-tracking-[-0.03em] tracking-editorial">{SITE.name}</span>
+                        <span className="text-[9px] font-medium uppercase tracking-[0.28em] text-text-light">─ Official Store</span>
                     </div>
                 </Link>
 
