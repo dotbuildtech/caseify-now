@@ -5,6 +5,7 @@ import CartDrawer from '@/components/cart/CartDrawer';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import QueryProvider from '@/components/QueryProvider';
 
 export const metadata = {
     title: 'Caseify Now — Premium Phone Cases & Accessories',
@@ -15,16 +16,18 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className="min-h-screen bg-background text-text">
-                <AuthProvider>
-                    <CartProvider>
-                        <ToastProvider>
-                            <Header />
-                            <main className="min-h-[60vh]">{children}</main>
-                            <Footer />
-                            <CartDrawer />
-                        </ToastProvider>
-                    </CartProvider>
-                </AuthProvider>
+                <QueryProvider>
+                    <AuthProvider>
+                        <CartProvider>
+                            <ToastProvider>
+                                <Header />
+                                <main className="min-h-[60vh]">{children}</main>
+                                <Footer />
+                                <CartDrawer />
+                            </ToastProvider>
+                        </CartProvider>
+                    </AuthProvider>
+                </QueryProvider>
             </body>
         </html>
     );

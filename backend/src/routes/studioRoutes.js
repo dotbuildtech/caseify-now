@@ -2,78 +2,118 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const asyncHandler = require('../utils/asyncHandler');
+const { Op } = require('sequelize');
+const Material = require('../models/Material');
+const prisma = require('../services/prismaClient');
 
 const studioLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false
+    windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false
 });
-
 const priceLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 60,
-    standardHeaders: true,
-    legacyHeaders: false
+    windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false
 });
 
-const { BRANDS, PHONE_MODELS, MATERIALS, MATERIAL_DESIGNS } = require('../../seed-studio');
+// GET /api/studio/brands - only active brands
+router.get('/brands', studioLimiter, asyncHandler(async (req, res) => {
+    const brands = await prisma.brand.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
+    });
+    res.json({ success: true, data: brands.map(b => b.name) });
+}));
 
-router.get('/brands', studioLimiter, (req, res) => {
-    res.json({ success: true, data: BRANDS });
-});
-
-router.get('/models', studioLimiter, (req, res) => {
+// GET /api/studio/models?brand=Apple
+router.get('/models', studioLimiter, asyncHandler(async (req, res) => {
     const { brand } = req.query;
-    const models = brand ? (PHONE_MODELS[brand] || []) : Object.values(PHONE_MODELS).flat();
-    res.json({ success: true, data: models });
-});
+    if (!brand) return res.json({ success: true, data: [] });
+    const brandRecord = await prisma.brand.findFirst({
+        where: { name: { equals: brand, mode: 'insensitive' }, isActive: true }
+    });
+    if (!brandRecord) return res.json({ success: true, data: [] });
+    const models = await prisma.deviceModel.findMany({
+        where: { BrandId: brandRecord.id, isActive: true },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
+    });
+    const data = models.map(m => ({
+        id: m.slug,
+        label: m.name,
+        size: '',
+        cameraCutout: null,
+        safeZone: null
+    }));
+    res.json({ success: true, data });
+}));
 
-router.get('/models/search', studioLimiter, (req, res) => {
+// GET /api/studio/models/search?q=iphone
+router.get('/models/search', studioLimiter, asyncHandler(async (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json({ success: true, data: [] });
-    const query = q.toLowerCase();
-    const results = [];
-    Object.entries(PHONE_MODELS).forEach(([brand, models]) => {
-        models.forEach((m) => {
-            if (m.label.toLowerCase().includes(query) || brand.toLowerCase().includes(query)) {
-                results.push({ ...m, brand });
-            }
-        });
+    const models = await prisma.deviceModel.findMany({
+        where: { name: { contains: q, mode: 'insensitive' }, isActive: true },
+        include: { Brands: { select: { name: true } } },
+        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+        take: 15
     });
-    res.json({ success: true, data: results.slice(0, 15) });
-});
+    res.json({
+        success: true,
+        data: models.map(m => ({ id: m.slug, label: m.name, brand: m.Brands?.name || '', size: '' }))
+    });
+}));
 
-router.get('/materials', studioLimiter, (req, res) => {
+// GET /api/studio/templates?modelId=iphone-16-pro
+router.get('/templates', studioLimiter, asyncHandler(async (req, res) => {
     const { modelId } = req.query;
-    const materials = MATERIALS.filter((m) => m.stock > 0);
-    res.json({ success: true, data: materials });
-});
+    if (!modelId) return res.json({ success: true, data: null });
+    const model = await prisma.deviceModel.findUnique({
+        where: { slug: modelId },
+        include: { DeviceTemplate: true, Brands: { select: { name: true } } }
+    });
+    if (!model || !model.DeviceTemplate) return res.json({ success: true, data: null });
+    const t = model.DeviceTemplate;
+    res.json({
+        success: true,
+        data: {
+            id: t.id,
+            brandName: model.Brands?.name || '',
+            modelName: model.name,
+            modelSlug: model.slug,
+            caseWidth: t.caseWidth,
+            caseHeight: t.caseHeight,
+            safeZone: { top: t.safeAreaTop, bottom: t.safeAreaBottom, left: t.safeAreaLeft, right: t.safeAreaRight },
+            bleedArea: t.bleedArea,
+            cornerRadius: t.cornerRadius,
+            cameraCutout: { x: t.cameraX, y: t.cameraY, w: t.cameraWidth, h: t.cameraHeight },
+            previewImage: t.previewImage,
+            svgMask: t.svgMask,
+            thumbnail: t.thumbnail,
+            basePrice: t.basePrice
+        }
+    });
+}));
 
-router.get('/materials/:materialId/designs', studioLimiter, (req, res) => {
-    const { materialId } = req.params;
-    const designs = (MATERIAL_DESIGNS[materialId] || []).filter((d) => d.isActive);
-    res.json({ success: true, data: designs });
-});
+// GET /api/studio/materials
+router.get('/materials', studioLimiter, asyncHandler(async (req, res) => {
+    const materials = await Material.findAll({
+        where: { isActive: true },
+        attributes: ['id', 'name', 'slug', 'description', 'price', 'isDefault'],
+        order: [['isDefault', 'DESC'], ['name', 'ASC']]
+    });
+    res.json({
+        success: true,
+        data: materials.map(m => ({ id: m.slug || String(m.id), label: m.name, price: m.price, description: m.description || '', isDefault: m.isDefault }))
+    });
+}));
 
-router.post('/calculate-price', priceLimiter, (req, res) => {
-    const { materialId, layerCount, hasText, hasImage } = req.body;
-    const material = MATERIALS.find((m) => m.id === materialId);
+// POST /api/studio/calculate-price
+router.post('/calculate-price', priceLimiter, asyncHandler(async (req, res) => {
+    const { materialId, layerCount } = req.body;
+    const byId = !isNaN(materialId) ? { id: parseInt(materialId) } : null;
+    const material = await Material.findOne({
+        where: { [Op.or]: [{ slug: materialId }, byId].filter(Boolean) }
+    });
     const base = material ? material.price : 399;
     const layerFee = layerCount > 2 ? (layerCount - 2) * 25 : 0;
     res.json({ success: true, price: base + layerFee, base, layerFee, total: base + layerFee });
-});
-
-router.get('/templates', studioLimiter, (req, res) => {
-    const templates = [
-        { id: 'tpl-minimal', label: 'Minimal', thumb: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=200&h=300&fit=crop&q=60', layers: [{ type: 'text', text: 'YOUR NAME', x: 50, y: 70, size: 24, color: '#FFFFFF', font: 'sans', rotation: 0, scale: 1, opacity: 1 }], bgColor: '#0A0A0A' },
-        { id: 'tpl-floral', label: 'Floral', thumb: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=200&h=300&fit=crop&q=60', layers: [], bgImage: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=600&q=70' },
-        { id: 'tpl-bold', label: 'Bold', thumb: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=200&h=300&fit=crop&q=60', layers: [{ type: 'text', text: 'LEGEND', x: 50, y: 50, size: 48, color: '#DC2626', font: 'sans', rotation: 0, scale: 1, opacity: 1, bold: true, uppercase: true }], bgColor: '#FFFFFF' },
-        { id: 'tpl-gradient', label: 'Sunset', thumb: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=200&h=300&fit=crop&q=60', layers: [], bgImage: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?auto=format&fit=crop&w=600&q=70' },
-        { id: 'tpl-mountain', label: 'Mountain', thumb: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=200&h=300&fit=crop&q=60', layers: [], bgImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=600&q=70' },
-        { id: 'tpl-clean', label: 'Clean', thumb: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=200&h=300&fit=crop&q=60', layers: [], bgColor: '#F4F4F5' }
-    ];
-    res.json({ success: true, data: templates });
-});
+}));
 
 module.exports = router;

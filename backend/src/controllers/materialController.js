@@ -8,7 +8,7 @@ exports.listMaterials = asyncHandler(async (req, res) => {
     if (req.query.q) {
         where.name = { [Op.iLike]: `%${req.query.q}%` };
     }
-    const materials = await Material.findAll({ where, order: [['name', 'ASC']] });
+    const materials = await Material.findAll({ where, order: [['isDefault', 'DESC'], ['name', 'ASC']] });
     res.json({ data: materials });
 });
 
@@ -19,20 +19,36 @@ exports.getMaterial = asyncHandler(async (req, res) => {
 });
 
 exports.createMaterial = asyncHandler(async (req, res) => {
-    const { name, description } = req.body;
+    const { name, description, price, isDefault } = req.body;
     if (!name || !name.trim()) { res.status(400); throw new Error('Name is required'); }
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'material';
-    const material = await Material.create({ name: name.trim(), slug, description });
+    if (isDefault) {
+        await Material.update({ isDefault: false }, { where: { isDefault: true } });
+    }
+    const material = await Material.create({
+        name: name.trim(),
+        slug,
+        description: description || null,
+        price: price != null ? price : 399,
+        isDefault: isDefault || false
+    });
     res.status(201).json(material);
 });
 
 exports.updateMaterial = asyncHandler(async (req, res) => {
     const material = await Material.findByPk(req.params.id);
     if (!material) { res.status(404); throw new Error('Material not found'); }
-    const { name, description, isActive } = req.body;
+    const { name, description, price, isDefault, isActive } = req.body;
     const updates = {};
     if (name !== undefined) { updates.name = name; updates.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'material'; }
     if (description !== undefined) updates.description = description;
+    if (price !== undefined) updates.price = price;
+    if (isDefault !== undefined) {
+        if (isDefault) {
+            await Material.update({ isDefault: false }, { where: { isDefault: true, id: { [Op.ne]: material.id } } });
+        }
+        updates.isDefault = isDefault;
+    }
     if (isActive !== undefined) updates.isActive = isActive;
     await material.update(updates);
     res.json(material);

@@ -126,16 +126,7 @@ const PHONE_MODELS = {
   ],
 };
 
-const MATERIALS = [
-    { id: 'matte-hard', label: 'Matte Hard Case', price: 399, swatch: '#1a1a1a', description: 'Slim matte finish, lightweight, scratch-resistant', image: 'https://images.unsplash.com/photo-1617957688798-4e8e4b8b2c6e?w=200&h=200&fit=crop&q=70', bezel: '#1a1a1a', stock: 120 },
-    { id: 'glossy-hard', label: 'Glossy Hard Case', price: 349, swatch: '#0a0a0a', description: 'High-gloss finish, vibrant color reproduction', image: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=200&h=200&fit=crop&q=70', bezel: '#0a0a0a', stock: 85 },
-    { id: 'soft-silicone', label: 'Soft Silicone', price: 449, swatch: '#2d2d2d', description: 'Flexible grip, shock absorbent, comfortable', image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=200&h=200&fit=crop&q=70', bezel: '#1a1a1a', stock: 200 },
-    { id: 'clear-tpu', label: 'Clear TPU', price: 299, swatch: '#e8e8e8', description: 'Crystal clear, anti-yellow, ultra slim', image: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?w=200&h=200&fit=crop&q=70', bezel: '#d0d0d0', stock: 150 },
-    { id: 'leather-premium', label: 'Premium Leather', price: 899, swatch: '#5c2e1f', description: 'Genuine Italian leather, luxury handcrafted', image: 'https://images.unsplash.com/photo-1470790376778-a9fbc86d70e2?w=200&h=200&fit=crop&q=70', bezel: '#3a1d17', stock: 40 },
-    { id: 'carbon-fiber', label: 'Carbon Fiber', price: 799, swatch: '#2a2a2a', description: 'Real carbon fiber weave, aerospace grade', image: 'https://images.unsplash.com/photo-1533034705054-79c1920a4f7f?w=200&h=200&fit=crop&q=70', bezel: '#1a1a1a', stock: 25 },
-    { id: 'wood-veneer', label: 'Wood Veneer', price: 699, swatch: '#8b6914', description: 'Real wood grain, hand-finished', image: 'https://images.unsplash.com/photo-1506905925773-3e99b38b1603?w=200&h=200&fit=crop&q=70', bezel: '#5c3a0a', stock: 15 },
-    { id: 'metal-brushed', label: 'Brushed Metal', price: 649, swatch: '#b8b8c0', description: 'Aluminium brushed, cool-touch finish', image: 'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=200&h=200&fit=crop&q=70', bezel: '#8a8a90', stock: 60 }
-];
+const MATERIALS = [];
 
 const MATERIAL_DESIGNS = {
     'matte-hard': [

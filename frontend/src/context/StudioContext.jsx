@@ -1,11 +1,13 @@
 'use client';
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
-import { fetchBrands, fetchModelsByBrand, fetchMaterials, calculatePrice } from '@/services/studioApi';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { fetchBrands, fetchModelsByBrand, fetchMaterials, fetchTemplateByModelId, calculatePrice } from '@/services/studioApi';
 
 const StudioContext = createContext(null);
 
 let layerIdCounter = 0;
 const nextId = () => `layer_${Date.now()}_${++layerIdCounter}`;
+
+const MAX_HISTORY = 50;
 
 const initialFormState = {
     text: 'Your Story',
@@ -37,13 +39,16 @@ const persistSaved = (list) => {
 
 export function StudioProvider({ children }) {
     const [brand, setBrand] = useState('Apple');
-    const [modelId, setModelId] = useState('iphone-16-pro');
-    const [materialId, setMaterialId] = useState('matte-hard');
+    const [modelId, setModelId] = useState('apple-iphone-16-pro-max');
+    const [materialId, setMaterialId] = useState(null);
     const [form, setForm] = useState(initialFormState);
     const [layers, setLayers] = useState([]);
     const [selectedLayerId, setSelectedLayerId] = useState(null);
     const [previewImage, setPreviewImage] = useState(null);
     const [savedDesigns, setSavedDesigns] = useState([]);
+    const [history, setHistory] = useState([]);
+    const [historyIndex, setHistoryIndex] = useState(-1);
+    const isUndoRedo = useRef(false);
 
     const [brands, setBrands] = useState(['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Nothing']);
     const [models, setModels] = useState([]);
@@ -51,6 +56,8 @@ export function StudioProvider({ children }) {
     const [brandsLoading, setBrandsLoading] = useState(false);
     const [modelsLoading, setModelsLoading] = useState(false);
     const [materialsLoading, setMaterialsLoading] = useState(false);
+    const [template, setTemplate] = useState(null);
+    const [templateLoading, setTemplateLoading] = useState(false);
     const [totalPrice, setTotalPrice] = useState(399);
 
     useEffect(() => { setSavedDesigns(loadSaved()); }, []);
@@ -85,24 +92,83 @@ export function StudioProvider({ children }) {
             if (!mounted) return;
             setMaterials(data);
             setMaterialsLoading(false);
-            if (data.length > 0 && !data.find((m) => m.id === materialId)) {
-                setMaterialId(data[0].id);
+            const defaultMat = data.find((m) => m.isDefault) || data[0];
+            if (defaultMat) {
+                setMaterialId(defaultMat.id);
             }
         }).catch(() => { if (mounted) setMaterialsLoading(false); });
         return () => { mounted = false; };
     }, [modelId]);
 
     useEffect(() => {
+        if (!modelId) return;
         let mounted = true;
-        const hasImage = layers.some((l) => l.type === 'image');
-        const hasText = layers.some((l) => l.type === 'text');
-        calculatePrice({ modelId, materialId, layerCount: layers.length, hasText, hasImage }).then((price) => {
+        setTemplateLoading(true);
+        fetchTemplateByModelId(modelId).then((data) => {
+            if (mounted) { setTemplate(data); setTemplateLoading(false); }
+        }).catch(() => { if (mounted) setTemplateLoading(false); });
+        return () => { mounted = false; };
+    }, [modelId]);
+
+    useEffect(() => {
+        if (!materialId) return;
+        let mounted = true;
+        const layerCount = layers.length;
+        calculatePrice({ materialId, layerCount }).then((price) => {
             if (mounted) setTotalPrice(price);
         }).catch(() => {});
         return () => { mounted = false; };
-    }, [modelId, materialId, layers]);
+    }, [materialId, layers.length]);
 
-    const model = useMemo(() => models.find((m) => m.id === modelId) || null, [models, modelId]);
+    useEffect(() => {
+        if (isUndoRedo.current) { isUndoRedo.current = false; return; }
+        const snapshot = { layers: JSON.parse(JSON.stringify(layers)), form: { ...form } };
+        setHistory((prev) => {
+            const trimmed = prev.slice(0, historyIndex + 1);
+            const next = [...trimmed, snapshot];
+            if (next.length > MAX_HISTORY) next.shift();
+            return next;
+        });
+        setHistoryIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1));
+    }, [layers, form.bgColor, form.bgImage]);
+
+    const undo = useCallback(() => {
+        if (historyIndex < 0 || history.length === 0) return;
+        const newIdx = historyIndex - 1;
+        if (newIdx < 0) return;
+        isUndoRedo.current = true;
+        const snap = history[newIdx];
+        setLayers(snap.layers);
+        setForm((f) => ({ ...f, ...snap.form }));
+        setHistoryIndex(newIdx);
+    }, [history, historyIndex]);
+
+    const redo = useCallback(() => {
+        if (historyIndex >= history.length - 1) return;
+        const newIdx = historyIndex + 1;
+        isUndoRedo.current = true;
+        const snap = history[newIdx];
+        setLayers(snap.layers);
+        setForm((f) => ({ ...f, ...snap.form }));
+        setHistoryIndex(newIdx);
+    }, [history, historyIndex]);
+
+    const canUndo = historyIndex > 0 && history.length > 0;
+    const canRedo = historyIndex < history.length - 1;
+
+    const model = useMemo(() => {
+        const base = models.find((m) => m.id === modelId) || null;
+        if (!base || !template) return base;
+        const cw = template.caseWidth, ch = template.caseHeight;
+        const cc = template.cameraCutout;
+        const sz = template.safeZone;
+        return {
+            ...base,
+            cameraCutout: cc ? { x: (cc.x / cw) * 100, y: (cc.y / ch) * 100, w: (cc.w / cw) * 100, h: (cc.h / ch) * 100 } : null,
+            safeZone: sz ? { top: (sz.top / ch) * 100, bottom: (sz.bottom / ch) * 100, left: (sz.left / cw) * 100, right: (sz.right / cw) * 100 } : null,
+            caseWidth: cw, caseHeight: ch, cornerRadius: template.cornerRadius, bleedArea: template.bleedArea, basePrice: template.basePrice
+        };
+    }, [models, modelId, template]);
     const material = useMemo(() => materials.find((m) => m.id === materialId) || null, [materials, materialId]);
 
     const updateForm = useCallback((patch) => { setForm((f) => ({ ...f, ...patch })); }, []);
@@ -111,21 +177,21 @@ export function StudioProvider({ children }) {
         const { text, font = 'sans', color = '#0A0A0A', size = 48, bold = false, uppercase = true } =
             typeof options === 'string' ? { text: options } : (options || {});
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 50, y: 50, size, color, font, rotation: 0, scale: 1, opacity: 1, bold, uppercase }]);
+        setLayers((l) => [...l, { id, type: 'text', text: text || 'Your Text', x: 0, y: 0, w: 200, h: 60, size, color, font, rotation: 0, opacity: 1, bold, uppercase, _needsCenter: true }]);
         setSelectedLayerId(id);
         return id;
     }, []);
 
     const addStickerLayer = useCallback((sticker) => {
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'sticker', stickerId: sticker.id, emoji: sticker.emoji, x: 50, y: 50, size: 60, rotation: 0, scale: 1, opacity: 1 }]);
+        setLayers((l) => [...l, { id, type: 'sticker', stickerId: sticker.id, emoji: sticker.emoji, x: 0, y: 0, w: 80, h: 80, size: 80, rotation: 0, opacity: 1, _needsCenter: true }]);
         setSelectedLayerId(id);
         return id;
     }, []);
 
     const addImageLayer = useCallback((url) => {
         const id = nextId();
-        setLayers((l) => [...l, { id, type: 'image', url, x: 50, y: 50, baseWidth: 120, rotation: 0, scale: 1, opacity: 1, filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0 } }]);
+        setLayers((l) => [...l, { id, type: 'image', url, x: 0, y: 0, w: 150, h: 200, rotation: 0, opacity: 1, filters: { brightness: 100, contrast: 100, saturation: 100, blur: 0 }, _needsCenter: true }]);
         setSelectedLayerId(id);
         return id;
     }, []);
@@ -144,7 +210,7 @@ export function StudioProvider({ children }) {
             const found = l.find((lyr) => lyr.id === id);
             if (!found) return l;
             const newId = nextId();
-            return [...l, { ...found, id: newId, x: Math.min(95, (found.x || 50) + 5), y: Math.min(95, (found.y || 50) + 5) }];
+            return [...l, { ...found, id: newId, x: (found.x || 0) + 15, y: (found.y || 0) + 15 }];
         });
     }, []);
 
@@ -210,24 +276,26 @@ export function StudioProvider({ children }) {
     const value = useMemo(() => ({
         brand, setBrand, modelId, setModelId, model,
         materialId, setMaterialId, material,
-        brands, models, materials,
-        brandsLoading, modelsLoading, materialsLoading,
+        brands, models, materials, template,
+        brandsLoading, modelsLoading, materialsLoading, templateLoading,
         form, updateForm, totalPrice,
         layers, setLayers, addTextLayer, addStickerLayer, addImageLayer,
         updateLayer, removeLayer, duplicateLayer, moveLayer, clearAll,
         selectedLayerId, setSelectedLayerId, selectedLayer,
         previewImage, setPreviewImage,
         savedDesigns, saveDesign, loadDesign, deleteDesign,
-        applyTemplate
+        applyTemplate,
+        undo, redo, canUndo, canRedo
     }), [
         brand, modelId, model, materialId, material,
-        brands, models, materials,
-        brandsLoading, modelsLoading, materialsLoading,
+        brands, models, materials, template,
+        brandsLoading, modelsLoading, materialsLoading, templateLoading,
         form, totalPrice, layers, selectedLayerId, selectedLayer,
         previewImage, savedDesigns,
         updateForm, addTextLayer, addStickerLayer, addImageLayer,
         updateLayer, removeLayer, duplicateLayer, moveLayer, clearAll,
-        saveDesign, loadDesign, deleteDesign, applyTemplate
+        saveDesign, loadDesign, deleteDesign, applyTemplate,
+        undo, redo, canUndo, canRedo
     ]);
 
     return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;

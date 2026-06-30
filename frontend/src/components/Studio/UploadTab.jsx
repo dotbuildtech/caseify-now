@@ -1,19 +1,48 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
-import { Upload, ImageIcon, FileImage } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useStudio } from '@/context/StudioContext';
-import { PHOTO_PRESETS } from '@/utils/studio';
-import SmartImage from '@/components/ui/SmartImage';
+import { uploadStudioImageBlob, uploadStudioImage } from '@/services/studioApi';
 import { useToast } from '@/components/ui/Toast';
 
+const MAX_DIM = 1000;
+const JPEG_QUALITY = 0.7;
+
+function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            let { width, height } = img;
+            if (width > MAX_DIM || height > MAX_DIM) {
+                const ratio = MAX_DIM / Math.max(width, height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob((blob) => {
+                if (!blob) { reject(new Error('Compression failed')); return; }
+                resolve(blob);
+            }, 'image/jpeg', JPEG_QUALITY);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Failed to load image')); };
+        img.src = url;
+    });
+}
+
 export default function UploadTab() {
-    const { addImageLayer, updateForm } = useStudio();
+    const { addImageLayer, updateLayer, updateForm } = useStudio();
     const fileRef = useRef(null);
     const toast = useToast();
     const [uploading, setUploading] = useState(false);
     const [dragOver, setDragOver] = useState(false);
 
-    const processFile = (file) => {
+    const processFile = async (file) => {
         if (!file) return;
         if (!file.type.startsWith('image/')) {
             toast.error('Please choose an image file');
@@ -24,15 +53,43 @@ export default function UploadTab() {
             return;
         }
         setUploading(true);
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            updateForm({ imageUrl: e.target.result });
-            addImageLayer(e.target.result);
+        try {
+            const compressedBlob = await compressImage(file);
+            const localUrl = URL.createObjectURL(compressedBlob);
+            updateForm({ imageUrl: localUrl });
+            const layerId = addImageLayer(localUrl);
             toast.success('Image added to canvas');
+
+            let cloudUrl = null;
+            try {
+                cloudUrl = await uploadStudioImageBlob(compressedBlob, 'image/jpeg');
+            } catch {
+                cloudUrl = null;
+            }
+            if (!cloudUrl) {
+                try {
+                    const reader = new FileReader();
+                    const dataUrl = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(compressedBlob);
+                    });
+                    cloudUrl = await uploadStudioImage(dataUrl);
+                } catch {
+                    cloudUrl = null;
+                }
+            }
+
+            if (cloudUrl) {
+                updateLayer(layerId, { url: cloudUrl });
+                updateForm({ imageUrl: cloudUrl });
+                URL.revokeObjectURL(localUrl);
+            }
+        } catch {
+            toast.error('Failed to upload image');
+        } finally {
             setUploading(false);
-        };
-        reader.onerror = () => { toast.error('Failed to read file'); setUploading(false); };
-        reader.readAsDataURL(file);
+        }
     };
 
     const onDrop = useCallback((e) => {
@@ -81,27 +138,6 @@ export default function UploadTab() {
                 onChange={(e) => processFile(e.target.files?.[0])}
             />
 
-            <div>
-                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Or pick a preset</p>
-                <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollSnapType: 'x mandatory' }}>
-                    {PHOTO_PRESETS.map((p) => (
-                        <button
-                            key={p.id}
-                            onClick={() => { updateForm({ bgImage: p.url }); addImageLayer(p.url); toast.success(`${p.label} added`); }}
-                            className="group relative shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100 text-left transition-all duration-300 hover:border-stone-400 hover:shadow-md"
-                            style={{ width: '110px', scrollSnapAlign: 'start' }}
-                        >
-                            <div className="relative aspect-square w-full overflow-hidden bg-stone-100">
-                                <SmartImage src={p.url} alt={p.label} fill className="object-cover transition-transform duration-500 group-hover:scale-110" />
-                            </div>
-                            <div className="p-1.5">
-                                <p className="truncate text-[10px] font-semibold text-stone-700">{p.label}</p>
-                            </div>
-                        </button>
-                    ))}
-                    <div className="min-w-[8px] shrink-0" />
-                </div>
-            </div>
         </div>
     );
 }

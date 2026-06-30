@@ -1,6 +1,6 @@
 'use client';
 import { useRef } from 'react';
-import { Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 import { useStudio } from '@/context/StudioContext';
 import { formatINR } from '@/utils/format';
 
@@ -42,7 +42,7 @@ export default function MaterialSelector() {
                 <div className="flex gap-2 overflow-hidden">
                     {Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="min-w-[120px] overflow-hidden rounded-xl border border-stone-200 bg-white">
-                            <div className="aspect-square w-full animate-pulse bg-stone-100" />
+                            <div className="h-20 animate-pulse bg-stone-100" />
                             <div className="space-y-1 p-2"><div className="h-3 w-3/4 animate-pulse rounded bg-stone-100" /><div className="h-2 w-1/2 animate-pulse rounded bg-stone-100" /></div>
                         </div>
                     ))}
@@ -60,27 +60,15 @@ export default function MaterialSelector() {
                                 <button
                                     key={m.id}
                                     onClick={() => setMaterialId(m.id)}
-                                    className={`group relative shrink-0 overflow-hidden rounded-xl border text-left transition-all duration-300 ${isActive ? 'border-stone-900 ring-2 ring-stone-900 ring-offset-2' : 'border-stone-200 bg-white hover:border-stone-400 hover:shadow-md'}`}
+                                    className={`group relative shrink-0 rounded-xl border text-left transition-all duration-300 ${isActive ? 'border-stone-900 ring-2 ring-stone-900 ring-offset-2 bg-stone-50' : 'border-stone-200 bg-white hover:border-stone-400 hover:shadow-md'}`}
                                     style={{ width: '120px', scrollSnapAlign: 'start' }}
                                 >
-                                    <div className="relative aspect-square w-full overflow-hidden bg-stone-100">
-                                        <img
-                                            src={m.image}
-                                            alt={m.label}
-                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                            loading="lazy"
-                                            onError={(e) => { e.target.style.display = 'none'; }}
-                                        />
-                                        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${m.swatch}40 0%, ${m.swatch}80 100%)` }} />
-                                        {isActive && (
-                                            <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-stone-900 text-white shadow">
-                                                <Check className="h-3 w-3" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="p-2">
-                                        <p className={`truncate text-[10px] font-semibold leading-tight ${isActive ? 'text-stone-900' : 'text-stone-700'}`}>{m.label}</p>
-                                        <p className="text-[9px] text-stone-400">{formatINR(m.price)}</p>
+                                    <div className="p-3">
+                                        <div className={`flex items-center justify-between ${isActive ? 'mb-2' : ''}`}>
+                                            <p className={`truncate text-[10px] font-semibold leading-tight ${isActive ? 'text-stone-900' : 'text-stone-700'}`}>{m.label}</p>
+                                            {isActive && <Check className="h-3 w-3 text-stone-900 shrink-0 ml-1" />}
+                                        </div>
+                                        <p className="text-[11px] font-mono tabular-nums text-stone-500">{formatINR(m.price)}</p>
                                     </div>
                                 </button>
                             );
@@ -90,10 +78,9 @@ export default function MaterialSelector() {
                 </div>
             )}
 
-            {selectedMaterial && (
-                <div className="mt-1.5 flex items-center gap-2 text-[9px] uppercase tracking-[0.12em] text-stone-400">
+            {selectedMaterial?.description && (
+                <div className="mt-1.5 text-[9px] uppercase tracking-[0.12em] text-stone-400">
                     <span>{selectedMaterial.description}</span>
-                    {selectedMaterial.stock <= 10 && <span className="rounded-full bg-red-100 px-1.5 py-0.5 text-[8px] font-semibold text-red-500">Low stock</span>}
                 </div>
             )}
         </div>

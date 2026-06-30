@@ -11,6 +11,7 @@
     "seed:legacy": "node seed-full.js"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "axios": "^1.16.1",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.10.0",
@@ -30,6 +31,7 @@
     "pdfkit": "^0.18.0",
     "pg": "^8.12.0",
     "pg-hstore": "^2.3.4",
+    "prisma": "^6.19.3",
     "razorpay": "^2.9.6",
     "sequelize": "^6.37.3",
     "slugify": "^1.6.6",

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers, Zap, Shield, Headphones, Battery, Cable } from 'lucide-react';
+import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers, Zap, Shield, Headphones, Battery, Cable, Download } from 'lucide-react';
 import { FORM_FIELD_LABELS } from '@/utils/constants';
 import { adminListOrders, adminUpdateOrderStatus, adminGetInvoiceByOrder, adminGenerateInvoice, adminDownloadInvoice } from '@/services/adminApi';
 import { formatINR, formatDate } from '@/utils/format';
@@ -38,17 +38,39 @@ const SectionHeading = ({ icon: Icon, title }) => (
 
 const ImagePreviewModal = ({ src, alt, onClose }) => {
     const ref = useRef(null);
+    const [downloading, setDownloading] = useState(false);
     useEffect(() => {
         const handler = (e) => { if (e.key === 'Escape') onClose(); };
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [onClose]);
+    const handleDownload = async () => {
+        if (downloading) return;
+        setDownloading(true);
+        try {
+            const res = await fetch(src);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = alt || 'image';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch {} finally { setDownloading(false); }
+    };
     return (
         <div ref={ref} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === ref.current) onClose(); }}>
             <div className="relative max-h-[90vh] max-w-[90vw]">
-                <button onClick={onClose} className="absolute -right-2 -top-2 rounded-full bg-white p-1.5 shadow-lg hover:bg-stone-100">
-                    <X className="h-4 w-4" />
-                </button>
+                <div className="absolute -right-2 -top-2 flex gap-1.5">
+                    <button onClick={handleDownload} disabled={downloading} className="rounded-full bg-white p-1.5 shadow-lg hover:bg-stone-100 disabled:opacity-50">
+                        <Download className="h-4 w-4" />
+                    </button>
+                    <button onClick={onClose} className="rounded-full bg-white p-1.5 shadow-lg hover:bg-stone-100">
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
                 <img src={src} alt={alt} className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl" />
             </div>
         </div>

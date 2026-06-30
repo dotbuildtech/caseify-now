@@ -18,6 +18,17 @@ const Material = sequelize.define('Material', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    price: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 399,
+        validate: { min: 0 }
+    },
+    isDefault: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     isActive: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -29,7 +40,8 @@ const Material = sequelize.define('Material', {
     paranoid: true,
     indexes: [
         { fields: ['name'], unique: true },
-        { fields: ['slug'], unique: true }
+        { fields: ['slug'], unique: true },
+        { fields: ['isDefault'] }
     ]
 });
 

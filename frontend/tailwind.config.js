@@ -24,7 +24,10 @@ module.exports = {
             fontFamily: {
                 sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
                 display: ['var(--font-display)', 'Georgia', 'serif'],
-                mono: ['var(--font-mono)', 'ui-monospace', 'monospace']
+                mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
+                elegant: ['var(--font-elegant)', 'Palatino', 'serif'],
+                modern: ['var(--font-modern)', 'Helvetica', 'sans-serif'],
+                gothic: ['var(--font-gothic)', 'Century Gothic', 'sans-serif']
             },
             letterSpacing: {
                 'editorial': '-0.04em'

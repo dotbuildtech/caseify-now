@@ -123,19 +123,30 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                 if (!product && item.product === 9999) {
                     const dm = item.designMeta || {};
 
-                    const rawThumb = dm.thumbnail
-                        || dm.bgImage
-                        || (dm.layers?.find(l => l.type === 'image')?.url)
-                        || '';
-
+                    let rawThumb = dm.thumbnail || dm.bgImage || '';
                     const orderImage = await saveDataUrl(rawThumb);
+
+                    let uploadedImages = [];
+                    if (dm.layers) {
+                        const processed = await Promise.all(dm.layers
+                            .filter(l => l.type === 'image' && l.url)
+                            .map(async (l) => ({
+                                ...l,
+                                url: await saveDataUrl(l.url)
+                            }))
+                        );
+                        uploadedImages = processed.map(l => l.url).filter(Boolean);
+                        if (!rawThumb && processed.length > 0) {
+                            rawThumb = processed[0].url;
+                        }
+                    }
 
                     orderItemData.push({
                         OrderId: order.id,
                         ProductId: item.product,
                         name: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
                         qty: item.qty,
-                        image: orderImage,
+                        image: orderImage || uploadedImages[0] || '',
                         price: dm.totalPrice || dm.materialPrice || 399,
                         productSnapshot: {
                             isCustom: true,
@@ -143,8 +154,8 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                             brand: dm.brand || null,
                             model: dm.modelLabel || null,
                             material: dm.materialLabel || null,
-                            designPreview: orderImage || null,
-                            uploadedImages: dm.layers?.filter(l => l.type === 'image').map(l => l.url) || [],
+                            designPreview: orderImage || uploadedImages[0] || null,
+                            uploadedImages,
                             customText: dm.layers?.filter(l => l.type === 'text').map(l => l.text).join(', ') || null,
                             customizationNotes: null,
                             bgColor: dm.bgColor || null,

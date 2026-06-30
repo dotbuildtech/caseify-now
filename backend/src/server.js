@@ -177,6 +177,9 @@ app.use('/api/homepage', require('./routes/homepageRoutes'));
 app.use('/api/filter-options', require('./routes/filterOptionRoutes'));
 app.use('/api/admin/filter-options', require('./routes/adminFilterOptionRoutes'));
 app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
+app.use('/api/admin/brands', require('./routes/adminBrandRoutes'));
+app.use('/api/admin/models', require('./routes/adminModelRoutes'));
+app.use('/api/admin/templates', require('./routes/adminTemplateRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

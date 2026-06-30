@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Brand {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique @db.VarChar(80)
+  slug           String           @unique @db.VarChar(100)
+  logo           String?
+  description    String?
+  isActive       Boolean          @default(true)
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime?        @db.Timestamptz(6)
+  DeviceModels   DeviceModel[]
+
+  @@map("Brands")
+}
+
+model DeviceModel {
+  id           Int                          @id @default(autoincrement())
+  name         String                       @db.VarChar(120)
+  slug         String                       @unique @db.VarChar(140)
+  deviceType   enum_DeviceModels_deviceType @default(phone)
+  releaseYear  Int?
+  displayOrder Int                          @default(0)
+  isActive     Boolean                      @default(true)
+  createdAt    DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime                     @updatedAt @db.Timestamptz(6)
+  deletedAt    DateTime?                    @db.Timestamptz(6)
+  BrandId      Int?
+  Brands       Brand?                       @relation(fields: [BrandId], references: [id])
+  DeviceTemplate DeviceTemplate?
+
+  @@index([BrandId], map: "device_models__brand_id")
+  @@index([deviceType], map: "device_models_device_type")
+  @@index([slug], map: "device_models_slug")
+  @@map("DeviceModels")
+}
+
+model DeviceTemplate {
+  id             Int      @id @default(autoincrement())
+  deviceModelId  Int      @unique
+  caseWidth      Float
+  caseHeight     Float
+  safeAreaTop    Float
+  safeAreaBottom Float
+  safeAreaLeft   Float
+  safeAreaRight  Float
+  bleedArea      Float    @default(0)
+  cornerRadius   Float
+  cameraX        Float
+  cameraY        Float
+  cameraWidth    Float
+  cameraHeight   Float
+  previewImage   String?  @db.Text
+  svgMask        String?  @db.Text
+  thumbnail      String?  @db.Text
+  basePrice      Int      @default(399)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+  model          DeviceModel @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
+
+  @@index([deviceModelId])
+  @@map("DeviceTemplates")
+}
+
+enum enum_DeviceModels_deviceType {
+  phone
+  smartwatch
+  laptop
+  tablet
+  earbuds
+}

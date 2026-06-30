@@ -37,7 +37,7 @@ const decorateCart = async (cartId) => {
                 as: 'items',
                 attributes: ['id', 'ProductId', 'ProductVariantId', 'quantity', 'priceAtAdd', 'nameAtAdd', 'imageAtAdd', 'variantLabel', 'designMeta', 'createdAt'],
                 include: [
-                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'category', 'brand', 'phoneModel', 'attributes', 'materials'] },
+                    { model: Product, attributes: ['id', 'name', 'slug', 'image', 'price', 'category', 'brand', 'phoneModel'] },
                     { model: ProductVariant, as: 'variant', attributes: ['id', 'name', 'image', 'price'] }
                 ]
             }
@@ -102,15 +102,30 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addItemToCart = asyncHandler(async (req, res) => {
     const { productId, productVariantId, quantity, designMeta } = req.body;
 
+    const [savedThumb, processedLayers] = await Promise.all([
+        designMeta ? saveDataUrl(designMeta.thumbnail) : Promise.resolve(null),
+        designMeta && designMeta.layers && designMeta.layers.length > 0
+            ? Promise.all(designMeta.layers.map(async (layer) => {
+                if (layer.type === 'image' && layer.url && typeof layer.url === 'string' && layer.url.startsWith('data:')) {
+                    return { ...layer, url: await saveDataUrl(layer.url) };
+                }
+                return layer;
+            }))
+            : Promise.resolve(null)
+    ]);
+
     const result = await sequelize.transaction(async (transaction) => {
-        const product = await Product.findByPk(productId, { transaction });
+        const product = await Product.findByPk(productId, {
+            attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'stock', 'isActive', 'category', 'brand', 'phoneModel'],
+            transaction
+        });
 
         if (designMeta && !product) {
             const cart = await getOrCreateCart(req.user.id, transaction);
 
-            const { thumbnail: thumb, ...designMetaForDb } = designMeta;
-            const hasDesignMeta = Object.keys(designMetaForDb).length > 0;
-            const savedThumb = await saveDataUrl(thumb);
+            const { thumbnail: _thumb, layers: _rawLayers, ...designMetaRest } = designMeta;
+            const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (processedLayers && processedLayers.length > 0);
+            const designMetaForDb = { ...designMetaRest, layers: processedLayers };
 
             const [cartItem, created] = await CartItem.findOrCreate({
                 where: { CartId: cart.id, ProductId: productId, ProductVariantId: null },
@@ -169,6 +184,7 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         if (productVariantId) {
             variant = await ProductVariant.findOne({
                 where: { id: productVariantId, ProductId: productId },
+                attributes: ['id', 'name', 'image', 'price', 'stock', 'isActive'],
                 transaction
             });
             if (!variant || !variant.isActive) {
@@ -193,28 +209,24 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         const where = { CartId: cart.id, ProductId: productId };
         if (productVariantId) where.ProductVariantId = productVariantId;
 
-            const savedImageAtAdd = await saveDataUrl(imageAtAdd);
-            const dm = designMeta ? { ...designMeta } : null;
-            if (dm && dm.thumbnail) dm.thumbnail = await saveDataUrl(dm.thumbnail);
+        const [cartItem, created] = await CartItem.findOrCreate({
+            where,
+            defaults: {
+                CartId: cart.id,
+                ProductId: productId,
+                ProductVariantId: productVariantId || null,
+                quantity,
+                priceAtAdd: unitPrice,
+                nameAtAdd,
+                imageAtAdd: imageAtAdd,
+                variantLabel,
+                designMeta: designMeta || null
+            },
+            transaction
+        });
 
-            const [cartItem, created] = await CartItem.findOrCreate({
-                where,
-                defaults: {
-                    CartId: cart.id,
-                    ProductId: productId,
-                    ProductVariantId: productVariantId || null,
-                    quantity,
-                    priceAtAdd: unitPrice,
-                    nameAtAdd,
-                    imageAtAdd: savedImageAtAdd,
-                    variantLabel,
-                    designMeta: dm
-                },
-                transaction
-            });
-
-            if (!created) {
-                const newQty = cartItem.quantity + quantity;
+        if (!created) {
+            const newQty = cartItem.quantity + quantity;
             if (newQty > MAX_QTY) {
                 const err = new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
                 err.status = 400;
@@ -230,6 +242,7 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
             cartItem.nameAtAdd = nameAtAdd;
             cartItem.imageAtAdd = imageAtAdd;
             cartItem.variantLabel = variantLabel;
+            cartItem.designMeta = designMeta || null;
             await cartItem.save({ transaction });
         } else {
             const count = await CartItem.count({ where: { CartId: cart.id }, transaction });

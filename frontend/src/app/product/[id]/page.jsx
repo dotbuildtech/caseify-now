@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Minus, Plus, Truck, ShieldCheck, Heart, ShoppingBag, Check, AlertCircle } from 'lucide-react';
+import { Minus, Plus, Truck, ShieldCheck, Heart, ShoppingBag, Check, AlertCircle, Smartphone } from 'lucide-react';
 import { fetchProductById, fetchProducts } from '@/services/productApi';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -95,6 +95,9 @@ export default function ProductPage() {
     const original = getProductOriginalPrice(product);
     const inStock = product.stock > 0;
     const lowStock = product.stock > 0 && product.stock <= (product.lowStockThreshold || 5);
+    const deviceLabel = product.phoneModel || product.brand || '';
+
+    const isCustom = product.id === 9999;
 
     return (
         <div className="container-luxe py-10 md:py-16">
@@ -127,6 +130,9 @@ export default function ProductPage() {
                                 </button>
                             ))}
                         </div>
+                    )}
+                    {!isCustom && deviceLabel && (
+                        <DeviceDummyCard brand={product.brand} label={deviceLabel} />
                     )}
                 </div>
 
@@ -213,6 +219,60 @@ export default function ProductPage() {
                     </div>
                 </section>
             )}
+        </div>
+    );
+}
+
+function DeviceDummyCard({ brand, label }) {
+    const isSamsung = brand?.toLowerCase().includes('samsung') || label?.toLowerCase().includes('galaxy');
+    const isPixel = brand?.toLowerCase().includes('google') || label?.toLowerCase().includes('pixel');
+    const isOnePlus = brand?.toLowerCase().includes('oneplus');
+    return (
+        <div className="mt-6 rounded-xl border border-border bg-surface p-4">
+            <div className="flex items-center gap-2 mb-3">
+                <Smartphone className="h-3.5 w-3.5 text-text-light" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-light">Device Fit</span>
+            </div>
+            <div className="flex items-center gap-5">
+                <div className="relative w-[72px] shrink-0" style={{ aspectRatio: '9/19.5' }}>
+                    <div className="absolute inset-0 rounded-[18%/10%] bg-[#1a1a1e] shadow-md">
+                        <div className="absolute inset-0 rounded-[18%/10%] bg-gradient-to-b from-white/[0.03] to-transparent" />
+                        <div className="absolute left-[7%] top-[5%] right-[7%]" style={{ aspectRatio: '3/1' }}>
+                            {isSamsung ? (
+                                <div className="relative h-full w-full">
+                                    <div className="absolute left-1/2 top-[8%] h-[18%] w-[44%] -translate-x-1/2 rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute left-1/2 top-[32%] h-[18%] w-[44%] -translate-x-1/2 rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute left-1/2 top-[56%] h-[18%] w-[44%] -translate-x-1/2 rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute right-[6%] bottom-[2%] h-[12%] w-[28%] rounded-sm bg-[#0a0a0c] border border-white/[0.08]" />
+                                </div>
+                            ) : isPixel ? (
+                                <div className="relative h-full w-full">
+                                    <div className="absolute left-[5%] top-1/2 -translate-y-1/2 h-[55%] w-[6%] rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute left-[16%] top-1/2 -translate-y-1/2 h-[55%] w-[6%] rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute left-[27%] top-1/2 -translate-y-1/2 h-[45%] w-[4%] rounded-sm bg-[#0a0a0c] border border-white/[0.08]" />
+                                </div>
+                            ) : isOnePlus ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="h-[45%] w-[38%] rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                </div>
+                            ) : (
+                                <div className="relative h-full w-full">
+                                    <div className="absolute left-[15%] top-[15%] h-[28%] w-[24%] rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute right-[15%] top-[12%] h-[26%] w-[24%] rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                    <div className="absolute left-1/2 top-[52%] h-[24%] w-[22%] -translate-x-1/2 rounded-full bg-[#0a0a0c] border border-white/[0.08]" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight">{label}</p>
+                    <p className="mt-0.5 text-[11px] text-text-light">Compatible case design</p>
+                    <Link href="/customize" className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink hover:text-ink/70">
+                        <Smartphone className="h-3 w-3" /> Customize yours
+                    </Link>
+                </div>
+            </div>
         </div>
     );
 }
