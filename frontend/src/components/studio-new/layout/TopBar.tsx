@@ -5,7 +5,6 @@ import { useStudioStore } from '@/store/studioStore';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/ui/Toast';
-import { uploadStudioImage } from '@/services/studioApi';
 import { formatINR, cn } from '@/lib/utils';
 import { CUSTOM_PRODUCT_ID } from '@/lib/constants';
 import { ArrowLeft, ShoppingBag, Heart, Check, Sun, Moon, Save, Download, Eye, Grid3X3, Ruler, Undo2, Redo2, ZoomIn, ZoomOut } from 'lucide-react';
@@ -37,12 +36,12 @@ export default function TopBar() {
 
   const handleAddToBag = async () => {
     if (!user) { router.push('/login?redirect=/customize'); return; }
+    setAdding(true);
     try {
-      setAdding(true);
-      const captureFn = store.getState().captureRef;
-      const dataUrl = captureFn ? await captureFn() : null;
-      if (!dataUrl) { toast.error('Canvas capture failed'); return; }
-      const cloudUrl = await uploadStudioImage(dataUrl);
+      const thumbFn = store.getState().captureThumbRef;
+      const thumbDataUrl = thumbFn ? await thumbFn() : null;
+      if (!thumbDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
+
       const designData = {
         designId: `design_${Date.now()}`,
         createdAt: new Date().toISOString(),
@@ -50,13 +49,16 @@ export default function TopBar() {
         modelId: store.getState().modelId,
         materialId: store.getState().materialId,
         totalPrice: price.total,
-        thumbnail: cloudUrl,
+        thumbnail: thumbDataUrl,
       };
-      await addItem(CUSTOM_PRODUCT_ID, 1, designData);
+
+      addItem(CUSTOM_PRODUCT_ID, 1, designData).catch((err: any) => {
+        toast.error(err?.response?.data?.message || 'Failed to add to bag');
+      });
       toast.success('Custom case added to bag');
       router.push('/cart');
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed to add to bag');
+      toast.error(e?.message || 'Failed to capture design');
     } finally { setAdding(false); }
   };
 

@@ -88,6 +88,7 @@ interface StudioState {
 
   // Canvas capture ref
   captureRef: (() => Promise<string | null>) | null;
+  captureThumbRef: (() => Promise<string | null>) | null;
 
   // Actions - Device
   setSelectedProduct: (product: any | null) => void;
@@ -148,6 +149,7 @@ interface StudioState {
   // Actions - Pricing
   setPrice: (price: Partial<PriceBreakdown>) => void;
   calculatePrice: () => void;
+  applyCoupon: (code: string | undefined, discount: number) => void;
 
   // Actions - Settings
   setSetting: <K extends keyof StudioSettings>(key: K, value: StudioSettings[K]) => void;
@@ -168,6 +170,7 @@ interface StudioState {
 
   // Actions - Capture
   setCaptureRef: (ref: (() => Promise<string | null>) | null) => void;
+  setCaptureThumbRef: (ref: (() => Promise<string | null>) | null) => void;
 
   // Actions - Studio UI
   enterStudio: () => void;
@@ -223,6 +226,7 @@ export const useStudioStore = create<StudioState>()(
     savedDesigns: loadFromStorage<SavedDesign[]>(SAVED_DESIGNS_KEY, []),
 
     captureRef: null,
+    captureThumbRef: null,
 
     // --- Device Actions ---
     setSelectedProduct: (product) => set({ selectedProduct: product }),
@@ -407,6 +411,26 @@ export const useStudioStore = create<StudioState>()(
       set({ price: { ...state.price, base, material: materialPrice, premiumPrint, total: Math.max(total, 0) } });
     },
 
+    applyCoupon: (code, discountAmount) => {
+      set((state) => {
+        const newPrice = {
+          ...state.price,
+          discount: discountAmount,
+          couponCode: code,
+        };
+        const base = state.template?.basePrice ?? 399;
+        const materialPrice = state.materials.find(m => m.id === state.materialId)?.price ?? 0;
+        const layerCount = state.layers.length;
+        const premiumPrint = layerCount > 3 ? 99 : 0;
+        const total = base + materialPrice + premiumPrint + newPrice.expressDelivery - newPrice.discount;
+        newPrice.base = base;
+        newPrice.material = materialPrice;
+        newPrice.premiumPrint = premiumPrint;
+        newPrice.total = Math.max(total, 0);
+        return { price: newPrice };
+      });
+    },
+
     // --- Settings ---
     setSetting: (key, value) => set((state) => {
       const settings = { ...state.settings, [key]: value };
@@ -474,6 +498,7 @@ export const useStudioStore = create<StudioState>()(
 
     // --- Capture ---
     setCaptureRef: (ref) => set({ captureRef: ref }),
+    setCaptureThumbRef: (ref) => set({ captureThumbRef: ref }),
 
     enterStudio: () => set({ inStudio: true }),
     leaveStudio: () => set({ inStudio: false }),

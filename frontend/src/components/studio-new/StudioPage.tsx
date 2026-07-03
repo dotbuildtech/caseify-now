@@ -18,7 +18,8 @@ import TextTool from './tools/TextTool';
 import StickersTool from './tools/StickersTool';
 import {
   ArrowLeft, ShoppingBag, Check, Save, Download, Eye, Grid3X3, Moon, Sun,
-  Undo2, Redo2, ZoomIn, ZoomOut, Upload, Type, Sticker, FolderHeart, Layers, X
+  Undo2, Redo2, ZoomIn, ZoomOut, Upload, Type, Sticker, FolderHeart, Layers, X,
+  Tag, Percent, Ticket, Info, Package, Sparkles, Smartphone
 } from 'lucide-react';
 import Tooltip from './shared/Tooltip';
 
@@ -66,14 +67,11 @@ function StudioHeader() {
 
   const handleAddToBag = async () => {
     if (!user) { router.push('/login?redirect=/customize'); return; }
+    setAdding(true);
     try {
-      setAdding(true);
-      const captureFn = store.getState().captureRef;
-      const dataUrl = captureFn ? await captureFn() : null;
-      if (!dataUrl) { toast.error('Canvas capture failed'); return; }
-      const blob = dataUrlToBlob(dataUrl);
-      const cloudUrl = await uploadStudioImageBlob(blob, 'image/png');
-      if (!cloudUrl) { toast.error('Image upload failed'); return; }
+      const thumbFn = store.getState().captureThumbRef;
+      const thumbDataUrl = thumbFn ? await thumbFn() : null;
+      if (!thumbDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
       const designData = {
         designId: `design_${Date.now()}`,
         createdAt: new Date().toISOString(),
@@ -81,18 +79,20 @@ function StudioHeader() {
         modelId: store.getState().modelId,
         materialId: product?.materialId || store.getState().materialId,
         totalPrice: product?.price || price.total,
-        thumbnail: cloudUrl,
+        thumbnail: thumbDataUrl,
         productId: product?.id || null,
         productName: product?.name || '',
       };
-      await addItem(CUSTOM_PRODUCT_ID, 1, designData);
+      addItem(CUSTOM_PRODUCT_ID, 1, designData).catch((err: any) => {
+        toast.error(err?.response?.data?.message || 'Failed to add to cart');
+      });
       store.getState().resetCanvas();
       localStorage.removeItem('dotbuild_recent_uploads');
       store.getState().leaveStudio();
       toast.success('Added to bag');
       router.push('/cart');
     } catch (e: any) {
-      toast.error(e?.response?.data?.message || 'Failed');
+      toast.error(e?.message || 'Failed to capture design');
     } finally { setAdding(false); }
   };
 
@@ -124,10 +124,20 @@ function StudioHeader() {
         {product && (
           <div className="hidden md:flex items-center gap-1.5 text-xs">
             <span className="font-semibold truncate max-w-[120px]">{product.name}</span>
-            <span className="text-muted-foreground">\u2022</span>
-            <span className="font-bold">{formatINR(product.price)}</span>
+            <span className="text-muted-foreground">{'\u2022'}</span>
+            <span className="font-bold tabular-nums">{formatINR(product.price)}</span>
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="text-[10px] text-muted-foreground line-through">{formatINR(product.compareAtPrice)}</span>
+              <>
+                <span className="text-[10px] text-muted-foreground line-through tabular-nums">{formatINR(product.compareAtPrice)}</span>
+                <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                  -{Math.round((1 - product.price / product.compareAtPrice) * 100)}%
+                </span>
+              </>
+            )}
+            {price.discount > 0 && (
+              <span className="text-[10px] font-bold text-green-600 bg-green-500/10 px-1.5 py-0.5 rounded-md">
+                -{formatINR(price.discount)} off
+              </span>
             )}
           </div>
         )}
@@ -172,9 +182,17 @@ function StudioHeader() {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted">
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total</span>
-          <span className="text-sm font-bold tabular-nums">{formatINR(product?.price || price.total)}</span>
+        <div className="hidden sm:flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted">
+            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Total</span>
+            <span className="text-sm font-bold tabular-nums">{formatINR(product?.price || price.total)}</span>
+          </div>
+          {price.discount > 0 && (
+            <div className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
+              <Percent className="h-3 w-3 text-green-600" />
+              <span className="text-[10px] font-semibold text-green-600">-{formatINR(price.discount)} saved</span>
+            </div>
+          )}
         </div>
         <Tooltip content="Download">
           <button onClick={handleDownload} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
@@ -196,7 +214,7 @@ function StudioHeader() {
           <span className="hidden md:inline">— {formatINR(product?.price || price.total)}</span>
         </button>
       </div>
-    </header>
+    </header >
   );
 }
 
@@ -206,6 +224,9 @@ function StudioMain() {
   const activeTool = useStudioStore((s) => s.activeTool);
   const setActiveTool = useStudioStore((s) => s.setActiveTool);
   const product = useStudioStore((s) => s.selectedProduct);
+  const price = useStudioStore((s) => s.price);
+  const brand = useStudioStore((s) => s.brand);
+  const modelId = useStudioStore((s) => s.modelId);
   const [layersOpen, setLayersOpen] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
 
@@ -249,50 +270,123 @@ function StudioMain() {
 
       {/* Product Info Panel */}
       {product && (
-        <div className="hidden lg:flex flex-col w-[260px] border-r border-border bg-background/95 backdrop-blur-xl shrink-0 overflow-y-auto">
-          <div className="p-3 border-b border-border">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Product Details</h3>
+        <div className="hidden lg:flex flex-col w-[280px] border-r border-border bg-card/80 backdrop-blur-xl shrink-0 overflow-y-auto">
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider">Product Details</h3>
+            </div>
           </div>
-          <div className="flex-1 p-4">
-            <div className="space-y-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Name</p>
-                <p className="text-sm font-semibold leading-snug">{product.name}</p>
+          <div className="flex-1 p-4 space-y-5 overflow-y-auto">
+            {/* Product Image Preview */}
+            <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-accent/30 border border-border">
+              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+              <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-background/90 backdrop-blur-sm rounded-lg px-2 py-1">
+                <Smartphone className="h-3 w-3 text-muted-foreground" />
+                <span className="text-[10px] font-medium">{brand} {modelId}</span>
               </div>
+            </div>
 
+            {/* Product Name & Price */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-bold leading-snug">{product.name}</h4>
               <div className="flex items-baseline gap-2.5">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Price</p>
-                  <p className="text-lg font-bold">{formatINR(product.price)}</p>
-                </div>
+                <span className="text-xl font-bold tabular-nums">{formatINR(product.price)}</span>
                 {product.compareAtPrice && product.compareAtPrice > product.price && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Was</p>
-                    <p className="text-sm font-semibold line-through text-muted-foreground">{formatINR(product.compareAtPrice)}</p>
-                  </div>
+                  <span className="text-sm text-muted-foreground line-through tabular-nums">{formatINR(product.compareAtPrice)}</span>
                 )}
               </div>
+              {product.compareAtPrice && product.compareAtPrice > product.price && (
+                <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full border border-red-500/20">
+                  <Percent className="h-3 w-3" />
+                  {Math.round((1 - product.price / product.compareAtPrice) * 100)}% OFF — Save {formatINR(product.compareAtPrice - product.price)}
+                </span>
+              )}
+            </div>
 
-              {product.discount && (
+            {/* Material Badge */}
+            {product.Material && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-accent/50 border border-border">
+                <div className="h-9 w-9 rounded-lg bg-background flex items-center justify-center shrink-0">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Discount</p>
-                  <p className="text-xs font-medium text-green-600 dark:text-green-400">{product.discount}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Material</p>
+                  <p className="text-xs font-semibold">{product.Material.name}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            {product.description && (
+              <div className="space-y-1.5">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
+              </div>
+            )}
+
+            {/* Discount / Coupon Section */}
+            <div className="space-y-3 p-3.5 rounded-xl border-2 border-dashed border-border bg-accent/30">
+              <div className="flex items-center gap-2">
+                <Ticket className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold">Have a coupon?</span>
+              </div>
+              <CouponInput />
+              {price.discount > 0 && (
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="flex items-center gap-1.5">
+                    <Percent className="h-3.5 w-3.5 text-green-600" />
+                    <span className="text-[11px] font-medium text-green-700 dark:text-green-400">Discount applied</span>
+                  </div>
+                  <span className="text-xs font-bold text-green-600">-{formatINR(price.discount)}</span>
                 </div>
               )}
+              <p className="text-[10px] text-muted-foreground leading-relaxed">
+                Enter a coupon code to apply additional savings to your custom case.
+              </p>
+            </div>
 
-              {product.Material && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Material</p>
-                  <p className="text-xs font-medium">{product.Material.name}</p>
+            {/* Price Breakdown */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Price Breakdown</span>
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Base Price</span>
+                  <span className="font-medium tabular-nums">{formatINR(price.base)}</span>
                 </div>
-              )}
-
-              {product.description && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Description</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{product.description}</p>
+                {price.material > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Material</span>
+                    <span className="font-medium tabular-nums">+{formatINR(price.material)}</span>
+                  </div>
+                )}
+                {price.premiumPrint > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Premium Print</span>
+                    <span className="font-medium tabular-nums">+{formatINR(price.premiumPrint)}</span>
+                  </div>
+                )}
+                {price.expressDelivery > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Express</span>
+                    <span className="font-medium tabular-nums">+{formatINR(price.expressDelivery)}</span>
+                  </div>
+                )}
+                {price.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span className="font-medium tabular-nums">-{formatINR(price.discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between pt-2 border-t border-border">
+                  <span className="font-semibold">Total</span>
+                  <span className="font-bold tabular-nums">{formatINR(price.total)}</span>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -413,6 +507,84 @@ function DarkModeInit() {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
   return null;
+}
+
+function CouponInput() {
+  const [code, setCode] = useState('');
+  const [applied, setApplied] = useState(false);
+  const [error, setError] = useState('');
+  const applyCoupon = useStudioStore((s) => s.applyCoupon);
+  const discount = useStudioStore((s) => s.price.discount);
+  const toast = useToast();
+
+  const handleApply = () => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    if (trimmed === 'SAVE10') {
+      applyCoupon(trimmed, 50);
+      setApplied(true);
+      setError('');
+      toast.success('Coupon applied! You saved ₹50');
+    } else if (trimmed === 'SAVE20') {
+      applyCoupon(trimmed, 100);
+      setApplied(true);
+      setError('');
+      toast.success('Coupon applied! You saved ₹100');
+    } else if (trimmed === 'FLAT50') {
+      applyCoupon(trimmed, 199);
+      setApplied(true);
+      setError('');
+      toast.success('Coupon applied! You saved ₹199');
+    } else {
+      setError('Invalid coupon code');
+      setApplied(false);
+    }
+  };
+
+  const handleRemove = () => {
+    applyCoupon(undefined, 0);
+    setCode('');
+    setApplied(false);
+    setError('');
+    toast.success('Coupon removed');
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => { setCode(e.target.value); setError(''); }}
+          placeholder="Enter code (e.g. SAVE10)"
+          disabled={applied}
+          className="flex-1 h-8 px-3 rounded-lg border border-border bg-background text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
+        />
+        {applied ? (
+          <button
+            onClick={handleRemove}
+            className="h-8 px-3 rounded-lg bg-red-500/10 text-red-600 text-xs font-semibold border border-red-500/20 hover:bg-red-500/20 transition-colors"
+          >
+            Remove
+          </button>
+        ) : (
+          <button
+            onClick={handleApply}
+            disabled={!code.trim()}
+            className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity"
+          >
+            Apply
+          </button>
+        )}
+      </div>
+      {applied && (
+        <p className="text-[10px] text-green-600 font-medium">Coupon "{code}" applied!</p>
+      )}
+      {error && (
+        <p className="text-[10px] text-red-500 font-medium">{error}</p>
+      )}
+    </div>
+  );
 }
 
 function dataUrlToBlob(dataUrl: string): Blob {

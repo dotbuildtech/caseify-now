@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
-import { toPng } from 'html-to-image';
+import { toPng, toJpeg } from 'html-to-image';
 import { useStudioStore } from '@/store/studioStore';
 import CameraCutout from './CameraCutout';
 import SafeZoneOverlay from './SafeZoneOverlay';
@@ -46,6 +46,7 @@ export default function StudioCanvas() {
   const updateLayer = useStudioStore((s) => s.updateLayer);
   const pushHistory = useStudioStore((s) => s.pushHistory);
   const setCaptureRef = useStudioStore((s) => s.setCaptureRef);
+  const setCaptureThumbRef = useStudioStore((s) => s.setCaptureThumbRef);
   const setCanvasContainerSize = useStudioStore((s) => s.setCanvasContainerSize);
   const canvasContainerSize = useStudioStore((s) => s.canvasContainerSize);
   const editableRegions = useStudioStore((s) => s.editableRegions);
@@ -104,23 +105,29 @@ export default function StudioCanvas() {
     const el = captureNodeRef.current;
     if (!el) {
       setCaptureRef(null);
+      setCaptureThumbRef(null);
       return;
     }
     setCaptureRef(async () => {
       try {
-        const dataUrl = await toPng(el, { pixelRatio: 2, cacheBust: true });
-        return dataUrl;
+        return await toPng(el, { pixelRatio: 2, cacheBust: true });
       } catch {
         try {
-          const dataUrl = await toPng(el, { pixelRatio: 1, cacheBust: true });
-          return dataUrl;
+          return await toPng(el, { pixelRatio: 1, cacheBust: true });
         } catch {
           return null;
         }
       }
     });
-    return () => setCaptureRef(null);
-  }, [setCaptureRef, hasTemplate, background, layers]);
+    setCaptureThumbRef(async () => {
+      try {
+        return await toJpeg(el, { pixelRatio: 1, quality: 0.85, cacheBust: true });
+      } catch {
+        return null;
+      }
+    });
+    return () => { setCaptureRef(null); setCaptureThumbRef(null); };
+  }, [setCaptureRef, setCaptureThumbRef, hasTemplate, background, layers]);
 
   // Global pointer move/up handlers
   useEffect(() => {

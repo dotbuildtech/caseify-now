@@ -4,7 +4,7 @@ import { useStudioStore } from '@/store/studioStore';
 import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel } from '@/services/studioApi';
 import { adminGetTemplateByProductId } from '@/services/adminApi';
 import { formatINR, cn } from '@/lib/utils';
-import { ChevronLeft, Smartphone, Package } from 'lucide-react';
+import { ChevronLeft, Smartphone, Package, Sparkles, Percent } from 'lucide-react';
 
 interface BrandItem {
   id: number;
@@ -27,8 +27,14 @@ interface ProductItem {
   image: string;
   price: number;
   compareAtPrice?: number;
+  discount?: string;
   studioModelId: number;
   Material?: { id: number; name: string; slug: string; price: number };
+}
+
+function getDiscountPercent(price: number, compareAtPrice?: number): number | null {
+  if (!compareAtPrice || compareAtPrice <= price) return null;
+  return Math.round((1 - price / compareAtPrice) * 100);
 }
 
 export default function StudioLanding() {
@@ -161,16 +167,16 @@ export default function StudioLanding() {
                 <button
                   key={brand.id || brand.slug}
                   onClick={() => handleBrandClick(brand)}
-                  className="group flex flex-col items-center gap-2.5 p-5 rounded-2xl border border-border bg-background hover:border-foreground hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                  className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300"
                 >
-                  <div className="w-16 h-16 rounded-xl bg-accent flex items-center justify-center overflow-hidden">
+                  <div className="w-14 h-14 rounded-2xl bg-accent/60 flex items-center justify-center overflow-hidden ring-2 ring-transparent group-hover:ring-primary/10 transition-all duration-300 group-hover:bg-accent">
                     {brand.logo ? (
-                      <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain p-2" />
+                      <img src={brand.logo} alt={brand.name} className="w-full h-full object-contain p-2.5" />
                     ) : (
-                      <Smartphone className="h-7 w-7 text-muted-foreground" />
+                      <Smartphone className="h-6 w-6 text-muted-foreground group-hover:text-foreground transition-colors" />
                     )}
                   </div>
-                  <span className="text-xs font-semibold text-center leading-tight">{brand.name}</span>
+                  <span className="text-xs font-semibold text-center leading-tight group-hover:text-primary transition-colors">{brand.name}</span>
                 </button>
               ))}
             </div>
@@ -195,16 +201,17 @@ export default function StudioLanding() {
                   <button
                     key={model.id}
                     onClick={() => handleModelClick(model)}
-                    className="group flex flex-col items-center gap-2.5 p-4 rounded-2xl border border-border bg-background hover:border-foreground hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                    className="group flex flex-col items-center gap-3 p-3 rounded-2xl border border-border bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300"
                   >
-                    <div className="w-full aspect-[3/4] rounded-xl bg-gradient-to-br from-accent to-accent/50 flex items-center justify-center overflow-hidden">
+                    <div className="relative w-full aspect-[4/5] rounded-xl bg-gradient-to-br from-accent/50 via-accent/30 to-accent/10 flex items-center justify-center overflow-hidden ring-1 ring-border/50 group-hover:ring-primary/20 transition-all duration-300">
                       {model.image ? (
-                        <img src={model.image} alt={model.name} className="w-full h-full object-contain p-2" />
+                        <img src={model.image} alt={model.name} className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-400" />
                       ) : (
-                        <Smartphone className="h-10 w-10 text-muted-foreground/40" />
+                        <Smartphone className="h-10 w-10 text-muted-foreground/30 group-hover:text-muted-foreground/50 transition-colors" />
                       )}
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     </div>
-                    <span className="text-xs font-semibold text-center leading-tight">{model.name}</span>
+                    <span className="text-xs font-semibold text-center leading-tight group-hover:text-primary transition-colors">{model.name}</span>
                   </button>
                 ))}
               </div>
@@ -212,7 +219,7 @@ export default function StudioLanding() {
           </section>
         )}
 
-        {/* PRODUCT GRID */}
+        {/* PRODUCT / TEMPLATE GRID */}
         {selectedBrand && selectedModel && (
           <section>
             {productsLoading ? (
@@ -226,29 +233,52 @@ export default function StudioLanding() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {products.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => handleSelectProduct(product)}
-                    className="group text-left rounded-2xl border border-border bg-background overflow-hidden hover:border-foreground hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                  >
-                    <div className="aspect-[3/4] bg-accent overflow-hidden">
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    </div>
-                    <div className="p-3 space-y-1">
-                      <p className="text-xs font-semibold truncate">{product.name}</p>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold">{formatINR(product.price)}</span>
-                        {product.compareAtPrice && product.compareAtPrice > product.price && (
-                          <span className="text-[10px] text-muted-foreground line-through">{formatINR(product.compareAtPrice)}</span>
+                {products.map((product) => {
+                  const discountPct = getDiscountPercent(product.price, product.compareAtPrice);
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => handleSelectProduct(product)}
+                      className="group text-left rounded-2xl border border-border bg-card overflow-hidden hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300"
+                    >
+                      <div className="relative aspect-[4/5] bg-accent/30 overflow-hidden">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+                        {discountPct && (
+                          <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md">
+                            <Percent className="h-2.5 w-2.5" /> {discountPct}% OFF
+                          </span>
+                        )}
+                        {product.Material && (
+                          <span className="absolute top-2.5 right-2.5 z-10 bg-background/90 backdrop-blur-sm text-[10px] font-medium px-2 py-0.5 rounded-md text-muted-foreground">
+                            {product.Material.name}
+                          </span>
+                        )}
+                        {!discountPct && !product.compareAtPrice && (
+                          <span className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1 bg-primary text-primary-foreground text-[10px] font-medium px-2 py-1 rounded-lg shadow-sm">
+                            <Sparkles className="h-2.5 w-2.5" /> New
+                          </span>
                         )}
                       </div>
-                      {product.Material && (
-                        <p className="text-[10px] text-muted-foreground">{product.Material.name}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                      <div className="p-3.5 space-y-1.5">
+                        <p className="text-sm font-semibold truncate">{product.name}</p>
+                        <div className="flex items-baseline gap-2 flex-wrap">
+                          <span className="text-base font-bold tabular-nums">{formatINR(product.price)}</span>
+                          {product.compareAtPrice && product.compareAtPrice > product.price && (
+                            <span className="text-xs text-muted-foreground line-through tabular-nums">{formatINR(product.compareAtPrice)}</span>
+                          )}
+                        </div>
+                        {product.description && (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{product.description}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </section>
