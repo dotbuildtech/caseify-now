@@ -66,6 +66,39 @@ const connectDB = async () => {
             console.log('Database synced');
         }
 
+        // Auto-migration: add missing columns to EditableAreas
+        try {
+            await sequelize.query(`
+                ALTER TABLE "EditableAreas"
+                ADD COLUMN IF NOT EXISTS "borderRadius" FLOAT NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS "borderRadiusTop" FLOAT NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS "borderRadiusBottom" FLOAT NOT NULL DEFAULT 0,
+                ADD COLUMN IF NOT EXISTS "polygonSides" INTEGER DEFAULT NULL,
+                ADD COLUMN IF NOT EXISTS "pathData" TEXT DEFAULT NULL
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not add radius/polygon/pathData columns (non-critical):', e.message);
+        }
+
+        try {
+            await sequelize.query(`
+                ALTER TABLE "EditableAreas"
+                ALTER COLUMN "shapeType" TYPE VARCHAR(50)
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not alter shapeType column (non-critical):', e.message);
+        }
+
+        // Add visibleBounds column to StudioTemplates
+        try {
+            await sequelize.query(`
+                ALTER TABLE "StudioTemplates"
+                ADD COLUMN IF NOT EXISTS "visibleBounds" JSONB DEFAULT NULL
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not add visibleBounds column (non-critical):', e.message);
+        }
+
         setInterval(async () => {
             try {
                 await sequelize.authenticate();

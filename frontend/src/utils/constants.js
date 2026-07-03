@@ -3,7 +3,7 @@ export const SITE = {
     tagline: 'Premium Mobile Accessories',
     contact: {
         phone: '+91 98765 43210',
-        email: 'support@caesifyNow.example',
+        email: 'support@caseifynow.example',
         address: '456 Electronics Hub, Bangalore 560001'
     },
     social: { facebook: '', instagram: '', twitter: '' }

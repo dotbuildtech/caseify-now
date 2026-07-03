@@ -9,7 +9,6 @@ export default function BrandForm({ mode, initial }) {
     const router = useRouter();
     const toast = useToast();
     const [name, setName] = useState(initial?.name || '');
-    const [logo, setLogo] = useState(initial?.logo || '');
     const [description, setDescription] = useState(initial?.description || '');
     const [isActive, setIsActive] = useState(initial?.isActive !== false);
     const [saving, setSaving] = useState(false);
@@ -22,10 +21,10 @@ export default function BrandForm({ mode, initial }) {
         setError('');
         try {
             if (mode === 'edit') {
-                await adminUpdateBrand(initial.id, { name: name.trim(), logo: logo || undefined, description: description.trim() || undefined, isActive });
+                await adminUpdateBrand(initial.id, { name: name.trim(), description: description.trim() || undefined, isActive });
                 toast.success('Brand updated');
             } else {
-                await adminCreateBrand({ name: name.trim(), logo: logo || undefined, description: description.trim() || undefined, isActive: !!isActive });
+                await adminCreateBrand({ name: name.trim(), description: description.trim() || undefined, isActive: !!isActive });
                 toast.success('Brand created');
             }
             router.push('/admin/brands');
@@ -45,10 +44,6 @@ export default function BrandForm({ mode, initial }) {
                     <div>
                         <label className="label-luxe">Brand Name *</label>
                         <input value={name} onChange={(e) => setName(e.target.value)} className="input-luxe" placeholder="e.g. Apple" />
-                    </div>
-                    <div>
-                        <label className="label-luxe">Logo URL</label>
-                        <input value={logo} onChange={(e) => setLogo(e.target.value)} className="input-luxe" placeholder="https://…" />
                     </div>
                     <div>
                         <label className="label-luxe">Description</label>

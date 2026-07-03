@@ -4,6 +4,10 @@ const rateLimit = require('express-rate-limit');
 const asyncHandler = require('../utils/asyncHandler');
 const { Op } = require('sequelize');
 const Material = require('../models/Material');
+const StudioBrand = require('../models/StudioBrand');
+const StudioModel = require('../models/StudioModel');
+const StudioProduct = require('../models/StudioProduct');
+const Brand = require('../models/Brand');
 const prisma = require('../services/prismaClient');
 
 const studioLimiter = rateLimit({
@@ -13,33 +17,64 @@ const priceLimiter = rateLimit({
     windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false
 });
 
-// GET /api/studio/brands - only active brands
+// GET /api/studio/brands - from StudioBrand if configured, fallback to all active brands
 router.get('/brands', studioLimiter, asyncHandler(async (req, res) => {
+    const studioBrands = await StudioBrand.findAll({
+        where: { showOnStudio: true },
+        include: [{ model: Brand, attributes: ['id', 'name', 'slug', 'logo'] }],
+        order: [['createdAt', 'DESC']]
+    });
+    if (studioBrands.length > 0) {
+        const data = studioBrands.map(sb => ({
+            id: String(sb.Brand.id),
+            name: sb.Brand.name,
+            slug: sb.Brand.slug,
+            logo: sb.logo || sb.Brand.logo
+        }));
+        return res.json({ success: true, data });
+    }
     const brands = await prisma.brand.findMany({
         where: { isActive: true },
         orderBy: { name: 'asc' }
     });
-    res.json({ success: true, data: brands.map(b => b.name) });
+    res.json({ success: true, data: brands.map(b => ({ id: b.id?.toString(), name: b.name, slug: b.slug, logo: b.logo })) });
 }));
 
 // GET /api/studio/models?brand=Apple
 router.get('/models', studioLimiter, asyncHandler(async (req, res) => {
     const { brand } = req.query;
     if (!brand) return res.json({ success: true, data: [] });
-    const brandRecord = await prisma.brand.findFirst({
-        where: { name: { equals: brand, mode: 'insensitive' }, isActive: true }
+    const brandRecord = await Brand.findOne({
+        where: { name: { [Op.iLike]: brand }, isActive: true }
     });
     if (!brandRecord) return res.json({ success: true, data: [] });
+    const studioBrand = await StudioBrand.findOne({
+        where: { brandId: brandRecord.id, showOnStudio: true }
+    });
+    if (studioBrand) {
+        const studioModels = await StudioModel.findAll({
+            where: { studioBrandId: studioBrand.id, showOnStudio: true },
+            order: [['name', 'ASC']]
+        });
+        if (studioModels.length > 0) {
+            const data = studioModels.map(m => ({
+                id: m.id,
+                name: m.name,
+                slug: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                image: m.image || null
+            }));
+            return res.json({ success: true, data });
+        }
+    }
     const models = await prisma.deviceModel.findMany({
         where: { BrandId: brandRecord.id, isActive: true },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
     });
     const data = models.map(m => ({
-        id: m.slug,
-        label: m.name,
-        size: '',
-        cameraCutout: null,
-        safeZone: null
+        id: m.id,
+        name: m.name,
+        slug: m.slug,
+        image: m.image || null
     }));
     res.json({ success: true, data });
 }));
@@ -48,6 +83,20 @@ router.get('/models', studioLimiter, asyncHandler(async (req, res) => {
 router.get('/models/search', studioLimiter, asyncHandler(async (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json({ success: true, data: [] });
+    const studioModels = await StudioModel.findAll({
+        where: { name: { [Op.iLike]: `%${q}%` }, showOnStudio: true },
+        include: [{ model: StudioBrand, where: { showOnStudio: true }, include: [{ model: Brand, attributes: ['name'] }] }],
+        limit: 15
+    });
+    if (studioModels.length > 0) {
+        const data = studioModels.map(m => ({
+            id: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+            label: m.name,
+            brand: m.StudioBrand?.Brand?.name || '',
+            size: ''
+        }));
+        return res.json({ success: true, data });
+    }
     const models = await prisma.deviceModel.findMany({
         where: { name: { contains: q, mode: 'insensitive' }, isActive: true },
         include: { Brands: { select: { name: true } } },
@@ -114,6 +163,31 @@ router.post('/calculate-price', priceLimiter, asyncHandler(async (req, res) => {
     const base = material ? material.price : 399;
     const layerFee = layerCount > 2 ? (layerCount - 2) * 25 : 0;
     res.json({ success: true, price: base + layerFee, base, layerFee, total: base + layerFee });
+}));
+
+// GET /api/studio/products?studioModelId=5
+router.get('/products', studioLimiter, asyncHandler(async (req, res) => {
+    const { studioModelId } = req.query;
+    if (!studioModelId) return res.json({ success: true, data: [] });
+    const products = await StudioProduct.findAll({
+        where: { studioModelId, isActive: true },
+        include: [
+            { model: Material, attributes: ['id', 'name', 'slug', 'price'] }
+        ],
+        order: [['createdAt', 'DESC']]
+    });
+    res.json({ success: true, data: products });
+}));
+
+// GET /api/studio/designs?modelSlug=iphone-16-pro
+router.get('/designs', studioLimiter, asyncHandler(async (req, res) => {
+    const { modelSlug } = req.query;
+    if (!modelSlug) return res.json({ success: true, data: [] });
+    const designs = await prisma.customDesign.findMany({
+        where: { modelSlug, isActive: true },
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, data: designs });
 }));
 
 module.exports = router;

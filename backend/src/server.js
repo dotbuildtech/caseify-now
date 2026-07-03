@@ -171,6 +171,7 @@ app.use('/api/materials', require('./routes/materialRoutes'));
 app.use('/api/category-materials', require('./routes/categoryMaterialRoutes'));
 app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/contact', require('./routes/contactRoutes'));
+app.use('/api/custom-designs', require('./routes/customDesignRoutes'));
 app.use('/api/filters', require('./routes/filterRoutes'));
 app.use('/api/uploads', require('./routes/uploadRoutes'));
 app.use('/api/homepage', require('./routes/homepageRoutes'));
@@ -180,6 +181,10 @@ app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 app.use('/api/admin/brands', require('./routes/adminBrandRoutes'));
 app.use('/api/admin/models', require('./routes/adminModelRoutes'));
 app.use('/api/admin/templates', require('./routes/adminTemplateRoutes'));
+app.use('/api/admin/studio-brands', require('./routes/studioBrandRoutes'));
+app.use('/api/admin/studio-models', require('./routes/studioModelRoutes'));
+app.use('/api/admin/studio-products', require('./routes/studioProductRoutes'));
+app.use('/api/admin/studio-templates', require('./routes/studioTemplateRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

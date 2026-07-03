@@ -51,6 +51,7 @@ const NAV = [
     { href: '/admin/brands', label: 'Brands', Icon: Tag },
     { href: '/admin/models', label: 'Models', Icon: Smartphone },
     { href: '/admin/templates', label: 'Templates', Icon: Ruler },
+    { href: '/admin/custom-designs', label: 'Custom Designs', Icon: Layers },
     { href: '/admin/category-brands', label: 'Category Links', Icon: Link2 },
     { href: '/admin/materials', label: 'Materials', Icon: Layers },
     { href: '/admin/filter-options', label: 'Filter Options', Icon: SlidersHorizontal },

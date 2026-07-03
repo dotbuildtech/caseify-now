@@ -101,6 +101,51 @@ export const adminUpdateDeviceModel = (id, payload) =>
 export const adminDeleteDeviceModel = (id) =>
     api.delete(`/device-models/${id}`).then((r) => { clearApiCache(); return r.data; });
 
+// ---------- Studio Products (admin) ----------
+export const adminListStudioProducts = (params = {}) =>
+    api.get('/admin/studio-products', { params }).then((r) => r.data?.data || []);
+
+export const adminGetStudioProduct = (id) =>
+    api.get(`/admin/studio-products/${id}`).then((r) => r.data);
+
+export const adminCreateStudioProduct = (payload) =>
+    api.post('/admin/studio-products', payload).then((r) => r.data);
+
+export const adminUpdateStudioProduct = (id, payload) =>
+    api.put(`/admin/studio-products/${id}`, payload).then((r) => r.data);
+
+export const adminDeleteStudioProduct = (id) =>
+    api.delete(`/admin/studio-products/${id}`).then((r) => r.data);
+
+// ---------- Studio Brands (admin) ----------
+export const adminListStudioBrands = () =>
+    api.get('/admin/studio-brands').then((r) => r.data?.data || []);
+
+export const adminGetStudioBrand = (id) =>
+    api.get(`/admin/studio-brands/${id}`).then((r) => r.data);
+
+export const adminCreateStudioBrand = (payload) =>
+    api.post('/admin/studio-brands', payload).then((r) => r.data);
+
+export const adminUpdateStudioBrand = (id, payload) =>
+    api.put(`/admin/studio-brands/${id}`, payload).then((r) => r.data);
+
+export const adminDeleteStudioBrand = (id) =>
+    api.delete(`/admin/studio-brands/${id}`).then((r) => r.data);
+
+// ---------- Studio Models (admin) ----------
+export const adminListStudioModels = (params = {}) =>
+    api.get('/admin/studio-models', { params }).then((r) => r.data?.data || []);
+
+export const adminCreateStudioModel = (payload) =>
+    api.post('/admin/studio-models', payload).then((r) => r.data);
+
+export const adminUpdateStudioModel = (id, payload) =>
+    api.put(`/admin/studio-models/${id}`, payload).then((r) => r.data);
+
+export const adminDeleteStudioModel = (id) =>
+    api.delete(`/admin/studio-models/${id}`).then((r) => r.data);
+
 // ---------- Dashboard composite endpoint (admin) ----------
 export const adminGetDashboard = () =>
     api.get('/admin/dashboard').then((r) => r.data);
@@ -195,3 +240,53 @@ export const adminDeleteTemplate = (id) =>
 // ---------- CSV Import (admin) ----------
 export const adminImportModelsCSV = (rows) =>
     api.post('/admin/templates/import-csv', { rows }).then((r) => r.data);
+
+// ---------- Studio Templates (admin) ----------
+export const adminSaveFullTemplate = (payload) =>
+    api.post('/admin/studio-templates/full', payload).then((r) => r.data);
+
+export const adminGetStudioTemplate = (id) =>
+    api.get(`/admin/studio-templates/${id}`).then((r) => r.data);
+
+export const adminGetTemplateByProductId = (productId) =>
+    api.get(`/admin/studio-templates/product/${productId}`).then((r) => r.data);
+
+export const adminCreateStudioTemplate = (payload) =>
+    api.post('/admin/studio-templates', payload).then((r) => r.data);
+
+export const adminUpdateStudioTemplate = (id, payload) =>
+    api.put(`/admin/studio-templates/${id}`, payload).then((r) => r.data);
+
+export const adminDeleteStudioTemplate = (id) =>
+    api.delete(`/admin/studio-templates/${id}`).then((r) => r.data);
+
+export const adminCreateEditableArea = (payload) =>
+    api.post('/admin/studio-templates/areas', payload).then((r) => r.data);
+
+export const adminUpdateEditableArea = (id, payload) =>
+    api.put(`/admin/studio-templates/areas/${id}`, payload).then((r) => r.data);
+
+export const adminDeleteEditableArea = (id) =>
+    api.delete(`/admin/studio-templates/areas/${id}`).then((r) => r.data);
+
+export const adminDuplicateEditableArea = (id) =>
+    api.post(`/admin/studio-templates/areas/${id}/duplicate`).then((r) => r.data);
+
+export const adminReorderEditableAreas = (orders) =>
+    api.put('/admin/studio-templates/areas/reorder', { orders }).then((r) => r.data);
+
+// ---------- Custom Designs (admin) ----------
+export const adminListCustomDesigns = (params = {}) =>
+    api.get('/custom-designs', { params }).then((r) => r.data?.data || []);
+
+export const adminGetCustomDesign = (id) =>
+    api.get(`/custom-designs/${id}`).then((r) => r.data);
+
+export const adminCreateCustomDesign = (payload) =>
+    api.post('/custom-designs', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminUpdateCustomDesign = (id, payload) =>
+    api.put(`/custom-designs/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
+
+export const adminDeleteCustomDesign = (id) =>
+    api.delete(`/custom-designs/${id}`).then((r) => { clearApiCache(); return r.data; });

@@ -28,6 +28,7 @@ model DeviceModel {
   slug         String                       @unique @db.VarChar(140)
   deviceType   enum_DeviceModels_deviceType @default(phone)
   releaseYear  Int?
+  image        String?
   displayOrder Int                          @default(0)
   isActive     Boolean                      @default(true)
   createdAt    DateTime                     @default(now()) @db.Timestamptz(6)
@@ -69,6 +70,23 @@ model DeviceTemplate {
 
   @@index([deviceModelId])
   @@map("DeviceTemplates")
+}
+
+model CustomDesign {
+  id             Int      @id @default(autoincrement())
+  name           String    @db.VarChar(200)
+  description    String?   @db.Text
+  modelSlug      String    @db.VarChar(140)
+  image          String    @db.Text
+  price          Int       @default(399)
+  compareAtPrice Int?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([modelSlug])
+  @@index([isActive])
+  @@map("CustomDesigns")
 }
 
 enum enum_DeviceModels_deviceType {

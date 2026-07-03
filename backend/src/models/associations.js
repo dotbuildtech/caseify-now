@@ -74,8 +74,40 @@ const Material = require('./Material');
 const CategoryMaterial = require('./CategoryMaterial');
 const Category = require('./Category');
 const FilterOption = require('./FilterOption');
+const CustomDesign = require('./CustomDesign');
+const StudioBrand = require('./StudioBrand');
+const StudioModel = require('./StudioModel');
 
 Brand.hasMany(DeviceModel, { foreignKey: 'BrandId', as: 'models' });
+Brand.hasOne(StudioBrand, { foreignKey: 'brandId', as: 'studioBrand' });
+StudioBrand.belongsTo(Brand, { foreignKey: 'brandId' });
+
+StudioBrand.hasMany(StudioModel, { foreignKey: 'studioBrandId', as: 'models' });
+StudioModel.belongsTo(StudioBrand, { foreignKey: 'studioBrandId' });
+
+const StudioProduct = require('./StudioProduct');
+StudioProduct.belongsTo(StudioBrand, { foreignKey: 'studioBrandId' });
+StudioProduct.belongsTo(StudioModel, { foreignKey: 'studioModelId' });
+StudioProduct.belongsTo(Material, { foreignKey: 'materialId' });
+StudioBrand.hasMany(StudioProduct, { foreignKey: 'studioBrandId', as: 'products' });
+StudioModel.hasMany(StudioProduct, { foreignKey: 'studioModelId', as: 'products' });
+Material.hasMany(StudioProduct, { foreignKey: 'materialId', as: 'products' });
+
+const StudioTemplate = require('./StudioTemplate');
+const EditableArea = require('./EditableArea');
+const TemplateAsset = require('./TemplateAsset');
+
+StudioProduct.hasOne(StudioTemplate, { foreignKey: 'studioProductId', as: 'template' });
+StudioTemplate.belongsTo(StudioProduct, { foreignKey: 'studioProductId' });
+
+StudioTemplate.hasMany(EditableArea, { foreignKey: 'studioTemplateId', as: 'editableAreas' });
+EditableArea.belongsTo(StudioTemplate, { foreignKey: 'studioTemplateId' });
+
+StudioTemplate.hasMany(TemplateAsset, { foreignKey: 'studioTemplateId', as: 'assets' });
+TemplateAsset.belongsTo(StudioTemplate, { foreignKey: 'studioTemplateId' });
+
+EditableArea.hasMany(TemplateAsset, { foreignKey: 'editableAreaId', as: 'assets' });
+TemplateAsset.belongsTo(EditableArea, { foreignKey: 'editableAreaId' });
 DeviceModel.belongsTo(Brand, { foreignKey: 'BrandId' });
 
 Brand.hasMany(CategoryBrand, { foreignKey: 'BrandId', as: 'categoryBrands' });
@@ -118,5 +150,12 @@ module.exports = {
     Material,
     CategoryMaterial,
     Category,
-    FilterOption
+    FilterOption,
+    CustomDesign,
+    StudioBrand,
+    StudioModel,
+    StudioProduct,
+    StudioTemplate,
+    EditableArea,
+    TemplateAsset
 };

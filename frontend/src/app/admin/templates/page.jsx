@@ -32,7 +32,7 @@ export default function AdminTemplatesPage() {
     useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
-        adminListBrands().then(b => setBrands(Array.isArray(b) ? b : [])).catch(() => {});
+        adminListBrands().then(b => setBrands(Array.isArray(b) ? b : [])).catch(() => { });
     }, []);
 
     const del = async (tpl) => {
@@ -259,88 +259,88 @@ function TemplateFormModal({ template, brands, models, templates, onBrandChange,
                     <h3 className="font-display text-lg">{form.id ? 'Edit Template' : 'New Template'}</h3>
                     <form onSubmit={submit} className="mt-4 space-y-4">
                         <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Brand</label>
-                            <select value={selectedBrandId} onChange={e => handleBrandSelect(e.target.value)} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink">
-                                <option value="">Select brand</option>
-                                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Model</label>
-                            <select value={form.deviceModelId} onChange={e => set('deviceModelId', parseInt(e.target.value))} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink">
-                                <option value="">Select model</option>
-                                {models.filter(m => {
-                                    const existing = template.deviceModelId;
-                                    return !existing || m.id === existing || !templates?.find(t => t.deviceModelId === m.id);
-                                }).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                            </select>
-                        </div>
-                    </div>
-
-                    <fieldset className="border border-border p-3">
-                        <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Case Dimensions</legend>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div><label className="text-[10px] text-text-light">Width (mm)</label><input type="number" step="0.1" value={form.caseWidth} onChange={e => set('caseWidth', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Height (mm)</label><input type="number" step="0.1" value={form.caseHeight} onChange={e => set('caseHeight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Corner Radius (mm)</label><input type="number" step="0.1" value={form.cornerRadius} onChange={e => set('cornerRadius', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Bleed Area (mm)</label><input type="number" step="0.1" value={form.bleedArea} onChange={e => set('bleedArea', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset className="border border-border p-3">
-                        <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Safe Area</legend>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div><label className="text-[10px] text-text-light">Top (mm)</label><input type="number" step="0.1" value={form.safeAreaTop} onChange={e => set('safeAreaTop', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Bottom (mm)</label><input type="number" step="0.1" value={form.safeAreaBottom} onChange={e => set('safeAreaBottom', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Left (mm)</label><input type="number" step="0.1" value={form.safeAreaLeft} onChange={e => set('safeAreaLeft', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Right (mm)</label><input type="number" step="0.1" value={form.safeAreaRight} onChange={e => set('safeAreaRight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                        </div>
-                    </fieldset>
-
-                    <fieldset className="border border-border p-3">
-                        <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Camera Cutout</legend>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div><label className="text-[10px] text-text-light">X (mm)</label><input type="number" step="0.1" value={form.cameraX} onChange={e => set('cameraX', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Y (mm)</label><input type="number" step="0.1" value={form.cameraY} onChange={e => set('cameraY', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Width (mm)</label><input type="number" step="0.1" value={form.cameraWidth} onChange={e => set('cameraWidth', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                            <div><label className="text-[10px] text-text-light">Height (mm)</label><input type="number" step="0.1" value={form.cameraHeight} onChange={e => set('cameraHeight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
-                        </div>
-                    </fieldset>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Base Price (₹)</label>
-                            <input type="number" value={form.basePrice} onChange={e => set('basePrice', parseInt(e.target.value) || 399)} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Active</label>
-                            <div className="mt-2 flex items-center gap-2">
-                                <input type="checkbox" checked={form.isActive !== false} onChange={e => set('isActive', e.target.checked)} className="h-4 w-4 accent-ink" />
-                                <span className="text-xs text-text-light">{form.isActive !== false ? 'Active' : 'Inactive'}</span>
+                            <div>
+                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Brand</label>
+                                <select value={selectedBrandId} onChange={e => handleBrandSelect(e.target.value)} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink">
+                                    <option value="">Select brand</option>
+                                    {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Model</label>
+                                <select value={form.deviceModelId} onChange={e => set('deviceModelId', parseInt(e.target.value))} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink">
+                                    <option value="">Select model</option>
+                                    {models.filter(m => {
+                                        const existing = template.deviceModelId;
+                                        return !existing || m.id === existing || !templates?.find(t => t.deviceModelId === m.id);
+                                    }).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                </select>
                             </div>
                         </div>
-                    </div>
 
-                    <fieldset className="border border-border p-3">
-                        <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Assets (URLs)</legend>
-                        <div className="space-y-2">
-                            <div><label className="text-[10px] text-text-light">Preview Image URL</label><input type="text" value={form.previewImage || ''} onChange={e => set('previewImage', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
-                            <div><label className="text-[10px] text-text-light">SVG Mask URL</label><input type="text" value={form.svgMask || ''} onChange={e => set('svgMask', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
-                            <div><label className="text-[10px] text-text-light">Thumbnail URL</label><input type="text" value={form.thumbnail || ''} onChange={e => set('thumbnail', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
+                        <fieldset className="border border-border p-3">
+                            <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Case Dimensions</legend>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <div><label className="text-[10px] text-text-light">Width (mm)</label><input type="number" step="0.1" value={form.caseWidth} onChange={e => set('caseWidth', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Height (mm)</label><input type="number" step="0.1" value={form.caseHeight} onChange={e => set('caseHeight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Corner Radius (mm)</label><input type="number" step="0.1" value={form.cornerRadius} onChange={e => set('cornerRadius', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Bleed Area (mm)</label><input type="number" step="0.1" value={form.bleedArea} onChange={e => set('bleedArea', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset className="border border-border p-3">
+                            <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Safe Area</legend>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <div><label className="text-[10px] text-text-light">Top (mm)</label><input type="number" step="0.1" value={form.safeAreaTop} onChange={e => set('safeAreaTop', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Bottom (mm)</label><input type="number" step="0.1" value={form.safeAreaBottom} onChange={e => set('safeAreaBottom', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Left (mm)</label><input type="number" step="0.1" value={form.safeAreaLeft} onChange={e => set('safeAreaLeft', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Right (mm)</label><input type="number" step="0.1" value={form.safeAreaRight} onChange={e => set('safeAreaRight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset className="border border-border p-3">
+                            <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Camera Cutout</legend>
+                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                <div><label className="text-[10px] text-text-light">X (mm)</label><input type="number" step="0.1" value={form.cameraX} onChange={e => set('cameraX', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Y (mm)</label><input type="number" step="0.1" value={form.cameraY} onChange={e => set('cameraY', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Width (mm)</label><input type="number" step="0.1" value={form.cameraWidth} onChange={e => set('cameraWidth', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                                <div><label className="text-[10px] text-text-light">Height (mm)</label><input type="number" step="0.1" value={form.cameraHeight} onChange={e => set('cameraHeight', parseFloat(e.target.value))} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" required /></div>
+                            </div>
+                        </fieldset>
+
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Base Price (₹)</label>
+                                <input type="number" value={form.basePrice} onChange={e => set('basePrice', parseInt(e.target.value) || 399)} className="mt-1 w-full border border-border bg-background p-2.5 text-sm outline-none focus:border-ink" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Active</label>
+                                <div className="mt-2 flex items-center gap-2">
+                                    <input type="checkbox" checked={form.isActive !== false} onChange={e => set('isActive', e.target.checked)} className="h-4 w-4 accent-ink" />
+                                    <span className="text-xs text-text-light">{form.isActive !== false ? 'Active' : 'Inactive'}</span>
+                                </div>
+                            </div>
                         </div>
-                    </fieldset>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        <button type="button" onClick={onClose} className="btn-outline text-xs">Cancel</button>
-                        <button type="submit" className="btn-primary text-xs">{form.id ? 'Update' : 'Create'}</button>
-                    </div>
-                </form>
+                        <fieldset className="border border-border p-3">
+                            <legend className="px-1 text-[10px] font-medium uppercase tracking-[0.18em] text-text-light">Assets (URLs)</legend>
+                            <div className="space-y-2">
+                                <div><label className="text-[10px] text-text-light">Preview Image URL</label><input type="text" value={form.previewImage || ''} onChange={e => set('previewImage', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
+                                <div><label className="text-[10px] text-text-light">SVG Mask URL</label><input type="text" value={form.svgMask || ''} onChange={e => set('svgMask', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
+                                <div><label className="text-[10px] text-text-light">Thumbnail URL</label><input type="text" value={form.thumbnail || ''} onChange={e => set('thumbnail', e.target.value)} className="mt-1 w-full border border-border bg-background p-2 text-sm outline-none focus:border-ink" /></div>
+                            </div>
+                        </fieldset>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <button type="button" onClick={onClose} className="btn-outline text-xs">Cancel</button>
+                            <button type="submit" className="btn-primary text-xs">{form.id ? 'Update' : 'Create'}</button>
+                        </div>
+                    </form>
+                </div>
+                <div className="w-52 shrink-0 hidden lg:block pt-9">
+                    <TemplatePreview form={form} />
+                </div>
             </div>
-            <div className="w-52 shrink-0 hidden lg:block pt-9">
-                <TemplatePreview form={form} />
-            </div>
-        </div>
         </div>
     );
 }

@@ -106,3 +106,19 @@ export const fetchMaterialDesigns = async (materialId) => {
         return [];
     }
 };
+
+export const fetchDesignsByModelSlug = async (modelSlug) => {
+    if (!modelSlug) return [];
+    try {
+        const { data } = await api.get(`/studio/designs?modelSlug=${encodeURIComponent(modelSlug)}`);
+        return data.data || [];
+    } catch { return []; }
+};
+
+export const fetchStudioProductsByModel = async (studioModelId) => {
+    if (!studioModelId) return [];
+    try {
+        const { data } = await api.get(`/studio/products?studioModelId=${encodeURIComponent(studioModelId)}`);
+        return data.data || [];
+    } catch { return []; }
+};

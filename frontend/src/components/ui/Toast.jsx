@@ -48,5 +48,5 @@ export function ToastProvider({ children }) {
 export function useToast() {
     const ctx = useContext(ToastContext);
     if (ctx) return ctx;
-    return { success: () => {}, error: () => {} };
+    return { success: (_msg) => {}, error: (_msg) => {} };
 }

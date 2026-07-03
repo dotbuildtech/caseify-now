@@ -50,6 +50,7 @@ export function AuthProvider({ children }) {
         await apiLogout();
         setUser(null);
         localStorage.removeItem('auth_check');
+        localStorage.removeItem('dotbuild_recent_uploads');
     }, []);
 
     const contextValue = useMemo(() => ({ user, loading, login, register, googleLogin, logout, setUser }), [user, loading, login, register, googleLogin, logout]);

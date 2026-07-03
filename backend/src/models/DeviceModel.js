@@ -22,6 +22,10 @@ const DeviceModel = sequelize.define('DeviceModel', {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true
+    },
+    BrandId: {
+        type: DataTypes.INTEGER,
+        allowNull: true
     }
 }, {
     tableName: 'DeviceModels',
