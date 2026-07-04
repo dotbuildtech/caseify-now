@@ -183,8 +183,15 @@ router.get('/products', studioLimiter, asyncHandler(async (req, res) => {
 router.get('/designs', studioLimiter, asyncHandler(async (req, res) => {
     const { modelSlug } = req.query;
     if (!modelSlug) return res.json({ success: true, data: [] });
+    const slugified = modelSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const designs = await prisma.customDesign.findMany({
-        where: { modelSlug, isActive: true },
+        where: {
+            isActive: true,
+            OR: [
+                { modelSlug: { contains: slugified, mode: 'insensitive' } },
+                { modelSlug: { contains: modelSlug, mode: 'insensitive' } },
+            ]
+        },
         orderBy: { createdAt: 'desc' }
     });
     res.json({ success: true, data: designs });

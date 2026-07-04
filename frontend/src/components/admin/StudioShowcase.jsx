@@ -245,7 +245,7 @@ export default function StudioShowcase() {
                     <p className="mt-1 text-[10px] text-text-light">Click "Add Brand/Model+" to get started.</p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                     {studioBrands.map(sb => (
                         <div key={sb.id} className="rounded-lg border border-border overflow-hidden transition-shadow hover:shadow-sm">
                             <div className="flex items-center gap-3 bg-background-light/50 px-4 py-3">
@@ -279,7 +279,7 @@ export default function StudioShowcase() {
                             </div>
 
                             {expandedBrand === sb.id && (
-                                <div className="border-t border-border px-4 py-3 space-y-2 bg-white/50">
+                                <div className="border-t border-border px-4 py-3 space-y-2 bg-white/50 max-h-[350px] overflow-y-auto">
                                     {(studioModels[sb.id] || []).length === 0 && !addingModelTo ? (
                                         <p className="text-[10px] text-text-light py-1">No models added.</p>
                                     ) : (

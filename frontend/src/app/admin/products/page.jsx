@@ -112,7 +112,7 @@ function AdminProductsPageContent() {
                             <span className="text-center">Status</span>
                             <span className="text-right">Actions</span>
                         </div>
-                        <ul className="divide-y divide-border">
+                        <ul className="divide-y divide-border max-h-[600px] overflow-y-auto">
                             {items.map((p) => {
                                 const low = Number(p.stock) <= Number(p.lowStockThreshold || 0);
                                 const img = Array.isArray(p.images) && p.images[0]

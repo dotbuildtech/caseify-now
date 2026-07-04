@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStudioStore } from '@/store/studioStore';
-import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel } from '@/services/studioApi';
+import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel, fetchDesignsByModelSlug } from '@/services/studioApi';
 import { adminGetTemplateByProductId } from '@/services/adminApi';
 import { formatINR, cn } from '@/lib/utils';
 import { ChevronLeft, Smartphone, Package, Sparkles, Percent } from 'lucide-react';
@@ -22,7 +22,7 @@ interface ModelItem {
 }
 
 interface ProductItem {
-  id: number;
+  id: number | string;
   name: string;
   description?: string;
   image: string;
@@ -30,6 +30,7 @@ interface ProductItem {
   compareAtPrice?: number;
   discount?: string;
   studioModelId: number;
+  isDesign?: boolean;
   Material?: { id: number; name: string; slug: string; price: number };
 }
 
@@ -114,8 +115,21 @@ export default function StudioLanding() {
               if (model) {
                 setSelectedModel(model);
                 setLandingModelId(model.id);
-                const prods = await fetchStudioProductsByModel(model.id);
-                setProducts(prods || []);
+                const [prods, designs] = await Promise.all([
+                  fetchStudioProductsByModel(model.id),
+                  fetchDesignsByModelSlug(model.slug)
+                ]);
+                const designItems = (designs || []).map((d: any) => ({
+                  id: `design_${d.id}`,
+                  name: d.name,
+                  description: d.description,
+                  image: d.image,
+                  price: d.price,
+                  compareAtPrice: d.compareAtPrice,
+                  studioModelId: model.id,
+                  isDesign: true,
+                }));
+                setProducts([...(prods || []), ...designItems]);
                 setProductsLoading(false);
               }
             } catch { /* ignore */ }
@@ -151,8 +165,22 @@ export default function StudioLanding() {
     setLandingModelId(model.id);
     updateURL('templates', selectedBrand?.name, model.name);
     try {
-      const data = await fetchStudioProductsByModel(model.id);
-      setProducts(data || []);
+      const [studioProducts, customDesigns] = await Promise.all([
+        fetchStudioProductsByModel(model.id),
+        fetchDesignsByModelSlug(model.slug)
+      ]);
+      const designItems = (customDesigns || []).map((d: any) => ({
+        id: `design_${d.id}`,
+        name: d.name,
+        description: d.description,
+        image: d.image,
+        price: d.price,
+        compareAtPrice: d.compareAtPrice,
+        studioModelId: model.id,
+        isDesign: true,
+      }));
+      const merged = [...(studioProducts || []), ...designItems];
+      setProducts(merged);
     } catch {
       setProducts([]);
     }
@@ -183,11 +211,20 @@ export default function StudioLanding() {
     setLandingBrandName(selectedBrand?.name || null);
     setLandingModelId(selectedModel?.id || null);
     resetCanvas();
-    updateURL('studio', selectedBrand?.name, selectedModel?.name);
+    updateURL('edit', selectedBrand?.name, selectedModel?.name);
+
+    if (product.isDesign) {
+      setBackgroundImage(product.image);
+      useStudioStore.getState().setEditableRegions([]);
+      useStudioStore.getState().setVisibleBounds(null);
+      enterStudio();
+      return;
+    }
+
     try {
       const store = useStudioStore;
       store.getState().setTemplateRegionsLoading(true);
-      const template = await adminGetTemplateByProductId(product.id);
+      const template = await adminGetTemplateByProductId(product.id as number);
       if (template?.editableAreas) {
         store.getState().setEditableRegions(template.editableAreas);
         store.getState().setTemplateOriginalDimensions(

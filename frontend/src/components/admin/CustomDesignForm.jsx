@@ -99,9 +99,10 @@ export default function CustomDesignForm({ mode = 'create', initial = null }) {
                     <select value={modelSlug} onChange={(e) => setModelSlug(e.target.value)}
                         className="input-luxe text-sm">
                         <option value="">Select a model...</option>
-                        {studioModels.map(m => (
-                            <option key={m.id} value={m.name}>{m.name}</option>
-                        ))}
+                        {studioModels.map(m => {
+                            const slug = m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                            return <option key={m.id} value={slug}>{m.name}</option>;
+                        })}
                     </select>
                 </div>
 

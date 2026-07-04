@@ -83,7 +83,7 @@ export default function AdminModelsPage() {
                 ) : items.length === 0 ? (
                     <div className="p-12 text-center text-sm text-text-light">No models found.</div>
                 ) : (
-                    <ul className="divide-y divide-border">
+                        <ul className="divide-y divide-border max-h-[600px] overflow-y-auto">
                         {items.map((m) => (
                             <li key={m.id} className="flex items-center justify-between gap-3 p-4">
                                 <div className="min-w-0">

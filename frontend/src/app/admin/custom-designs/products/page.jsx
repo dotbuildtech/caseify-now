@@ -80,7 +80,7 @@ export default function AdminStudioProductsPage() {
                             <span className="text-center">Active</span>
                             <span className="text-right">Actions</span>
                         </div>
-                        <ul className="divide-y divide-border">
+                        <ul className="divide-y divide-border max-h-[600px] overflow-y-auto">
                             {items.map((d) => (
                                 <li key={d.id} className="grid grid-cols-2 gap-3 p-4 md:grid-cols-[56px_2fr_1fr_100px_100px_80px_80px_100px]">
                                     <div className="relative h-14 w-14 overflow-hidden border border-border bg-background-light">

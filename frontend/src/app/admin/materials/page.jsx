@@ -102,7 +102,7 @@ export default function MaterialsPage() {
                     <p className="text-sm text-text-light">No materials yet. Add one above.</p>
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border text-left text-[10px] font-semibold uppercase tracking-[0.15em] text-text-light">

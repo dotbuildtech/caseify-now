@@ -218,7 +218,7 @@ export default function AdminOrdersPage() {
                 ))}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto">
                 {loading ? (
                     <div className="space-y-3">
                         {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-background-light animate-pulse" />)}
