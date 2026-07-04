@@ -34,15 +34,21 @@ export default function CustomDesignForm({ mode = 'create', initial = null }) {
 
     const handleImageUpload = async (file) => {
         if (!file) return;
+        const localUrl = URL.createObjectURL(file);
+        setImage(localUrl);
         setUploading(true);
         try {
-            const compressed = await compressImage(file, 1200, 0.8);
+            const compressed = await compressImage(file, 800, 0.75);
             const form = new FormData();
             form.append('image', compressed);
             const { data } = await api.post('/uploads/studio-image-blob', form);
-            if (data?.url) setImage(data.url);
+            if (data?.url) {
+                setImage(data.url);
+                URL.revokeObjectURL(localUrl);
+            }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Image upload failed');
+            setImage('');
         } finally { setUploading(false); }
     };
 

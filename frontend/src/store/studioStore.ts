@@ -90,6 +90,11 @@ interface StudioState {
   captureRef: (() => Promise<string | null>) | null;
   captureThumbRef: (() => Promise<string | null>) | null;
 
+  // Landing wizard persistence
+  landingStep: 'brands' | 'models' | 'templates' | null;
+  landingBrandName: string | null;
+  landingModelId: number | null;
+
   // Actions - Device
   setSelectedProduct: (product: any | null) => void;
   setBrand: (brand: string | null) => void;
@@ -175,6 +180,9 @@ interface StudioState {
   // Actions - Studio UI
   enterStudio: () => void;
   leaveStudio: () => void;
+  setLandingStep: (step: 'brands' | 'models' | 'templates' | null) => void;
+  setLandingBrandName: (name: string | null) => void;
+  setLandingModelId: (id: number | null) => void;
 
   // Actions - Import/Export
   exportJSON: () => string;
@@ -227,6 +235,10 @@ export const useStudioStore = create<StudioState>()(
 
     captureRef: null,
     captureThumbRef: null,
+
+    landingStep: null,
+    landingBrandName: null,
+    landingModelId: null,
 
     // --- Device Actions ---
     setSelectedProduct: (product) => set({ selectedProduct: product }),
@@ -502,6 +514,9 @@ export const useStudioStore = create<StudioState>()(
 
     enterStudio: () => set({ inStudio: true }),
     leaveStudio: () => set({ inStudio: false }),
+    setLandingStep: (step) => set({ landingStep: step }),
+    setLandingBrandName: (name) => set({ landingBrandName: name }),
+    setLandingModelId: (id) => set({ landingModelId: id }),
 
     // --- Import/Export ---
     exportJSON: () => {

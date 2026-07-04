@@ -28,6 +28,7 @@ export default function StudioProductForm({ product = null }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [uploadPreview, setUploadPreview] = useState(null);
     const [loadingTemplate, setLoadingTemplate] = useState(false);
 
     const [studioBrandId, setStudioBrandId] = useState(product?.studioBrandId || '');
@@ -96,8 +97,9 @@ export default function StudioProductForm({ product = null }) {
     const handleImageUpload = async (file) => {
         if (!file) return;
         setUploading(true);
+        setUploadPreview(URL.createObjectURL(file));
         try {
-            const compressed = await compressImage(file, 1200, 0.8);
+            const compressed = await compressImage(file, 1200, 0.9);
             const form = new FormData();
             form.append('image', compressed);
             const { data } = await api.post('/uploads/studio-image-blob', form);
@@ -108,6 +110,7 @@ export default function StudioProductForm({ product = null }) {
             toast.error(err.response?.data?.message || 'Image upload failed');
         } finally {
             setUploading(false);
+            setUploadPreview(null);
         }
     };
 
@@ -271,7 +274,14 @@ export default function StudioProductForm({ product = null }) {
                 <div className="p-5 md:p-6 border-b border-border bg-background-light/30">
                     <h3 className="font-display text-sm mb-3">Template Design</h3>
                     <div className="flex items-start gap-3">
-                        {image ? (
+                        {uploadPreview ? (
+                            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-primary/30 shadow-sm opacity-70">
+                                <img src={uploadPreview} alt="" className="h-full w-full object-cover" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/30">
+                                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                </div>
+                            </div>
+                        ) : image ? (
                             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-border shadow-sm">
                                 <img src={image} alt="" className="h-full w-full object-cover" />
                                 <button type="button" onClick={() => { setImage(''); setEditableAreas([]); }}

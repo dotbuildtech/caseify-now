@@ -221,26 +221,6 @@ export const adminUpdateFilterOption = (id, payload) =>
 export const adminDeleteFilterOption = (id) =>
     api.delete(`/admin/filter-options/${id}`).then((r) => { clearApiCache(); return r.data; });
 
-// ---------- Device Templates (admin) ----------
-export const adminListTemplates = (params = {}) =>
-    api.get('/admin/templates', { params }).then((r) => r.data);
-
-export const adminGetTemplate = (id) =>
-    api.get(`/admin/templates/${id}`).then((r) => r.data);
-
-export const adminCreateTemplate = (payload) =>
-    api.post('/admin/templates', payload).then((r) => { clearApiCache(); return r.data; });
-
-export const adminUpdateTemplate = (id, payload) =>
-    api.put(`/admin/templates/${id}`, payload).then((r) => { clearApiCache(); return r.data; });
-
-export const adminDeleteTemplate = (id) =>
-    api.delete(`/admin/templates/${id}`).then((r) => { clearApiCache(); return r.data; });
-
-// ---------- CSV Import (admin) ----------
-export const adminImportModelsCSV = (rows) =>
-    api.post('/admin/templates/import-csv', { rows }).then((r) => r.data);
-
 // ---------- Studio Templates (admin) ----------
 export const adminSaveFullTemplate = (payload) =>
     api.post('/admin/studio-templates/full', payload).then((r) => r.data);

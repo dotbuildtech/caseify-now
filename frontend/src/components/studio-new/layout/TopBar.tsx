@@ -22,6 +22,14 @@ export default function TopBar() {
   const store = useStudioStore;
   const price = useStudioStore((s) => s.price);
   const settings = useStudioStore((s) => s.settings);
+  const leaveStudio = useStudioStore((s) => s.leaveStudio);
+  const setLandingStep = useStudioStore((s) => s.setLandingStep);
+
+  const handleBack = () => {
+    setLandingStep('templates');
+    router.replace(`/customize?step=templates&brand=${encodeURIComponent(store.getState().brand || '')}&model=${encodeURIComponent(store.getState().modelId || '')}`, { scroll: false });
+    leaveStudio();
+  };
   const undo = useStudioStore((s) => s.undo);
   const redo = useStudioStore((s) => s.redo);
   const canUndo = useStudioStore((s) => s.historyIndex >= 0);
@@ -83,7 +91,7 @@ export default function TopBar() {
     <header className="flex items-center justify-between h-14 px-4 border-b border-border bg-background/80 backdrop-blur-xl z-50 shrink-0">
       {/* Left */}
       <div className="flex items-center gap-3">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={handleBack} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Back</span>
         </button>

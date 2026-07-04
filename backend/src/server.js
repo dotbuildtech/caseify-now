@@ -180,7 +180,6 @@ app.use('/api/admin/filter-options', require('./routes/adminFilterOptionRoutes')
 app.use('/api/admin/dashboard', require('./routes/adminDashboardRoutes'));
 app.use('/api/admin/brands', require('./routes/adminBrandRoutes'));
 app.use('/api/admin/models', require('./routes/adminModelRoutes'));
-app.use('/api/admin/templates', require('./routes/adminTemplateRoutes'));
 app.use('/api/admin/studio-brands', require('./routes/studioBrandRoutes'));
 app.use('/api/admin/studio-models', require('./routes/studioModelRoutes'));
 app.use('/api/admin/studio-products', require('./routes/studioProductRoutes'));

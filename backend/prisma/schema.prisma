@@ -36,40 +36,11 @@ model DeviceModel {
   deletedAt    DateTime?                    @db.Timestamptz(6)
   BrandId      Int?
   Brands       Brand?                       @relation(fields: [BrandId], references: [id])
-  DeviceTemplate DeviceTemplate?
 
   @@index([BrandId], map: "device_models__brand_id")
   @@index([deviceType], map: "device_models_device_type")
   @@index([slug], map: "device_models_slug")
   @@map("DeviceModels")
-}
-
-model DeviceTemplate {
-  id             Int      @id @default(autoincrement())
-  deviceModelId  Int      @unique
-  caseWidth      Float
-  caseHeight     Float
-  safeAreaTop    Float
-  safeAreaBottom Float
-  safeAreaLeft   Float
-  safeAreaRight  Float
-  bleedArea      Float    @default(0)
-  cornerRadius   Float
-  cameraX        Float
-  cameraY        Float
-  cameraWidth    Float
-  cameraHeight   Float
-  previewImage   String?  @db.Text
-  svgMask        String?  @db.Text
-  thumbnail      String?  @db.Text
-  basePrice      Int      @default(399)
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
-  model          DeviceModel @relation(fields: [deviceModelId], references: [id], onDelete: Cascade)
-
-  @@index([deviceModelId])
-  @@map("DeviceTemplates")
 }
 
 model CustomDesign {

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, X, Trash2, ImagePlus } from 'lucide-react';
+import { Save, X, Trash2, ImagePlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import SmartImage from '@/components/ui/SmartImage';
 import { adminCreateProduct, adminUpdateProduct, adminListBrands } from '@/services/adminApi';
@@ -65,8 +65,10 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const toast = useToast();
     const [form, setForm] = useState(normalize(initial));
     const [imageUrl, setImageUrl] = useState('');
-    const [uploading, setUploading] = useState(false);
-    const [tagsInput, setTagsInput] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState({ done: 0, total: 0 });
+  const [uploadPreview, setUploadPreview] = useState(null);
+  const [tagsInput, setTagsInput] = useState('');
     useEffect(() => {
         setTagsInput((initial?.tags || []).join(', '));
     }, [initial?.tags]);
@@ -82,21 +84,24 @@ export default function ProductForm({ initial, mode = 'create' }) {
     const formFields = catConfig?.formFields || [];
 
     useEffect(() => {
-        if (!form.category) {
-            setBrands([]);
-            setModels([]);
-            setFilterOptions({});
-            return;
-        }
-        const p = { isActive: 'true', category: form.category };
-        adminListBrands(p).then(setBrands).catch(() => {});
-        const attrKeys = catConfig?.attrKeys || [];
-        for (const key of attrKeys) {
-            fetchFilterOptions(key).then((opts) => {
-                setFilterOptions((prev) => ({ ...prev, [key]: opts }));
-            }).catch(() => {});
-        }
-    }, [form.category]);
+    if (!form.category) {
+      setBrands([]);
+      setModels([]);
+      setFilterOptions({});
+      return;
+    }
+    const p = { isActive: 'true', category: form.category };
+    adminListBrands(p).then(setBrands).catch(() => {});
+    const attrKeys = catConfig?.attrKeys || [];
+    if (attrKeys.length) {
+      Promise.all(attrKeys.map((k) => fetchFilterOptions(k).then((opts) => ({ key: k, opts })).catch(() => ({ key: k, opts: [] }))))
+        .then((results) => {
+          const merged = {};
+          results.forEach(({ key, opts }) => { merged[key] = opts; });
+          setFilterOptions(merged);
+        });
+    }
+  }, [form.category]);
 
     useEffect(() => {
         if (!form.brand || !formFields.includes('model')) { setModels([]); return; }
@@ -151,36 +156,43 @@ export default function ProductForm({ initial, mode = 'create' }) {
     };
 
     const handleFileUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-            toast.error('Only jpg, png, webp allowed');
-            return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('File too large (max 5MB)');
-            return;
-        }
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const valid = files.filter((f) => {
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) return false;
+            if (f.size > 5 * 1024 * 1024) return false;
+            return true;
+        });
+        if (valid.length === 0) { toast.error('No valid images (max 5MB, jpg/png/webp)'); return; }
+        if (valid.length < files.length) toast.error(`${files.length - valid.length} file(s) skipped`);
+
         setUploading(true);
+        setUploadCount({ done: 0, total: valid.length });
+        setUploadPreview(URL.createObjectURL(valid[0]));
         try {
-            const compressed = await compressImage(file);
-            const fd = new FormData();
-            fd.append('image', compressed);
-            const r = await api.post('/uploads/image', fd, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            const url = r.data?.url;
-            if (!url) throw new Error('No URL returned');
+            const compressed = await Promise.all(valid.map((f) => compressImage(f, 1000, 0.6)));
+            const urls = await Promise.all(compressed.map(async (comp) => {
+                const fd = new FormData();
+                fd.append('image', comp);
+                const r = await api.post('/uploads/image', fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setUploadCount((c) => ({ ...c, done: c.done + 1 }));
+                return r.data?.url;
+            }));
+            const validUrls = urls.filter(Boolean);
+            if (validUrls.length === 0) throw new Error('No URLs returned');
             setForm((f) => ({
                 ...f,
-                images: [...f.images, url],
-                image: f.image || url
+                images: [...f.images, ...validUrls],
+                image: f.image || validUrls[0]
             }));
-            toast.success('Image uploaded');
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Upload failed');
+            toast.error(err.response?.data?.message || err.message || 'Upload failed');
         } finally {
             setUploading(false);
+            setUploadPreview(null);
+            setUploadCount({ done: 0, total: 0 });
             e.target.value = '';
         }
     };
@@ -231,12 +243,13 @@ export default function ProductForm({ initial, mode = 'create' }) {
                 await adminUpdateProduct(initial.id, payload);
                 toast.success('Product updated');
             } else {
-                const created = await adminCreateProduct(payload);
+                await adminCreateProduct(payload);
                 toast.success('Product created');
-                router.push(`/admin/products/${created.id}`);
-                return;
             }
-            router.push('/admin/products');
+            setForm({ ...blank });
+            setTagsInput('');
+            setImageUrl('');
+            setErrors({});
         } catch (err) {
             const apiErrs = err.response?.data?.errors;
             if (Array.isArray(apiErrs)) {
@@ -359,10 +372,20 @@ export default function ProductForm({ initial, mode = 'create' }) {
                         <ImagePlus className="h-4 w-4" /> Add URL
                     </button>
                     <label className={`btn-secondary !px-5 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-                        {uploading ? 'Uploading...' : 'Upload file'}
-                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                        {uploading ? (uploadCount.total > 1 ? `Uploading ${uploadCount.done}/${uploadCount.total}...` : 'Uploading...') : 'Upload file'}
+                        <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleFileUpload} className="hidden" disabled={uploading} />
                     </label>
                 </div>
+                {uploadPreview && (
+                    <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-5">
+                        <div className="group relative aspect-square overflow-hidden border border-primary/30 bg-background-light opacity-70">
+                            <img src={uploadPreview} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {form.images.length > 0 && (
                     <div className="mt-4 grid grid-cols-3 gap-3 md:grid-cols-5">
                         {form.images.map((u) => (

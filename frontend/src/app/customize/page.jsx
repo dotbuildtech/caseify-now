@@ -1,4 +1,5 @@
 'use client';
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useStudioStore } from '@/store/studioStore';
 
@@ -29,7 +30,9 @@ export default function CustomizePage() {
   return (
     <>
       <div style={{ display: inStudio ? 'none' : undefined }}>
-        <StudioLanding />
+        <Suspense>
+          <StudioLanding />
+        </Suspense>
       </div>
       {inStudio && <StudioPage />}
     </>

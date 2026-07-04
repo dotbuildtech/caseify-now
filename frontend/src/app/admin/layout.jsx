@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal, Ruler } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getUnreadCount } from '@/services/contactApi';
 
@@ -45,18 +45,17 @@ const NAV = [
     { href: '/admin', label: 'Overview', Icon: LayoutDashboard, exact: true },
     { href: '/admin/products', label: 'Products', Icon: Package },
     { href: '/admin/orders', label: 'Orders', Icon: ShoppingBag },
-    { href: '/admin/messages', label: 'Messages', Icon: MessagesSquare, badge: true },
+    { href: '/admin/custom-designs', label: 'Custom Designs', Icon: Layers },
     { href: '/admin/inventory', label: 'Inventory', Icon: Boxes },
     { href: '/admin/users', label: 'Users', Icon: Users },
+    { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 },
+    { href: '/admin/messages', label: 'Messages', Icon: MessagesSquare, badge: true },
     { href: '/admin/brands', label: 'Brands', Icon: Tag },
     { href: '/admin/models', label: 'Models', Icon: Smartphone },
-    { href: '/admin/templates', label: 'Templates', Icon: Ruler },
-    { href: '/admin/custom-designs', label: 'Custom Designs', Icon: Layers },
-    { href: '/admin/category-brands', label: 'Category Links', Icon: Link2 },
     { href: '/admin/materials', label: 'Materials', Icon: Layers },
+    { href: '/admin/category-brands', label: 'Category Links', Icon: Link2 },
     { href: '/admin/filter-options', label: 'Filter Options', Icon: SlidersHorizontal },
     { href: '/admin/hero-slides', label: 'Hero Slides', Icon: Image },
-    { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 }
 ];
 
 export default function AdminLayout({ children }) {

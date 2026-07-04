@@ -62,8 +62,15 @@ function StudioHeader() {
   const fitToScreen = useStudioStore((s) => s.fitToScreen);
   const toggleDarkMode = useStudioStore((s) => s.toggleDarkMode);
   const toggleGrid = useStudioStore((s) => s.toggleGrid);
-  const back = useStudioStore((s) => s.leaveStudio);
+  const leaveStudio = useStudioStore((s) => s.leaveStudio);
+  const setLandingStep = useStudioStore((s) => s.setLandingStep);
   const saveDesign = useStudioStore((s) => s.saveDesign);
+
+  const handleBack = () => {
+    setLandingStep('templates');
+    router.replace(`/customize?step=templates&brand=${encodeURIComponent(store.getState().brand || '')}&model=${encodeURIComponent(store.getState().modelId || '')}`, { scroll: false });
+    leaveStudio();
+  };
 
   const handleAddToBag = async () => {
     if (!user) { router.push('/login?redirect=/customize'); return; }
@@ -116,7 +123,7 @@ function StudioHeader() {
   return (
     <header className="flex items-center justify-between h-14 px-4 border-b border-border bg-background/80 backdrop-blur-xl z-50 shrink-0">
       <div className="flex items-center gap-3">
-        <button onClick={back} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={handleBack} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Back</span>
         </button>

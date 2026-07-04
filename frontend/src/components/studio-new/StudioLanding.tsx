@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useStudioStore } from '@/store/studioStore';
 import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel } from '@/services/studioApi';
 import { adminGetTemplateByProductId } from '@/services/adminApi';
@@ -38,6 +39,8 @@ function getDiscountPercent(price: number, compareAtPrice?: number): number | nu
 }
 
 export default function StudioLanding() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [brands, setBrands] = useState<BrandItem[]>([]);
   const [models, setModels] = useState<ModelItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
@@ -46,6 +49,7 @@ export default function StudioLanding() {
   const [loading, setLoading] = useState(true);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
+  const didRestore = useRef(false);
 
   const setBrand = useStudioStore((s) => s.setBrand);
   const setModelId = useStudioStore((s) => s.setModelId);
@@ -53,6 +57,22 @@ export default function StudioLanding() {
   const setBackgroundImage = useStudioStore((s) => s.setBackgroundImage);
   const resetCanvas = useStudioStore((s) => s.resetCanvas);
   const enterStudio = useStudioStore((s) => s.enterStudio);
+  const landingStep = useStudioStore((s) => s.landingStep);
+  const landingBrandName = useStudioStore((s) => s.landingBrandName);
+  const landingModelId = useStudioStore((s) => s.landingModelId);
+  const setLandingStep = useStudioStore((s) => s.setLandingStep);
+  const setLandingBrandName = useStudioStore((s) => s.setLandingBrandName);
+  const setLandingModelId = useStudioStore((s) => s.setLandingModelId);
+  const leaveStudio = useStudioStore((s) => s.leaveStudio);
+
+  const updateURL = (step: string, brand?: string, model?: string) => {
+    const params = new URLSearchParams();
+    if (step) params.set('step', step);
+    if (brand) params.set('brand', brand);
+    if (model) params.set('model', model);
+    const qs = params.toString();
+    router.replace(`/customize${qs ? `?${qs}` : ''}`, { scroll: false });
+  };
 
   useEffect(() => {
     (async () => {
@@ -70,11 +90,51 @@ export default function StudioLanding() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (didRestore.current || loading || brands.length === 0) return;
+    didRestore.current = true;
+    const urlStep = searchParams.get('step');
+    const urlBrand = searchParams.get('brand');
+    const urlModel = searchParams.get('model');
+    const storeStep = landingStep || urlStep;
+    const storeBrand = landingBrandName || urlBrand;
+    const storeModel = landingModelId || (urlModel ? 0 : null);
+
+    if (storeStep && storeBrand) {
+      const brand = brands.find((b) => b.name === storeBrand);
+      if (brand) {
+        handleBrandClick(brand);
+        if (storeStep === 'templates') {
+          const trySelectModel = async () => {
+            try {
+              const data = await fetchModelsByBrand(storeBrand);
+              const model = urlModel
+                ? (data || []).find((m: ModelItem) => m.name === urlModel || m.slug === urlModel)
+                : (storeModel && storeModel !== 0) ? (data || []).find((m: ModelItem) => m.id === storeModel) : null;
+              if (model) {
+                setSelectedModel(model);
+                setLandingModelId(model.id);
+                const prods = await fetchStudioProductsByModel(model.id);
+                setProducts(prods || []);
+                setProductsLoading(false);
+              }
+            } catch { /* ignore */ }
+          };
+          trySelectModel();
+        }
+      }
+    }
+  }, [loading, brands, landingStep, landingBrandName, landingModelId]);
+
   const handleBrandClick = async (brand: BrandItem) => {
     setSelectedBrand(brand);
     setSelectedModel(null);
     setProducts([]);
     setModelsLoading(true);
+    setLandingStep('models');
+    setLandingBrandName(brand.name);
+    setLandingModelId(null);
+    updateURL('models', brand.name);
     try {
       const data = await fetchModelsByBrand(brand.name);
       setModels(data || []);
@@ -87,6 +147,9 @@ export default function StudioLanding() {
   const handleModelClick = async (model: ModelItem) => {
     setSelectedModel(model);
     setProductsLoading(true);
+    setLandingStep('templates');
+    setLandingModelId(model.id);
+    updateURL('templates', selectedBrand?.name, model.name);
     try {
       const data = await fetchStudioProductsByModel(model.id);
       setProducts(data || []);
@@ -96,11 +159,31 @@ export default function StudioLanding() {
     setProductsLoading(false);
   };
 
+  const handleGoBack = () => {
+    if (selectedModel) {
+      setSelectedModel(null);
+      setProducts([]);
+      setLandingStep('models');
+      setLandingModelId(null);
+      updateURL('models', selectedBrand?.name);
+    } else if (selectedBrand) {
+      setSelectedBrand(null);
+      setModels([]);
+      setLandingStep(null);
+      setLandingBrandName(null);
+      updateURL('');
+    }
+  };
+
   const handleSelectProduct = async (product: ProductItem) => {
     setSelectedProduct(product);
     setBrand(selectedBrand?.name || null);
     setModelId(selectedModel?.slug || null);
+    setLandingStep('templates');
+    setLandingBrandName(selectedBrand?.name || null);
+    setLandingModelId(selectedModel?.id || null);
     resetCanvas();
+    updateURL('studio', selectedBrand?.name, selectedModel?.name);
     try {
       const store = useStudioStore;
       store.getState().setTemplateRegionsLoading(true);
@@ -143,7 +226,7 @@ export default function StudioLanding() {
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center gap-3">
           {(selectedBrand || selectedModel) && (
-            <button onClick={() => { if (selectedModel) { setSelectedModel(null); setProducts([]); } else { setSelectedBrand(null); setModels([]); } }} className="p-1.5 -ml-1.5 rounded-lg hover:bg-accent transition-colors">
+            <button onClick={handleGoBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-accent transition-colors">
               <ChevronLeft className="h-5 w-5" />
             </button>
           )}
