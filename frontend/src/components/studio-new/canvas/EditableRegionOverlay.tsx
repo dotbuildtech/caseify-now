@@ -95,6 +95,61 @@ export default function EditableRegionOverlay({
 
   return (
     <>
+      {/* Background colors + clip-path container */}
+      {clipPaths && clipPathRegions.length > 0 && (
+        <div
+          className="absolute inset-0 z-5"
+          style={{ clipPath: clipPaths }}
+        >
+          {clipPathRegions.map((region) => {
+            if (!region.backgroundColor) return null;
+            const lx = region.x * scaleX;
+            const ly = region.y * scaleY;
+            const lw = region.width * scaleX;
+            const lh = region.height * scaleY;
+            return (
+              <div
+                key={`bg-${region.id}`}
+                className="absolute pointer-events-none"
+                style={{
+                  left: lx,
+                  top: ly,
+                  width: lw,
+                  height: lh,
+                  backgroundColor: region.backgroundColor,
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Guide text shown within editable areas */}
+      {clipPathRegions.map((region) => {
+        if (!region.guideText) return null;
+        const lx = region.x * scaleX;
+        const ly = region.y * scaleY;
+        const lw = region.width * scaleX;
+        const lh = region.height * scaleY;
+        return (
+          <div
+            key={`guide-${region.id}`}
+            className="absolute z-10 pointer-events-none flex items-center justify-center"
+            style={{
+              left: lx,
+              top: ly,
+              width: lw,
+              height: lh,
+              transform: `rotate(${region.rotation || 0}deg)`,
+            }}
+          >
+            <span className="text-primary/60 text-[11px] font-medium bg-white/70 px-2 py-1 rounded text-center max-w-[90%] leading-tight">
+              {region.guideText}
+            </span>
+          </div>
+        );
+      })}
+
       {/* Invisible hit areas for clicking on regions */}
       {clipPathRegions.map((region) => {
         const radius = getRegionRadius(region, Math.min(scaleX, scaleY));

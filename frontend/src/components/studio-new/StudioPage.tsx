@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/ui/Toast';
 import { uploadStudioImageBlob } from '@/services/studioApi';
 import { formatINR, cn } from '@/lib/utils';
+import compressDataUrl from '@/utils/compressDataUrl';
 import { CUSTOM_PRODUCT_ID } from '@/lib/constants';
 import StudioCanvas from './canvas/StudioCanvas';
 import LayersPanel from './panels/LayersPanel';
@@ -77,8 +78,9 @@ function StudioHeader() {
     setAdding(true);
     try {
       const thumbFn = store.getState().captureThumbRef;
-      const thumbDataUrl = thumbFn ? await thumbFn() : null;
-      if (!thumbDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
+      const rawDataUrl = thumbFn ? await thumbFn() : null;
+      if (!rawDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
+      const thumbDataUrl = await compressDataUrl(rawDataUrl, 1200, 0.82);
       const designData = {
         designId: `design_${Date.now()}`,
         createdAt: new Date().toISOString(),

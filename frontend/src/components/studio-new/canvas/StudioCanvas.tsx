@@ -121,7 +121,7 @@ export default function StudioCanvas() {
     });
     setCaptureThumbRef(async () => {
       try {
-        return await toJpeg(el, { pixelRatio: 1, quality: 0.85, cacheBust: true });
+        return await toJpeg(el, { pixelRatio: 2, quality: 0.92, cacheBust: true });
       } catch {
         return null;
       }

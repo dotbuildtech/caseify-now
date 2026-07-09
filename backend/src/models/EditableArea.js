@@ -138,6 +138,15 @@ const EditableArea = sequelize.define('EditableArea', {
         type: DataTypes.TEXT,
         allowNull: true
     },
+    backgroundColor: {
+        type: DataTypes.STRING(20),
+        allowNull: true,
+        defaultValue: null
+    },
+    guideText: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
     sortOrder: {
         type: DataTypes.INTEGER,
         allowNull: false,

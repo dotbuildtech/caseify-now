@@ -316,6 +316,8 @@ export interface EditableAreaData {
   placeholderImage?: string | null;
   maxUploadSize?: number | null;
   acceptedFileTypes?: string | null;
+  backgroundColor?: string | null;
+  guideText?: string | null;
   zIndex: number;
   opacity: number;
   notes?: string | null;

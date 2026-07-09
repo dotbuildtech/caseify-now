@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/ui/Toast';
 import { formatINR, cn } from '@/lib/utils';
+import compressDataUrl from '@/utils/compressDataUrl';
 import { CUSTOM_PRODUCT_ID } from '@/lib/constants';
 import { ArrowLeft, ShoppingBag, Heart, Check, Sun, Moon, Save, Download, Eye, Grid3X3, Ruler, Undo2, Redo2, ZoomIn, ZoomOut } from 'lucide-react';
 import Tooltip from '../shared/Tooltip';
@@ -47,8 +48,9 @@ export default function TopBar() {
     setAdding(true);
     try {
       const thumbFn = store.getState().captureThumbRef;
-      const thumbDataUrl = thumbFn ? await thumbFn() : null;
-      if (!thumbDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
+      const rawDataUrl = thumbFn ? await thumbFn() : null;
+      if (!rawDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
+      const thumbDataUrl = await compressDataUrl(rawDataUrl, 1200, 0.82);
 
       const designData = {
         designId: `design_${Date.now()}`,

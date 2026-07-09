@@ -99,6 +99,16 @@ const connectDB = async () => {
             console.warn('[migration] Could not add visibleBounds column (non-critical):', e.message);
         }
 
+        try {
+            await sequelize.query(`
+                ALTER TABLE "EditableAreas"
+                ADD COLUMN IF NOT EXISTS "backgroundColor" VARCHAR(20) DEFAULT NULL,
+                ADD COLUMN IF NOT EXISTS "guideText" TEXT DEFAULT NULL
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not add background color columns (non-critical):', e.message);
+        }
+
         setInterval(async () => {
             try {
                 await sequelize.authenticate();

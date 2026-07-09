@@ -171,6 +171,8 @@ exports.saveFullTemplate = asyncHandler(async (req, res) => {
                 zIndex: a.zIndex ?? 0,
                 opacity: a.opacity ?? 1,
                 notes: a.notes || null,
+                backgroundColor: a.backgroundColor || null,
+                guideText: a.guideText || null,
                 sortOrder: a.sortOrder ?? i,
                 studioTemplateId: template.id
             }));
@@ -209,6 +211,8 @@ exports.createEditableArea = asyncHandler(async (req, res) => {
         borderRadiusBottom: req.body.borderRadiusBottom ?? 0,
         polygonSides: req.body.polygonSides ?? null,
         pathData: req.body.pathData || null,
+        backgroundColor: req.body.backgroundColor || null,
+        guideText: req.body.guideText || null,
         sortOrder: (maxSort ?? -1) + 1
     });
     res.status(201).json(area);
@@ -221,7 +225,8 @@ exports.updateEditableArea = asyncHandler(async (req, res) => {
         'minZoom', 'maxZoom', 'allowRotation', 'allowFlip', 'lockAspectRatio',
         'isRequired', 'isVisible', 'isEnabled', 'placeholderImage',
         'maxUploadSize', 'acceptedFileTypes', 'zIndex', 'opacity', 'notes', 'sortOrder',
-        'borderRadius', 'borderRadiusTop', 'borderRadiusBottom', 'polygonSides', 'pathData'];
+        'borderRadius', 'borderRadiusTop', 'borderRadiusBottom', 'polygonSides', 'pathData',
+        'backgroundColor', 'guideText'];
     const updates = {};
     for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];

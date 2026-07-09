@@ -177,6 +177,8 @@ export default function StudioProductForm({ product = null }) {
                         zIndex: a.zIndex,
                         opacity: a.opacity,
                         notes: a.notes || null,
+                        backgroundColor: a.backgroundColor || null,
+                        guideText: a.guideText || null,
                         sortOrder: a.sortOrder,
                         polygonSides: a.polygonSides ?? null,
                         pathData: a.pathData || null,

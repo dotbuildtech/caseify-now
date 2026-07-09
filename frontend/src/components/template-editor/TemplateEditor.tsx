@@ -619,10 +619,17 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
                     cursor: drawBtn || pathBtn ? 'crosshair' : 'grab',
                     ...(!isCustom && area.shapeType === 'polygon' ? { clipPath: generatePolygonClipPath(0, 0, area.width * s, area.height * s, area.polygonSides || 3) } : {}),
                     borderRadius: !isCustom && area.shapeType !== 'polygon' ? getAreaBorderRadius(area, s) : undefined,
-                    overflow: isCustom ? 'hidden' : undefined,
+                    overflow: isCustom || area.backgroundColor ? 'hidden' : undefined,
                   }}
                   onPointerDown={e => handleAreaDown(e, area.id!)}
                 >
+                  {/* Background color */}
+                  {area.backgroundColor && (
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: area.backgroundColor }}
+                    />
+                  )}
                   {/* Custom path areas: render the path as SVG overlay */}
                   {isCustom && area.pathData && (
                     <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 1 1`} preserveAspectRatio="none">
@@ -634,11 +641,21 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
                       />
                     </svg>
                   )}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-[10px] font-medium text-primary/70 bg-white/80 px-1.5 py-0.5 rounded truncate max-w-[90%]">
-                      {isCustom ? `✧ ${area.name}` : (area.width > 0 ? area.name : 'Draw...')}
-                    </span>
-                  </div>
+                  {/* Guide text */}
+                  {area.guideText && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                      <span className="text-[9px] font-medium text-primary/60 bg-white/80 px-1.5 py-0.5 rounded text-center max-w-[90%] leading-tight">
+                        {area.guideText}
+                      </span>
+                    </div>
+                  )}
+                  {!area.backgroundColor && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-[10px] font-medium text-primary/70 bg-white/80 px-1.5 py-0.5 rounded truncate max-w-[90%]">
+                        {isCustom ? `✧ ${area.name}` : (area.width > 0 ? area.name : 'Draw...')}
+                      </span>
+                    </div>
+                  )}
                   {isSel && <>
                     {RESIZE_HANDLES.map(h => (
                       <div key={h.id} className="area-handle absolute z-50 bg-white border-2 border-primary rounded-full shadow-md hover:scale-125 transition-transform touch-none"

@@ -210,6 +210,48 @@ export default function AreaPropertiesPanel({ area, onUpdate, onDelete, onDuplic
           )}
         </Section>
 
+        <Section title="Background">
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={area.backgroundColor || '#ffffff'}
+              onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
+              className="w-8 h-8 rounded border border-border cursor-pointer p-0.5 bg-transparent"
+            />
+            <input
+              type="text"
+              value={area.backgroundColor || ''}
+              onChange={(e) => onUpdate({ backgroundColor: e.target.value || null })}
+              className="flex-1 px-2 py-1.5 text-[11px] border border-border rounded bg-background focus:outline-none focus:border-primary font-mono"
+              placeholder="#hex or color..."
+            />
+            {area.backgroundColor && (
+              <button
+                type="button"
+                onClick={() => onUpdate({ backgroundColor: null })}
+                className="text-[10px] text-error/70 hover:text-error"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-[9px] text-text-light/50 leading-tight">
+            Set a background color behind user content in this area.
+          </p>
+        </Section>
+
+        <Section title="Guide Text">
+          <textarea
+            value={area.guideText || ''}
+            onChange={(e) => onUpdate({ guideText: e.target.value })}
+            className="w-full px-2 py-1.5 text-[11px] border border-border rounded bg-background focus:outline-none focus:border-primary min-h-[60px] resize-y"
+            placeholder="Guide text shown to users..."
+          />
+          <p className="text-[9px] text-text-light/50 leading-tight">
+            Displayed in the studio to guide users on what to put in this area.
+          </p>
+        </Section>
+
         <Section title="Notes">
           <textarea
             value={area.notes || ''}

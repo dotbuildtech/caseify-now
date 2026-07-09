@@ -138,6 +138,27 @@ export default function TemplateRenderer({
         />
       )}
 
+      {/* Guide text for editable areas */}
+      {scaled.map(({ sr, area }) => {
+        if (!area.guideText) return null;
+        return (
+          <div
+            key={`guide-${area.id ?? area.name}`}
+            className="absolute pointer-events-none flex items-center justify-center"
+            style={{
+              left: sr.x,
+              top: sr.y,
+              width: sr.width,
+              height: sr.height,
+            }}
+          >
+            <span className="text-primary/60 text-[11px] font-medium bg-white/70 px-2 py-1 rounded text-center max-w-[85%] leading-tight">
+              {area.guideText}
+            </span>
+          </div>
+        );
+      })}
+
       {/* 
         Full-size SVG defining the compound clip-path.
         Uses the SAME dimensions as the container so clipPath
@@ -178,12 +199,30 @@ export default function TemplateRenderer({
         </svg>
       )}
 
-      {/* Content clipped to compound clip-path via same-document url() reference */}
-      {children && (
+      {/* Background colors + user content clipped to compound clip-path */}
+      {cw > 0 && validAreas.length > 0 && (
         <div
           className="absolute inset-0"
           style={{ clipPath: `url(#${compoundClipId})` }}
         >
+          {/* Background colors rendered inside the clipped container */}
+          {scaled.map(({ sr, area }) => {
+            if (!area.backgroundColor) return null;
+            return (
+              <div
+                key={`bg-${area.id ?? area.name}`}
+                className="absolute"
+                style={{
+                  left: sr.x,
+                  top: sr.y,
+                  width: sr.width,
+                  height: sr.height,
+                  backgroundColor: area.backgroundColor,
+                }}
+              />
+            );
+          })}
+          {/* User layers */}
           {children}
         </div>
       )}

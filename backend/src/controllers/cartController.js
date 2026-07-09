@@ -102,17 +102,9 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addItemToCart = asyncHandler(async (req, res) => {
     const { productId, productVariantId, quantity, designMeta } = req.body;
 
-    const [savedThumb, processedLayers] = await Promise.all([
-        designMeta ? saveDataUrl(designMeta.thumbnail) : Promise.resolve(null),
-        designMeta && designMeta.layers && designMeta.layers.length > 0
-            ? Promise.all(designMeta.layers.map(async (layer) => {
-                if (layer.type === 'image' && layer.url && typeof layer.url === 'string' && layer.url.startsWith('data:')) {
-                    return { ...layer, url: await saveDataUrl(layer.url) };
-                }
-                return layer;
-            }))
-            : Promise.resolve(null)
-    ]);
+    // Save data URLs directly - Cloudinary upload will be fire-and-forget
+    const rawThumb = designMeta?.thumbnail || null;
+    const rawLayers = designMeta?.layers || null;
 
     const result = await sequelize.transaction(async (transaction) => {
         const product = await Product.findByPk(productId, {
@@ -124,8 +116,8 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
             const cart = await getOrCreateCart(req.user.id, transaction);
 
             const { thumbnail: _thumb, layers: _rawLayers, ...designMetaRest } = designMeta;
-            const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (processedLayers && processedLayers.length > 0);
-            const designMetaForDb = { ...designMetaRest, layers: processedLayers };
+            const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (rawLayers && rawLayers.length > 0);
+            const designMetaForDb = { ...designMetaRest, layers: rawLayers };
 
             const [cartItem, created] = await CartItem.findOrCreate({
                 where: { CartId: cart.id, ProductId: productId, ProductVariantId: null },
@@ -136,7 +128,7 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
                     quantity,
                     priceAtAdd: designMeta.totalPrice || designMeta.materialPrice || 399,
                     nameAtAdd: `${designMeta.materialLabel || 'Custom'} Phone Case · ${designMeta.modelLabel || ''}`,
-                    imageAtAdd: savedThumb,
+                    imageAtAdd: rawThumb,
                     variantLabel: `${designMeta.modelLabel || ''} · ${designMeta.materialLabel || ''}`,
                     designMeta: hasDesignMeta ? designMetaForDb : null
                 },
@@ -152,7 +144,7 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
                 }
                 cartItem.quantity = newQty;
                 cartItem.priceAtAdd = designMeta.totalPrice || designMeta.materialPrice || 399;
-                cartItem.imageAtAdd = savedThumb;
+                cartItem.imageAtAdd = rawThumb;
                 cartItem.designMeta = hasDesignMeta ? designMetaForDb : null;
                 await cartItem.save({ transaction });
             } else {
