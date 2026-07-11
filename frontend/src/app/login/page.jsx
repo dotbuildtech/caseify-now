@@ -66,6 +66,9 @@ function LoginContent() {
                     <div>
                         <label className="label-luxe">Password *</label>
                         <input required type="password" value={form.password} onChange={update('password')} className="input-luxe" />
+                        <Link href="/forgot-password" className="mt-1 inline-block text-xs uppercase tracking-[0.15em] text-text-light hover:text-ink">
+                            Forgot Password?
+                        </Link>
                     </div>
                     <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-50">
                         {submitting ? 'Signing in...' : 'Login'}

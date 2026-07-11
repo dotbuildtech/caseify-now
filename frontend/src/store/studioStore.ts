@@ -194,8 +194,8 @@ export const useStudioStore = create<StudioState>()(
   subscribeWithSelector((set, get) => ({
     // Initial state
     selectedProduct: null,
-    brand: 'Apple',
-    brands: ['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Nothing', 'Oppo', 'Vivo', 'Motorola'].map(name => ({ id: name.toLowerCase(), name, slug: name.toLowerCase() })),
+    brand: null,
+    brands: [],
     brandsLoading: false,
     modelId: null,
     models: [],

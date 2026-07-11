@@ -5,7 +5,7 @@ export const fetchBrands = async () => {
         const { data } = await api.get('/studio/brands');
         return data.data || data;
     } catch {
-        return ['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Oppo', 'Vivo', 'Nothing', 'Motorola'];
+        return [];
     }
 };
 

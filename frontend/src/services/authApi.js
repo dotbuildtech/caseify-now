@@ -20,3 +20,18 @@ export const logout = async () => {
 };
 
 export const fetchProfile = () => api.get('/auth/profile').then((r) => r.data);
+
+export const forgotPasswordOTP = async (email) => {
+    const { data } = await api.post('/auth/forgot-password-otp', { email });
+    return data;
+};
+
+export const verifyResetOTP = async (email, otp) => {
+    const { data } = await api.post('/auth/verify-reset-otp', { email, otp });
+    return data;
+};
+
+export const resetPasswordWithOTP = async (email, newPassword, confirmPassword) => {
+    const { data } = await api.post('/auth/reset-password-with-otp', { email, newPassword, confirmPassword });
+    return data;
+};

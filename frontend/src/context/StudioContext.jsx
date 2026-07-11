@@ -38,8 +38,8 @@ const persistSaved = (list) => {
 };
 
 export function StudioProvider({ children }) {
-    const [brand, setBrand] = useState('Apple');
-    const [modelId, setModelId] = useState('apple-iphone-16-pro-max');
+    const [brand, setBrand] = useState('');
+    const [modelId, setModelId] = useState('');
     const [materialId, setMaterialId] = useState(null);
     const [form, setForm] = useState(initialFormState);
     const [layers, setLayers] = useState([]);
@@ -50,7 +50,7 @@ export function StudioProvider({ children }) {
     const [historyIndex, setHistoryIndex] = useState(-1);
     const isUndoRedo = useRef(false);
 
-    const [brands, setBrands] = useState(['Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Nothing']);
+    const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
     const [materials, setMaterials] = useState([]);
     const [brandsLoading, setBrandsLoading] = useState(false);

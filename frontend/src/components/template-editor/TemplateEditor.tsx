@@ -60,19 +60,82 @@ function computeBoundingBox(points: { x: number; y: number }[]): { minX: number;
   return { minX, minY, maxX, maxY };
 }
 
-function normalizePathData(points: { x: number; y: number }[]): string {
-  if (points.length < 2) return '';
-  const { minX, minY, maxX, maxY } = computeBoundingBox(points);
-  const w = maxX - minX || 1;
-  const h = maxY - minY || 1;
+// Chaikin's corner-cutting: replaces each edge with 2 points at 1/4 and 3/4
+// This removes jaggies while staying very close to the original shape.
+function chaikinSmooth(pts: { x: number; y: number }[], iterations: number): { x: number; y: number }[] {
+  let points = pts;
+  for (let iter = 0; iter < iterations; iter++) {
+    const next: { x: number; y: number }[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const curr = points[i];
+      const nextPt = points[(i + 1) % points.length];
+      next.push({ x: curr.x + 0.25 * (nextPt.x - curr.x), y: curr.y + 0.25 * (nextPt.y - curr.y) });
+      next.push({ x: curr.x + 0.75 * (nextPt.x - curr.x), y: curr.y + 0.75 * (nextPt.y - curr.y) });
+    }
+    points = next;
+  }
+  return points;
+}
+
+// Convert smooth points to Catmull-Rom cubic bezier commands.
+// Catmull-Rom passes through all control points with C1 continuity.
+function catmullRomToBezier(pts: { x: number; y: number }[]): string {
+  const n = pts.length;
+  if (n < 3) {
+    // Fallback: straight lines
+    const parts = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`);
+    parts.push('Z');
+    return parts.join(' ');
+  }
+
+  // For Catmull-Rom, we need implicit start/end tangents.
+  // Duplicate first and last points to handle boundaries.
+  const cpts = [pts[0], ...pts, pts[n - 1]];
   const parts: string[] = [];
-  points.forEach((p, i) => {
-    const nx = (p.x - minX) / w;
-    const ny = (p.y - minY) / h;
-    parts.push(`${i === 0 ? 'M' : 'L'} ${nx} ${ny}`);
-  });
+
+  for (let i = 1; i < cpts.length - 2; i++) {
+    const p0 = cpts[i - 1], p1 = cpts[i], p2 = cpts[i + 1], p3 = cpts[i + 2];
+    // Tension = 0.5 (standard Catmull-Rom)
+    const t = 0.5;
+    const cp1x = p1.x + (p2.x - p0.x) * t / 3;
+    const cp1y = p1.y + (p2.y - p0.y) * t / 3;
+    const cp2x = p2.x - (p3.x - p1.x) * t / 3;
+    const cp2y = p2.y - (p3.y - p1.y) * t / 3;
+
+    if (i === 1) {
+      parts.push(`M ${p1.x} ${p1.y}`);
+    }
+    parts.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`);
+  }
+
   parts.push('Z');
   return parts.join(' ');
+}
+
+function normalizePathData(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return '';
+
+  // Apply Chaikin smoothing (2 iterations) to remove jaggies
+  const smoothed = points.length <= 4 ? points : chaikinSmooth(points, 2);
+
+  // Normalize to 0-1 bounding box
+  const { minX, minY, maxX, maxY } = computeBoundingBox(smoothed);
+  const w = maxX - minX || 1;
+  const h = maxY - minY || 1;
+  const normalized = smoothed.map(p => ({
+    x: (p.x - minX) / w,
+    y: (p.y - minY) / h,
+  }));
+
+  // If very few points, use simple lines
+  if (normalized.length < 6) {
+    const parts = normalized.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`);
+    parts.push('Z');
+    return parts.join(' ');
+  }
+
+  // Use Catmull-Rom for smooth cubic bezier curves
+  return catmullRomToBezier(normalized);
 }
 
 export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, originalWidth: ow, originalHeight: oh, onImageDimensions }: Props) {
@@ -514,15 +577,31 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
     if (!pathBtn || pathPoints.length === 0) return null;
     const pts = pathPoints;
     const s = scale.current;
-    const ptsStr = pts.map(p => `${p.x * s},${p.y * s}`).join(' ');
     const hoverPt = pathHover;
+    const ptsStr = pts.map(p => `${p.x * s},${p.y * s}`).join(' ');
+
+    // Compute smoothed curve in screen coordinates for preview
+    const showSmooth = pts.length > 4;
+    let smoothScreenD = '';
+    if (showSmooth) {
+      const displayPts = chaikinSmooth(pts, 2);
+      const { minX, minY, maxX, maxY } = computeBoundingBox(displayPts);
+      const bw = maxX - minX || 1;
+      const bh = maxY - minY || 1;
+      const normalizedPreview = displayPts.map(p => ({ x: (p.x - minX) / bw, y: (p.y - minY) / bh }));
+      if (normalizedPreview.length >= 6) {
+        const nd = catmullRomToBezier(normalizedPreview);
+        // Convert normalized + transform into screen coordinates
+        const vbox = `viewBox="0 0 1 1"`;
+        smoothScreenD = nd;
+      }
+    }
+
+    const fillOpacity = Math.min(0.06 + pts.length * 0.01, 0.12);
+
     return (
       <svg className="absolute inset-0 w-full h-full pointer-events-none z-50" style={{ left: 0, top: 0, overflow: 'visible' }}>
-        {/* Filled polygon */}
-        {pts.length >= 3 && (
-          <polygon points={ptsStr} fill="rgba(59,130,246,0.12)" stroke="none" />
-        )}
-        {/* Lines between points */}
+        {/* Straight-line skeleton — ALWAYS visible so user sees the outline */}
         {pts.map((p, i) => {
           if (i === 0) return null;
           return (
@@ -530,18 +609,43 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
               stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" />
           );
         })}
+        {/* Close-to-first hint (dashed) */}
+        {pts.length >= 3 && (
+          <line x1={pts[pts.length-1].x * s} y1={pts[pts.length-1].y * s}
+            x2={pts[0].x * s} y2={pts[0].y * s}
+            stroke="#3b82f6" strokeWidth={1} strokeDasharray="3 3" strokeLinecap="round" opacity={0.5} />
+        )}
         {/* Ghost line to hover */}
         {hoverPt && pts.length > 0 && (
           <line x1={pts[pts.length-1].x * s} y1={pts[pts.length-1].y * s}
             x2={hoverPt.x * s} y2={hoverPt.y * s}
             stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 3" strokeLinecap="round" />
         )}
-        {/* Close-to-first hint */}
+        {/* Filled polygon (raw points) — always visible */}
         {pts.length >= 3 && (
-          <line x1={pts[pts.length-1].x * s} y1={pts[pts.length-1].y * s}
-            x2={pts[0].x * s} y2={pts[0].y * s}
-            stroke="#3b82f6" strokeWidth={1} strokeDasharray="3 3" strokeLinecap="round" opacity={0.5} />
+          <polygon points={ptsStr} fill={`rgba(59,130,246,${fillOpacity})`} stroke="none" />
         )}
+        {/* Smooth overlay — shown as a thinner, paler ghost on top of the solid skeleton */}
+        {pts.length >= 3 && showSmooth && smoothScreenD && (() => {
+          const displayPts = chaikinSmooth(pts, 2);
+          const { minX, minY, maxX, maxY } = computeBoundingBox(displayPts);
+          const bw = maxX - minX || 1;
+          const bh = maxY - minY || 1;
+          const ns = displayPts.map(p => ({ x: (p.x - minX) / bw, y: (p.y - minY) / bh }));
+          return (
+            <path
+              d={catmullRomToBezier(ns)}
+              fill="none"
+              stroke="#8b5cf6"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray="4 3"
+              opacity={0.7}
+              transform={`translate(${minX * s}, ${minY * s}) scale(${bw * s}, ${bh * s})`}
+            />
+          );
+        })()}
         {/* Points */}
         {pts.map((p, i) => (
           <circle key={`pt-${i}`} cx={p.x * s} cy={p.y * s} r={i === 0 ? 5 : 4}

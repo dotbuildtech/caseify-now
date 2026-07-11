@@ -2,9 +2,9 @@ export const SITE = {
     name: 'Caseify Now',
     tagline: 'Premium Mobile Accessories',
     contact: {
-        phone: '+91 98765 43210',
-        email: 'support@caseifynow.example',
-        address: '456 Electronics Hub, Bangalore 560001'
+        phone: '+91 9551363100',
+        email: '[caseifynow11@gmail.com]',
+        address: 'India'
     },
     social: { facebook: '', instagram: '', twitter: '' }
 };

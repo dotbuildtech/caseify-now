@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 
 const PUBLIC_PATHS = new Set([
     '/login', '/register', '/shop', '/product', '/products',
-    '/contact', '/track', '/customize', '/', '/_not-found'
+    '/contact', '/track', '/customize', '/forgot-password',
+    '/', '/_not-found'
 ]);
 
 const AUTH_PATHS = new Set(['/login', '/register']);

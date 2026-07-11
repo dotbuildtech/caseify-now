@@ -24,20 +24,13 @@ router.get('/brands', studioLimiter, asyncHandler(async (req, res) => {
         include: [{ model: Brand, attributes: ['id', 'name', 'slug', 'logo'] }],
         order: [['createdAt', 'DESC']]
     });
-    if (studioBrands.length > 0) {
-        const data = studioBrands.map(sb => ({
-            id: String(sb.Brand.id),
-            name: sb.Brand.name,
-            slug: sb.Brand.slug,
-            logo: sb.logo || sb.Brand.logo
-        }));
-        return res.json({ success: true, data });
-    }
-    const brands = await prisma.brand.findMany({
-        where: { isActive: true },
-        orderBy: { name: 'asc' }
-    });
-    res.json({ success: true, data: brands.map(b => ({ id: b.id?.toString(), name: b.name, slug: b.slug, logo: b.logo })) });
+    const data = studioBrands.map(sb => ({
+        id: String(sb.Brand.id),
+        name: sb.Brand.name,
+        slug: sb.Brand.slug,
+        logo: sb.logo || sb.Brand.logo
+    }));
+    res.json({ success: true, data });
 }));
 
 // GET /api/studio/models?brand=Apple

@@ -136,54 +136,36 @@ export default function StudioProductForm({ product = null }) {
                 isActive
             };
 
-            let savedProduct;
+            let productId;
             if (isEdit) {
-                savedProduct = await adminUpdateStudioProduct(product.id, payload);
+                // Edit: product exists — run product update + template save in parallel
+                const [savedProduct] = await Promise.all([
+                    adminUpdateStudioProduct(product.id, payload),
+                    image && editableAreas.length > 0
+                        ? adminSaveFullTemplate({
+                            studioProductId: product.id,
+                            templateImage: image,
+                            originalWidth: actualImageWidth,
+                            originalHeight: actualImageHeight,
+                            editableAreas
+                        })
+                        : Promise.resolve(null)
+                ]);
+                productId = savedProduct?.id || product.id;
             } else {
-                savedProduct = await adminCreateStudioProduct(payload);
-            }
+                // Create: must save product first to get its ID
+                const savedProduct = await adminCreateStudioProduct(payload);
+                productId = savedProduct?.id;
 
-            const productId = savedProduct?.id || product?.id;
-
-            if (image && editableAreas.length > 0 && productId) {
-                await adminSaveFullTemplate({
-                    studioProductId: productId,
-                    templateImage: image,
-                    originalWidth: actualImageWidth,
-                    originalHeight: actualImageHeight,
-                    editableAreas: editableAreas.map((a) => ({
-                        name: a.name,
-                        areaType: a.areaType,
-                        shapeType: a.shapeType,
-                        x: a.x,
-                        y: a.y,
-                        width: a.width,
-                        height: a.height,
-                        rotation: a.rotation || 0,
-                        borderRadius: a.borderRadius ?? 0,
-                        borderRadiusTop: a.borderRadiusTop ?? 0,
-                        borderRadiusBottom: a.borderRadiusBottom ?? 0,
-                        minZoom: a.minZoom,
-                        maxZoom: a.maxZoom,
-                        allowRotation: a.allowRotation,
-                        allowFlip: a.allowFlip,
-                        lockAspectRatio: a.lockAspectRatio,
-                        isRequired: a.isRequired,
-                        isVisible: a.isVisible,
-                        isEnabled: a.isEnabled,
-                        placeholderImage: a.placeholderImage || null,
-                        maxUploadSize: a.maxUploadSize,
-                        acceptedFileTypes: a.acceptedFileTypes,
-                        zIndex: a.zIndex,
-                        opacity: a.opacity,
-                        notes: a.notes || null,
-                        backgroundColor: a.backgroundColor || null,
-                        guideText: a.guideText || null,
-                        sortOrder: a.sortOrder,
-                        polygonSides: a.polygonSides ?? null,
-                        pathData: a.pathData || null,
-                    }))
-                });
+                if (image && editableAreas.length > 0 && productId) {
+                    await adminSaveFullTemplate({
+                        studioProductId: productId,
+                        templateImage: image,
+                        originalWidth: actualImageWidth,
+                        originalHeight: actualImageHeight,
+                        editableAreas
+                    });
+                }
             }
 
             toast.success(isEdit ? 'Product updated' : 'Product created');

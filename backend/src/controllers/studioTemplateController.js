@@ -112,10 +112,12 @@ exports.saveFullTemplate = asyncHandler(async (req, res) => {
     const { studioProductId, templateImage, originalWidth, originalHeight, editableAreas, previewImage, thumbnailImage, printImage } = req.body;
     if (!studioProductId) { res.status(400); throw new Error('studioProductId is required'); }
 
-    const product = await StudioProduct.findByPk(studioProductId);
+    const product = await StudioProduct.findByPk(studioProductId, {
+        attributes: ['id'] // only need to verify existence
+    });
     if (!product) { res.status(404); throw new Error('Studio product not found'); }
 
-    const result = await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (t) => {
         let template = await StudioTemplate.findOne({ where: { studioProductId }, transaction: t });
 
         if (template) {
@@ -178,14 +180,9 @@ exports.saveFullTemplate = asyncHandler(async (req, res) => {
             }));
             await EditableArea.bulkCreate(areas, { transaction: t });
         }
-
-        return template.reload({
-            include: [{ model: EditableArea, as: 'editableAreas', order: [['sortOrder', 'ASC']] }],
-            transaction: t
-        });
     });
 
-    res.json(result);
+    res.json({ success: true });
 });
 
 exports.createEditableArea = asyncHandler(async (req, res) => {

@@ -2,11 +2,15 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
+const NodeCache = require('node-cache');
 const asyncHandler = require('../utils/asyncHandler');
 const logSecurityEvent = require('../utils/securityLog');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
 const aisensyService = require('../services/aisensyService');
+const { sendOTPEmail } = require('../services/emailService');
+
+const otpResetCache = new NodeCache({ checkperiod: 30 });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
@@ -497,6 +501,175 @@ exports.verifyOTP = asyncHandler(async (req, res) => {
     user.otpExpiry = null;
     await user.save();
     res.json({ message: 'OTP verified successfully' });
+});
+
+const FORGOT_OTP_EXPIRY_MS = 60 * 1000;
+const FORGOT_OTP_MAX_REQUESTS = 5;
+const FORGOT_OTP_WINDOW_MS = 60 * 60 * 1000;
+
+exports.forgotPasswordOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const genericResponse = { message: 'If an account exists, an OTP has been sent to your email' };
+
+    if (typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
+        return res.json(genericResponse);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ where: { email: normalizedEmail } });
+
+    if (!user) {
+        await equalizeTimingWithDummyHash(crypto.randomBytes(8).toString('hex'));
+        return res.json(genericResponse);
+    }
+
+    if (user.role === 'admin') {
+        return res.json(genericResponse);
+    }
+
+    const cacheKey = `forgot_otp_count:${normalizedEmail}`;
+    const requestTimestamps = otpResetCache.get(cacheKey) || [];
+    const recentRequests = requestTimestamps.filter((t) => Date.now() - t < FORGOT_OTP_WINDOW_MS);
+
+    if (recentRequests.length >= FORGOT_OTP_MAX_REQUESTS) {
+        logSecurityEvent('forgot_otp.rate_limited', { email: normalizedEmail, ip: req.ip });
+        return res.json(genericResponse);
+    }
+
+    const otpCode = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    const otpHash = await bcrypt.hash(otpCode, OTP_SALT_ROUNDS);
+
+    user.otpCode = otpHash;
+    user.otpExpiry = new Date(Date.now() + FORGOT_OTP_EXPIRY_MS);
+    await user.save();
+
+    recentRequests.push(Date.now());
+    otpResetCache.set(cacheKey, recentRequests, Math.ceil(FORGOT_OTP_WINDOW_MS / 1000));
+
+    const otpCacheKey = `forgot_otp_verified:${normalizedEmail}`;
+    otpResetCache.del(otpCacheKey);
+
+    sendOTPEmail(normalizedEmail, otpCode).catch((err) => {
+        logSecurityEvent('forgot_otp.email_failed', { email: normalizedEmail, error: err.message });
+        user.otpCode = null;
+        user.otpExpiry = null;
+        user.save().catch(() => {});
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('');
+        console.log('═══════════════════════════════════════════');
+        console.log('  DEV MODE — OTP for', normalizedEmail);
+        console.log('  ─────────────────────────────────────────');
+        console.log('  OTP:', otpCode);
+        console.log('  Valid for: 60 seconds');
+        console.log('═══════════════════════════════════════════');
+        console.log('');
+    }
+
+    logSecurityEvent('forgot_otp.sent', { email: normalizedEmail, ip: req.ip });
+    res.json(genericResponse);
+});
+
+exports.verifyResetOTP = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
+        res.status(400);
+        throw new Error('Valid email is required');
+    }
+
+    if (typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
+        res.status(400);
+        throw new Error('Invalid OTP format');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ where: { email: normalizedEmail } });
+
+    if (!user || user.role === 'admin') {
+        await equalizeTimingWithDummyHash(crypto.randomBytes(8).toString('hex'));
+        res.status(400);
+        throw new Error('Invalid or expired OTP');
+    }
+
+    if (!user.otpCode || !user.otpExpiry || user.otpExpiry <= new Date()) {
+        res.status(400);
+        throw new Error('Invalid or expired OTP');
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.otpCode);
+    if (!isMatch) {
+        res.status(400);
+        throw new Error('Invalid or expired OTP');
+    }
+
+    user.otpCode = null;
+    user.otpExpiry = null;
+    await user.save();
+
+    const otpCacheKey = `forgot_otp_verified:${normalizedEmail}`;
+    otpResetCache.set(otpCacheKey, true, 300);
+
+    logSecurityEvent('forgot_otp.verified', { email: normalizedEmail, ip: req.ip });
+    res.json({ message: 'OTP verified successfully' });
+});
+
+exports.resetPasswordWithOTP = asyncHandler(async (req, res) => {
+    const { email, newPassword, confirmPassword } = req.body;
+
+    if (typeof email !== 'string' || !EMAIL_REGEX.test(email)) {
+        res.status(400);
+        throw new Error('Valid email is required');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const otpCacheKey = `forgot_otp_verified:${normalizedEmail}`;
+    const isVerified = otpResetCache.get(otpCacheKey);
+
+    if (!isVerified) {
+        res.status(400);
+        throw new Error('Please verify OTP first');
+    }
+
+    if (typeof newPassword !== 'string' || typeof confirmPassword !== 'string') {
+        res.status(400);
+        throw new Error('New password and confirm password are required');
+    }
+
+    if (newPassword !== confirmPassword) {
+        res.status(400);
+        throw new Error('Passwords do not match');
+    }
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+        res.status(400);
+        throw new Error(passwordError);
+    }
+
+    const user = await User.findOne({ where: { email: normalizedEmail } });
+    if (!user || user.role === 'admin') {
+        res.status(400);
+        throw new Error('Something went wrong. Please try again.');
+    }
+
+    user.password = newPassword;
+    user.failedLoginAttempts = 0;
+    user.lockoutUntil = null;
+    await user.save();
+
+    await RefreshToken.update(
+        { revokedAt: new Date() },
+        { where: { userId: user.id, revokedAt: null } }
+    );
+
+    otpResetCache.del(otpCacheKey);
+    const countKey = `forgot_otp_count:${normalizedEmail}`;
+    otpResetCache.del(countKey);
+
+    logSecurityEvent('reset_password_with_otp.success', { userId: user.id, email: normalizedEmail, ip: req.ip });
+    res.json({ message: 'Password reset successfully' });
 });
 
 exports.getUsers = asyncHandler(async (req, res) => {

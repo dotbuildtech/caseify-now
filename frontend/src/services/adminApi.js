@@ -223,7 +223,42 @@ export const adminDeleteFilterOption = (id) =>
 
 // ---------- Studio Templates (admin) ----------
 export const adminSaveFullTemplate = (payload) =>
-    api.post('/admin/studio-templates/full', payload).then((r) => r.data);
+    api.post('/admin/studio-templates/full', {
+        ...payload,
+        // Send editableAreas as-is — backend already has defaults
+        editableAreas: payload.editableAreas?.map((a) => ({
+            name: a.name,
+            areaType: a.areaType,
+            shapeType: a.shapeType,
+            x: a.x,
+            y: a.y,
+            width: a.width,
+            height: a.height,
+            rotation: a.rotation ?? 0,
+            borderRadius: a.borderRadius ?? 0,
+            borderRadiusTop: a.borderRadiusTop ?? 0,
+            borderRadiusBottom: a.borderRadiusBottom ?? 0,
+            polygonSides: a.polygonSides ?? null,
+            pathData: a.pathData ?? null,
+            minZoom: a.minZoom ?? null,
+            maxZoom: a.maxZoom ?? null,
+            allowRotation: a.allowRotation ?? true,
+            allowFlip: a.allowFlip ?? true,
+            lockAspectRatio: a.lockAspectRatio ?? false,
+            isRequired: a.isRequired ?? false,
+            isVisible: a.isVisible ?? true,
+            isEnabled: a.isEnabled ?? true,
+            placeholderImage: a.placeholderImage ?? null,
+            maxUploadSize: a.maxUploadSize ?? null,
+            acceptedFileTypes: a.acceptedFileTypes ?? null,
+            zIndex: a.zIndex ?? 0,
+            opacity: a.opacity ?? 1,
+            notes: a.notes ?? null,
+            backgroundColor: a.backgroundColor ?? null,
+            guideText: a.guideText ?? null,
+            sortOrder: a.sortOrder,
+        }))
+    }).then((r) => r.data);
 
 export const adminGetStudioTemplate = (id) =>
     api.get(`/admin/studio-templates/${id}`).then((r) => r.data);
