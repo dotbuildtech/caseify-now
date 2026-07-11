@@ -106,6 +106,7 @@ export default function AdminLayout({ children }) {
                         <Link
                             key={item.href}
                             href={item.href}
+                            prefetch={false}
                             className={`flex items-center justify-between px-3 py-2 text-sm ${active ? 'border-l-2 border-ink bg-background-light font-medium text-ink' : 'text-text-light hover:bg-background-light'}`}
                         >
                             <span className="flex items-center gap-2"><item.Icon className="h-4 w-4" strokeWidth={1.5} /> {item.label}</span>

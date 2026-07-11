@@ -8,7 +8,7 @@ const Invoice = require('../models/Invoice');
 const Contact = require('../models/Contact');
 
 let cache = { data: null, timestamp: 0 };
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 15 * 60 * 1000;
 
 const ORDER_ATTRS = ['id', 'orderStatus', 'totalPrice', 'createdAt', 'UserId'];
 const USER_ATTRS = ['id', 'name'];
@@ -21,12 +21,21 @@ exports.getAdminDashboard = asyncHandler(async (req, res) => {
         return res.json(cache.data);
     }
 
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
     const [overview, recentOrders, lowStock, customerAnalytics] = await Promise.all([
         (async () => {
-            const nowDate = new Date();
-            const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
-
-            const [thisMonthRevenue, totalOrders, pendingOrders, totalProducts, unreadMessages, totalCustomers, pendingInvoices] = await Promise.all([
+            const [
+                thisMonthRevenue,
+                totalOrders,
+                pendingOrders,
+                totalProducts,
+                unreadMessages,
+                totalCustomers,
+                pendingInvoices
+            ] = await Promise.all([
                 Order.findOne({
                     where: { isPaid: true, paidAt: { [Op.gte]: monthStart } },
                     attributes: [[fn('COALESCE', fn('SUM', col('totalPrice')), 0), 'total']],

@@ -102,63 +102,122 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addItemToCart = asyncHandler(async (req, res) => {
     const { productId, productVariantId, quantity, designMeta } = req.body;
 
-    // Save data URLs directly - Cloudinary upload will be fire-and-forget
     const rawThumb = designMeta?.thumbnail || null;
     const rawLayers = designMeta?.layers || null;
 
-    const result = await sequelize.transaction(async (transaction) => {
+    // Fast path: custom design items (no real product in DB) — no transaction needed
+    if (designMeta) {
         const product = await Product.findByPk(productId, {
-            attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'stock', 'isActive', 'category', 'brand', 'phoneModel'],
-            transaction
+            attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'stock', 'isActive', 'category', 'brand', 'phoneModel']
         });
 
-        if (designMeta && !product) {
-            const cart = await getOrCreateCart(req.user.id, transaction);
+        if (product) {
+            // Product exists — use the regular path below
+            const cart = await getOrCreateCart(req.user.id);
+            const stock = productVariantId
+                ? (await ProductVariant.findByPk(productVariantId, { attributes: ['stock', 'isActive', 'price', 'name', 'image'] }))
+                : null;
 
-            const { thumbnail: _thumb, layers: _rawLayers, ...designMetaRest } = designMeta;
-            const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (rawLayers && rawLayers.length > 0);
-            const designMetaForDb = { ...designMetaRest, layers: rawLayers };
+            if (productVariantId && (!stock || !stock.isActive)) {
+                res.status(404);
+                throw new Error('Variant not available');
+            }
+
+            const availableStock = stock ? stock.stock : product.stock;
+            if (availableStock < quantity) {
+                res.status(400);
+                throw new Error(`Only ${availableStock} item(s) in stock`);
+            }
+
+            const unitPrice = (stock && stock.price != null) ? Number(stock.price) : Number(product.price);
+            const nameAtAdd = product.name;
+            const imageAtAdd = (stock && stock.image) || product.image || (Array.isArray(product.images) && product.images[0]) || null;
+            const variantLabel = stock ? stock.name : null;
+
+            const where = { CartId: cart.id, ProductId: productId };
+            if (productVariantId) where.ProductVariantId = productVariantId;
 
             const [cartItem, created] = await CartItem.findOrCreate({
-                where: { CartId: cart.id, ProductId: productId, ProductVariantId: null },
+                where,
                 defaults: {
-                    CartId: cart.id,
-                    ProductId: productId,
-                    ProductVariantId: null,
-                    quantity,
-                    priceAtAdd: designMeta.totalPrice || designMeta.materialPrice || 399,
-                    nameAtAdd: `${designMeta.materialLabel || 'Custom'} Phone Case · ${designMeta.modelLabel || ''}`,
-                    imageAtAdd: rawThumb,
-                    variantLabel: `${designMeta.modelLabel || ''} · ${designMeta.materialLabel || ''}`,
-                    designMeta: hasDesignMeta ? designMetaForDb : null
-                },
-                transaction
+                    CartId: cart.id, ProductId: productId,
+                    ProductVariantId: productVariantId || null,
+                    quantity, priceAtAdd: unitPrice,
+                    nameAtAdd, imageAtAdd, variantLabel,
+                    designMeta: designMeta || null
+                }
             });
 
             if (!created) {
                 const newQty = cartItem.quantity + quantity;
                 if (newQty > MAX_QTY) {
-                    const err = new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
-                    err.status = 400;
-                    throw err;
+                    res.status(400);
+                    throw new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
+                }
+                if (newQty > availableStock) {
+                    res.status(400);
+                    throw new Error(`Only ${availableStock} item(s) in stock`);
                 }
                 cartItem.quantity = newQty;
-                cartItem.priceAtAdd = designMeta.totalPrice || designMeta.materialPrice || 399;
-                cartItem.imageAtAdd = rawThumb;
-                cartItem.designMeta = hasDesignMeta ? designMetaForDb : null;
-                await cartItem.save({ transaction });
-            } else {
-                const count = await CartItem.count({ where: { CartId: cart.id }, transaction });
-                if (count > MAX_DISTINCT_ITEMS) {
-                    const err = new Error(`Cart cannot exceed ${MAX_DISTINCT_ITEMS} distinct items`);
-                    err.status = 400;
-                    throw err;
-                }
+                cartItem.priceAtAdd = unitPrice;
+                cartItem.designMeta = designMeta || null;
+                await cartItem.save();
             }
 
-            await cart.update({ lastActivityAt: new Date() }, { transaction });
-            return cart.id;
+            await cart.update({ lastActivityAt: new Date() });
+            return res.json(await decorateCart(cart.id));
         }
+
+        // Custom design — lightweight path, no transaction
+        const cart = await getOrCreateCart(req.user.id);
+
+        const { thumbnail: _thumb, layers: _rawLayers, ...designMetaRest } = designMeta;
+        const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (rawLayers && rawLayers.length > 0);
+        const designMetaForDb = { ...designMetaRest, layers: rawLayers };
+
+        const existing = await CartItem.findOne({
+            where: { CartId: cart.id, ProductId: productId, ProductVariantId: null }
+        });
+
+        if (existing) {
+            const newQty = existing.quantity + quantity;
+            if (newQty > MAX_QTY) {
+                res.status(400);
+                throw new Error(`Adding ${quantity} would exceed max of ${MAX_QTY} per item`);
+            }
+            existing.quantity = newQty;
+            existing.priceAtAdd = designMeta.totalPrice || designMeta.materialPrice || 399;
+            existing.imageAtAdd = rawThumb;
+            existing.designMeta = hasDesignMeta ? designMetaForDb : null;
+            await existing.save();
+        } else {
+            await CartItem.create({
+                CartId: cart.id, ProductId: productId,
+                ProductVariantId: null, quantity,
+                priceAtAdd: designMeta.totalPrice || designMeta.materialPrice || 399,
+                nameAtAdd: `${designMeta.materialLabel || 'Custom'} Phone Case · ${designMeta.modelLabel || ''}`,
+                imageAtAdd: rawThumb,
+                variantLabel: `${designMeta.modelLabel || ''} · ${designMeta.materialLabel || ''}`,
+                designMeta: hasDesignMeta ? designMetaForDb : null
+            });
+            const count = await CartItem.count({ where: { CartId: cart.id } });
+            if (count > MAX_DISTINCT_ITEMS) {
+                await CartItem.destroy({ where: { CartId: cart.id, ProductId: productId, ProductVariantId: null } });
+                res.status(400);
+                throw new Error(`Cart cannot exceed ${MAX_DISTINCT_ITEMS} distinct items`);
+            }
+        }
+
+        await cart.update({ lastActivityAt: new Date() });
+        return res.json(await decorateCart(cart.id));
+    }
+
+    // Regular product path
+    const result = await sequelize.transaction(async (transaction) => {
+        const product = await Product.findByPk(productId, {
+            attributes: ['id', 'name', 'slug', 'image', 'price', 'compareAtPrice', 'stock', 'isActive', 'category', 'brand', 'phoneModel'],
+            transaction
+        });
 
         if (!product || !product.isActive) {
             const err = new Error('Product not available');
@@ -166,7 +225,6 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
             throw err;
         }
 
-        let variant = null;
         let stock = product.stock;
         let unitPrice = Number(product.price);
         let nameAtAdd = product.name;
@@ -174,7 +232,7 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         let variantLabel = null;
 
         if (productVariantId) {
-            variant = await ProductVariant.findOne({
+            const variant = await ProductVariant.findOne({
                 where: { id: productVariantId, ProductId: productId },
                 attributes: ['id', 'name', 'image', 'price', 'stock', 'isActive'],
                 transaction
@@ -204,15 +262,11 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
         const [cartItem, created] = await CartItem.findOrCreate({
             where,
             defaults: {
-                CartId: cart.id,
-                ProductId: productId,
+                CartId: cart.id, ProductId: productId,
                 ProductVariantId: productVariantId || null,
-                quantity,
-                priceAtAdd: unitPrice,
-                nameAtAdd,
-                imageAtAdd: imageAtAdd,
-                variantLabel,
-                designMeta: designMeta || null
+                quantity, priceAtAdd: unitPrice,
+                nameAtAdd, imageAtAdd, variantLabel,
+                designMeta: null
             },
             transaction
         });
@@ -231,10 +285,6 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
             }
             cartItem.quantity = newQty;
             cartItem.priceAtAdd = unitPrice;
-            cartItem.nameAtAdd = nameAtAdd;
-            cartItem.imageAtAdd = imageAtAdd;
-            cartItem.variantLabel = variantLabel;
-            cartItem.designMeta = designMeta || null;
             await cartItem.save({ transaction });
         } else {
             const count = await CartItem.count({ where: { CartId: cart.id }, transaction });

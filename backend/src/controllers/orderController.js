@@ -102,6 +102,21 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
         return null;
     });
 
+    // Limit concurrent image uploads to avoid network saturation
+    async function saveDataUrlsConcurrent(urls, concurrency = 3) {
+        const results = [];
+        const queue = [...urls];
+        async function worker() {
+            while (queue.length > 0) {
+                const url = queue.shift();
+                results.push(await saveDataUrl(url));
+            }
+        }
+        const workers = Array.from({ length: Math.min(concurrency, queue.length) || 1 }, () => worker());
+        await Promise.all(workers);
+        return results;
+    }
+
     const [result, razorpayResult] = await Promise.all([
         sequelize.transaction(async (t) => {
             const order = await Order.create({
@@ -123,23 +138,16 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                 if (!product && item.product === 9999) {
                     const dm = item.designMeta || {};
 
-                    let rawThumb = dm.thumbnail || dm.bgImage || '';
-                    const orderImage = await saveDataUrl(rawThumb);
+                    const rawThumb = dm.thumbnail || dm.bgImage || '';
+                    const layerUrls = (dm.layers || [])
+                        .filter(l => l.type === 'image' && l.url)
+                        .map(l => l.url);
 
-                    let uploadedImages = [];
-                    if (dm.layers) {
-                        const processed = await Promise.all(dm.layers
-                            .filter(l => l.type === 'image' && l.url)
-                            .map(async (l) => ({
-                                ...l,
-                                url: await saveDataUrl(l.url)
-                            }))
-                        );
-                        uploadedImages = processed.map(l => l.url).filter(Boolean);
-                        if (!rawThumb && processed.length > 0) {
-                            rawThumb = processed[0].url;
-                        }
-                    }
+                    // Upload thumbnail and layers with limited concurrency
+                    const allUrls = layerUrls.length > 0
+                        ? [rawThumb, ...layerUrls]
+                        : [rawThumb];
+                    const [orderImage, ...uploadedImages] = await saveDataUrlsConcurrent(allUrls.filter(Boolean));
 
                     orderItemData.push({
                         OrderId: order.id,
@@ -155,7 +163,7 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                             model: dm.modelLabel || null,
                             material: dm.materialLabel || null,
                             designPreview: orderImage || uploadedImages[0] || null,
-                            uploadedImages,
+                            uploadedImages: uploadedImages.filter(Boolean),
                             customText: dm.layers?.filter(l => l.type === 'text').map(l => l.text).join(', ') || null,
                             customizationNotes: null,
                             bgColor: dm.bgColor || null,
@@ -189,7 +197,7 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
                     qty: item.qty,
                     image: product.image || '',
                     price: product.price,
-                        productSnapshot: {
+                    productSnapshot: {
                         isCustom: false,
                         productName: product.name,
                         brand: product.brand || null,
@@ -227,7 +235,12 @@ exports.addOrderItems = asyncHandler(async (req, res) => {
         await result.save();
     }
 
-    const createdOrder = await Order.findByPk(result.id, { include: [{ model: OrderItem, as: 'items' }] });
+    // Reuse the order object + query items instead of a full re-fetch
+    const items = await OrderItem.findAll({
+        where: { OrderId: result.id },
+        raw: true
+    });
+    const createdOrder = { ...result.get({ plain: true }), items };
     res.status(201).json({
         order: sanitizeOrder(createdOrder),
         razorpayOrderId,
