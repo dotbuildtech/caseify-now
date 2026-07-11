@@ -148,7 +148,15 @@ exports.deleteMessage = asyncHandler(async (req, res) => {
     res.json({ message: 'Message deleted' });
 });
 
+let unreadCache = { count: 0, timestamp: 0 };
+const UNREAD_CACHE_TTL = 15000;
+
 exports.getUnreadCount = asyncHandler(async (req, res) => {
+    const now = Date.now();
+    if (now - unreadCache.timestamp < UNREAD_CACHE_TTL) {
+        return res.json(unreadCache);
+    }
     const count = await Contact.count({ where: { isRead: false } });
+    unreadCache = { count, timestamp: now };
     res.json({ count });
 });

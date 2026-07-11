@@ -109,6 +109,25 @@ const connectDB = async () => {
             console.warn('[migration] Could not add background color columns (non-critical):', e.message);
         }
 
+        // Performance indexes for dashboard/admin queries
+        try {
+            await sequelize.query(`
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_orders_ispaid_paidat
+                ON "Orders" ("isPaid", "paidAt")
+                WHERE "isPaid" = true
+            `).catch(() => {});
+        } catch (e) {
+            console.warn('[migration] Could not create idx_orders_ispaid_paidat (non-critical):', e.message);
+        }
+        try {
+            await sequelize.query(`
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_isverified
+                ON "Users" ("isVerified")
+            `).catch(() => {});
+        } catch (e) {
+            console.warn('[migration] Could not create idx_users_isverified (non-critical):', e.message);
+        }
+
         setInterval(async () => {
             try {
                 await sequelize.authenticate();
