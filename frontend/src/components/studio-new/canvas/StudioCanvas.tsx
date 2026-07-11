@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useEffect, useState, useCallback, useLayoutEffect } from 'react';
-import { toPng, toJpeg } from 'html-to-image';
+import { toPng, toCanvas } from 'html-to-image';
 import { useStudioStore } from '@/store/studioStore';
 import CameraCutout from './CameraCutout';
 import SafeZoneOverlay from './SafeZoneOverlay';
@@ -102,32 +102,57 @@ export default function StudioCanvas() {
   }, [hasTemplate, templateAspectRatio, measureContainer]);
 
   useEffect(() => {
-    const el = captureNodeRef.current;
-    if (!el) {
-      setCaptureRef(null);
-      setCaptureThumbRef(null);
-      return;
-    }
-    setCaptureRef(async () => {
+    setCaptureThumbRef(async () => {
+      const el = captureNodeRef.current;
+      if (!el) return null;
+
+      // Ensure fonts are loaded before capturing to avoid hanging
+      const timeout = (ms: number) => new Promise((_, r) => setTimeout(r, ms));
+      await Promise.race([document.fonts.ready, timeout(8000)]);
+
       try {
-        return await toPng(el, { pixelRatio: 2, cacheBust: true });
+        return await toPng(el, { pixelRatio: 2, cacheBust: false, imagePlaceholder: '' });
+      } catch (e1) {
+        console.warn('toPng 2x failed, trying 1x:', e1);
+      }
+      try {
+        return await toPng(el, { pixelRatio: 1, cacheBust: false, imagePlaceholder: '' });
+      } catch (e2) {
+        console.warn('toPng 1x failed, trying toCanvas:', e2);
+      }
+      try {
+        const c = await toCanvas(el, { pixelRatio: 1, cacheBust: false });
+        return c.toDataURL('image/jpeg', 0.85);
+      } catch (e3) {
+        console.error('All capture methods failed:', e3);
+        return null;
+      }
+    });
+
+    setCaptureRef(async () => {
+      const el = captureNodeRef.current;
+      if (!el) return null;
+
+      const timeout = (ms: number) => new Promise((_, r) => setTimeout(r, ms));
+      await Promise.race([document.fonts.ready, timeout(8000)]);
+
+      try {
+        return await toPng(el, { pixelRatio: 2, cacheBust: false, imagePlaceholder: '' });
       } catch {
         try {
-          return await toPng(el, { pixelRatio: 1, cacheBust: true });
+          const c = await toCanvas(el, { pixelRatio: 1, cacheBust: false });
+          return c.toDataURL('image/png');
         } catch {
           return null;
         }
       }
     });
-    setCaptureThumbRef(async () => {
-      try {
-        return await toJpeg(el, { pixelRatio: 2, quality: 0.92, cacheBust: true });
-      } catch {
-        return null;
-      }
-    });
-    return () => { setCaptureRef(null); setCaptureThumbRef(null); };
-  }, [setCaptureRef, setCaptureThumbRef, hasTemplate, background, layers]);
+
+    return () => {
+      setCaptureRef(null);
+      setCaptureThumbRef(null);
+    };
+  }, [setCaptureRef, setCaptureThumbRef]);
 
   // Global pointer move/up handlers
   useEffect(() => {

@@ -69,11 +69,19 @@ export const POPULAR_FONTS = FONTS.filter(f => f.popular);
 
 export const FONT_LIST_GOOGLE = FONTS.filter(f => !['times-new-roman','georgia','palatino','impact','helvetica-neue','proxima-nova','avenir','gotham','century-gothic','futura','trebuchet','avenir-next','clash-display'].includes(f.id)).map(f => f.family);
 
+const loadedFontFamilies = new Set<string>();
+
 export function loadGoogleFonts(fonts: string[]) {
-  const families = fonts.filter(f => FONT_LIST_GOOGLE.includes(f));
+  const families = fonts.filter(f => FONT_LIST_GOOGLE.includes(f) && !loadedFontFamilies.has(f));
   if (families.length === 0) return;
+  families.forEach(f => loadedFontFamilies.add(f));
   const link = document.createElement('link');
-  link.href = `https://fonts.googleapis.com/css2?${families.map(f => `family=${f.replace(/ /g, '+')}:wght@100;200;300;400;500;600;700;800;900`).join('&')}&display=swap`;
+  const familyParams = families.map(f => {
+    const font = FONTS.find(ft => ft.family === f);
+    const numericVariants = font?.variants?.filter(v => /^\d+$/.test(v)) || ['400'];
+    return `family=${f.replace(/ /g, '+')}:wght@${numericVariants.join(';')}`;
+  });
+  link.href = `https://fonts.googleapis.com/css2?${familyParams.join('&')}&display=swap`;
   link.rel = 'stylesheet';
   document.head.appendChild(link);
 }
