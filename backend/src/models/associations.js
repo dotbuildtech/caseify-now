@@ -157,5 +157,5 @@ module.exports = {
     StudioProduct,
     StudioTemplate,
     EditableArea,
-    TemplateAsset
+    TemplateAsset,
 };

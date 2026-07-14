@@ -8,7 +8,6 @@ import {
     adminCreateStudioBrand,
     adminUpdateStudioBrand,
     adminDeleteStudioBrand,
-    adminListStudioModels,
     adminCreateStudioModel,
     adminDeleteStudioModel,
     adminGetBrandModels
@@ -89,10 +88,9 @@ export default function StudioShowcase() {
             setAllBrands(brands);
             setStudioBrands(sBrands);
             const modelMap = {};
-            await Promise.all(sBrands.map(async (sb) => {
-                const models = await adminListStudioModels({ studioBrandId: sb.id });
-                modelMap[sb.id] = models;
-            }));
+            sBrands.forEach(sb => {
+                modelMap[sb.id] = sb.models || [];
+            });
             setStudioModels(modelMap);
         } catch { toast.error('Failed to load data'); }
         setLoading(false);

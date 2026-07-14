@@ -127,6 +127,22 @@ const connectDB = async () => {
         } catch (e) {
             console.warn('[migration] Could not create idx_users_isverified (non-critical):', e.message);
         }
+        try {
+            await sequelize.query(`
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_brands_isactive_name
+                ON "Brands" ("isActive", "name")
+            `).catch(() => {});
+        } catch (e) {
+            console.warn('[migration] Could not create idx_brands_isactive_name (non-critical):', e.message);
+        }
+        try {
+            await sequelize.query(`
+                CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_customdesigns_modelslug
+                ON "CustomDesigns" ("modelSlug", "isActive", "createdAt" DESC)
+            `).catch(() => {});
+        } catch (e) {
+            console.warn('[migration] Could not create idx_customdesigns_modelslug (non-critical):', e.message);
+        }
 
         setInterval(async () => {
             try {
