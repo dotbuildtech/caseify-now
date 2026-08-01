@@ -14,6 +14,10 @@ dist/
 .next/
 frontend/.next/
 
+# Local env & build artifacts
+frontend/.env.local
+*.tsbuildinfo
+
 # Misc
 .env
 .env/backend/

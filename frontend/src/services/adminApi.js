@@ -290,6 +290,28 @@ export const adminDuplicateEditableArea = (id) =>
 export const adminReorderEditableAreas = (orders) =>
     api.put('/admin/studio-templates/areas/reorder', { orders }).then((r) => r.data);
 
+// ---------- Studio Templates V2 (independent, admin) ----------
+export const adminListStudioTemplatesV2 = (params = {}) =>
+  api.get('/studio-templates', { params }).then(r => r.data?.data || []);
+
+export const adminGetStudioTemplateV2 = (id) =>
+  api.get(`/studio-templates/${id}`).then(r => r.data?.data);
+
+export const adminCreateStudioTemplateV2 = (formData) =>
+  api.post('/studio-templates', formData).then(r => r.data);
+
+export const adminUpdateStudioTemplateV2 = (id, formData) =>
+  api.put(`/studio-templates/${id}`, formData).then(r => r.data);
+
+export const adminDeleteStudioTemplateV2 = (id) =>
+  api.delete(`/studio-templates/${id}`).then(r => r.data);
+
+export const adminDuplicateStudioTemplateV2 = (id) =>
+  api.post(`/studio-templates/${id}/duplicate`).then(r => r.data);
+
+export const adminToggleStudioTemplateV2Status = (id) =>
+  api.patch(`/studio-templates/${id}/toggle-status`).then(r => r.data);
+
 // ---------- Custom Designs (admin) ----------
 export const adminListCustomDesigns = (params = {}) =>
     api.get('/custom-designs', { params }).then((r) => r.data?.data || []);

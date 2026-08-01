@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useStudioStore } from '@/store/studioStore';
-import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel, fetchDesignsByModelSlug } from '@/services/studioApi';
+import { fetchBrands, fetchModelsByBrand, fetchStudioProductsByModel, fetchDesignsByModelSlug, fetchPhoneTemplate, fetchPhoneTemplateLegacy } from '@/services/studioApi';
 import { adminGetTemplateByProductId } from '@/services/adminApi';
 import { formatINR, cn } from '@/lib/utils';
 import { ChevronLeft, Smartphone, Package, Sparkles, Percent } from 'lucide-react';
@@ -224,12 +224,33 @@ export default function StudioLanding() {
     try {
       const store = useStudioStore;
       store.getState().setTemplateRegionsLoading(true);
-      const template = await adminGetTemplateByProductId(product.id as number);
+
+      const [template, phoneTpl] = await Promise.all([
+        adminGetTemplateByProductId(product.id as number),
+        fetchPhoneTemplateLegacy(selectedModel?.slug || selectedModel?.name),
+      ]);
+
+      if (phoneTpl) {
+        store.getState().setPhoneTemplate({
+          templateId: phoneTpl.templateId || `tpl_${product.id}`,
+          width: phoneTpl.width || 2400,
+          height: phoneTpl.height || 5200,
+          mask: phoneTpl.mask || '',
+          safeArea: phoneTpl.safeArea || '',
+          bleed: phoneTpl.bleed || '',
+          cameraCutout: phoneTpl.cameraCutout || '',
+          preview: phoneTpl.preview || phoneTpl.previewImage || '',
+          thumbnail: phoneTpl.thumbnail || '',
+          metadata: phoneTpl.metadata || {},
+          editableArea: phoneTpl.editableArea || phoneTpl.editableAreas || [],
+        });
+      }
+
       if (template?.editableAreas) {
         store.getState().setEditableRegions(template.editableAreas);
         store.getState().setTemplateOriginalDimensions(
-          template.originalWidth || 3000,
-          template.originalHeight || 3000
+          phoneTpl?.width || template.originalWidth || 3000,
+          phoneTpl?.height || template.originalHeight || 3000
         );
         if (template.visibleBounds) {
           store.getState().setVisibleBounds(template.visibleBounds);

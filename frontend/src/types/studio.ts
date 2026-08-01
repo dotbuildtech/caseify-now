@@ -14,6 +14,44 @@ export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' 
 
 export type Alignment = 'left' | 'center' | 'right' | 'justify';
 
+export type AreaType = 'image' | 'text' | 'logo' | 'qr_code' | 'sticker' | 'mixed';
+export type AreaShapeType = 'rectangle' | 'circle' | 'rounded_rectangle' | 'polygon' | 'custom';
+
+export interface TransformMatrix {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
+}
+
+export function identityMatrix(): TransformMatrix {
+  return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+}
+
+export function matrixFromTransform(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  rotation: number,
+  scaleX: number,
+  scaleY: number
+): TransformMatrix {
+  const rad = (rotation * Math.PI) / 180;
+  const cos = Math.cos(rad) * scaleX;
+  const sin = Math.sin(rad) * scaleY;
+  return {
+    a: cos,
+    b: sin,
+    c: -sin,
+    d: cos,
+    e: x,
+    f: y,
+  };
+}
+
 export interface Position {
   x: number;
   y: number;
@@ -33,6 +71,16 @@ export interface Filters {
   sepia: number;
   grayscale: number;
 }
+
+export const DEFAULT_FILTERS: Filters = {
+  brightness: 100,
+  contrast: 100,
+  saturation: 100,
+  blur: 0,
+  hue: 0,
+  sepia: 0,
+  grayscale: 0,
+};
 
 export interface Shadow {
   enabled: boolean;
@@ -67,7 +115,6 @@ export interface TextLayer {
   curved: boolean;
   curveRadius: number;
   opacity: number;
-  rotation: number;
   x: number;
   y: number;
   width: number;
@@ -102,7 +149,6 @@ export interface ImageLayer {
   shadow?: Shadow;
   border?: Border;
   cornerRadius: number;
-  mask?: string;
 }
 
 export interface StickerLayer {
@@ -156,7 +202,6 @@ export interface QRCodeLayer {
   bgColor: string;
   size: number;
   opacity: number;
-  rotation: number;
   x: number;
   y: number;
   width: number;
@@ -285,10 +330,6 @@ export interface PriceBreakdown {
   total: number;
 }
 
-// Template & Editable Area types
-export type AreaType = 'image' | 'text' | 'logo' | 'qr_code' | 'sticker' | 'mixed';
-export type AreaShapeType = 'rectangle' | 'circle' | 'rounded_rectangle' | 'polygon' | 'custom';
-
 export interface EditableAreaData {
   id?: number;
   studioTemplateId?: number;
@@ -374,4 +415,46 @@ export interface StudioSettings {
   rulerEnabled: boolean;
   autoSave: boolean;
   autoSaveInterval: number;
+}
+
+export interface PhoneTemplate {
+  templateId: string;
+  width: number;
+  height: number;
+  mask: string;
+  safeArea: string;
+  bleed: string;
+  cameraCutout: string;
+  preview: string;
+  thumbnail: string;
+  metadata: Record<string, any>;
+  editableArea: EditableAreaData[];
+}
+
+export interface DesignLayer {
+  type: LayerType;
+  data: Record<string, any>;
+  transform: TransformMatrix;
+  zIndex: number;
+  visible: boolean;
+  locked: boolean;
+  blendMode: BlendMode;
+  opacity: number;
+}
+
+export interface DesignDocument {
+  id: string;
+  templateId: string;
+  templateVersion: string;
+  layers: DesignLayer[];
+  background: BackgroundLayer;
+  settings: {
+    materialId: string;
+    brand: string;
+    modelId: string;
+  };
+  printFile?: string;
+  preview?: string;
+  createdAt: string;
+  updatedAt: string;
 }

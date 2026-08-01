@@ -122,3 +122,19 @@ export const fetchStudioProductsByModel = async (studioModelId) => {
         return data.data || [];
     } catch { return []; }
 };
+
+export const fetchPhoneTemplate = async (modelId) => {
+    if (!modelId) return null;
+    try {
+        const { data } = await api.get(`/studio/phone-template/${encodeURIComponent(modelId)}`);
+        return data?.data || data || null;
+    } catch { return null; }
+};
+
+export const fetchPhoneTemplateLegacy = async (modelId) => {
+    if (!modelId) return null;
+    try {
+        const { data } = await api.get(`/studio/phone-template-legacy?modelId=${encodeURIComponent(modelId)}`);
+        return data?.data || data || null;
+    } catch { return null; }
+};

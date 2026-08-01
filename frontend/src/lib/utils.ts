@@ -95,3 +95,38 @@ export function hexToRgba(hex: string, alpha = 1): string {
   const b = parseInt(hex.slice(5, 7), 16);
   return `rgba(${r},${g},${b},${alpha})`;
 }
+
+export interface TransformMatrix {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
+}
+
+export function identityMatrix(): TransformMatrix {
+  return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+}
+
+export function matrixFromTransform(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  rotation: number,
+  scaleX: number,
+  scaleY: number
+): TransformMatrix {
+  const rad = (rotation * Math.PI) / 180;
+  const cos = Math.cos(rad) * scaleX;
+  const sin = Math.sin(rad) * scaleY;
+  return {
+    a: cos,
+    b: sin,
+    c: -sin,
+    d: cos,
+    e: x,
+    f: y,
+  };
+}

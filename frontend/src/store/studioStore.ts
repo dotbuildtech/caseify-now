@@ -3,9 +3,11 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type {
   CanvasLayer, ImageLayer, StickerLayer, ShapeLayer,
   BackgroundLayer, DeviceModel, Material, Brand, DeviceTemplate,
-  HistoryEntry, StudioSettings, PriceBreakdown, SavedDesign, EditableAreaData, VisibleBoundsData
+  HistoryEntry, StudioSettings, PriceBreakdown, SavedDesign,
+  EditableAreaData, VisibleBoundsData, PhoneTemplate, DesignDocument
 } from '@/types/studio';
-import { generateId, clamp } from '@/lib/utils';
+import { generateId, clamp, matrixFromTransform } from '@/lib/utils';
+import type { TransformMatrix } from '@/lib/utils';
 import { HISTORY_LIMIT, AUTOSAVE_INTERVAL, SAVED_DESIGNS_KEY, STUDIO_SETTINGS_KEY } from '@/lib/constants';
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -35,10 +37,8 @@ const defaultBackground: BackgroundLayer = {
 };
 
 interface StudioState {
-  // Selected product from landing
   selectedProduct: any | null;
 
-  // Device & Material
   brand: string | null;
   brands: Brand[];
   brandsLoading: boolean;
@@ -51,7 +51,6 @@ interface StudioState {
   materials: Material[];
   materialsLoading: boolean;
 
-  // Template editable regions (from admin-defined template)
   editableRegions: EditableAreaData[];
   visibleBounds: VisibleBoundsData | null;
   templateRegionsLoading: boolean;
@@ -60,42 +59,37 @@ interface StudioState {
   templateOriginalWidth: number;
   templateOriginalHeight: number;
 
-  // Canvas
+  phoneTemplate: PhoneTemplate | null;
+
   layers: CanvasLayer[];
   selectedLayerIds: string[];
   background: BackgroundLayer;
 
-  // Tool
   activeTool: string;
   activeTab: string;
 
-  // History
   history: HistoryEntry[];
   historyIndex: number;
   isUndoRedoing: boolean;
 
-  // Pricing
   price: PriceBreakdown;
 
-  // UI
   inStudio: boolean;
 
-  // Settings
   settings: StudioSettings;
 
-  // Saved designs
   savedDesigns: SavedDesign[];
 
-  // Canvas capture ref
   captureRef: (() => Promise<string | null>) | null;
   captureThumbRef: (() => Promise<string | null>) | null;
 
-  // Landing wizard persistence
   landingStep: 'brands' | 'models' | 'templates' | null;
   landingBrandName: string | null;
   landingModelId: number | null;
 
-  // Actions - Device
+  printFile: string | null;
+  printGenerating: boolean;
+
   setSelectedProduct: (product: any | null) => void;
   setBrand: (brand: string | null) => void;
   setBrands: (brands: Brand[]) => void;
@@ -109,7 +103,6 @@ interface StudioState {
   setMaterials: (materials: Material[]) => void;
   setMaterialsLoading: (loading: boolean) => void;
 
-  // Actions - Template Regions
   setEditableRegions: (regions: EditableAreaData[]) => void;
   setVisibleBounds: (bounds: VisibleBoundsData | null) => void;
   setTemplateRegionsLoading: (loading: boolean) => void;
@@ -117,9 +110,10 @@ interface StudioState {
   setCanvasContainerSize: (size: { width: number; height: number }) => void;
   setTemplateOriginalDimensions: (width: number, height: number) => void;
 
-  // Actions - Layers
+  setPhoneTemplate: (phoneTemplate: PhoneTemplate | null) => void;
+
   addLayer: (layer: Omit<CanvasLayer, 'id'> & { type: CanvasLayer['type'] }) => string;
-  updateLayer: (id: string, patch: Partial<CanvasLayer>) => void;
+  updateLayer: (id: string, patch: Record<string, any>) => void;
   removeLayer: (id: string) => void;
   removeSelectedLayers: () => void;
   duplicateLayer: (id: string) => string | null;
@@ -127,36 +121,30 @@ interface StudioState {
   reorderLayer: (id: string, direction: 'up' | 'down' | 'top' | 'bottom') => void;
   setLayers: (layers: CanvasLayer[]) => void;
 
-  // Actions - Selection
   selectLayer: (id: string | null, multi?: boolean) => void;
   selectAll: () => void;
   clearSelection: () => void;
   getSelectedLayer: () => CanvasLayer | null;
   getSelectedLayers: () => CanvasLayer[];
 
-  // Actions - Background
   setBackground: (patch: Partial<BackgroundLayer>) => void;
   setBackgroundColor: (color: string) => void;
   setBackgroundImage: (src: string | null) => void;
   setBackgroundGradient: (start: string, end: string, angle: number) => void;
 
-  // Actions - Tool
   setActiveTool: (tool: string) => void;
   setActiveTab: (tab: string) => void;
 
-  // Actions - History
   undo: () => void;
   redo: () => void;
   pushHistory: (description?: string) => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
 
-  // Actions - Pricing
   setPrice: (price: Partial<PriceBreakdown>) => void;
   calculatePrice: () => void;
   applyCoupon: (code: string | undefined, discount: number) => void;
 
-  // Actions - Settings
   setSetting: <K extends keyof StudioSettings>(key: K, value: StudioSettings[K]) => void;
   toggleDarkMode: () => void;
   toggleGrid: () => void;
@@ -168,31 +156,31 @@ interface StudioState {
   fitToScreen: () => void;
   resetView: () => void;
 
-  // Actions - Saved
   saveDesign: (name?: string) => void;
   loadDesign: (design: SavedDesign) => void;
   deleteDesign: (id: string) => void;
 
-  // Actions - Capture
   setCaptureRef: (ref: (() => Promise<string | null>) | null) => void;
   setCaptureThumbRef: (ref: (() => Promise<string | null>) | null) => void;
 
-  // Actions - Studio UI
   enterStudio: () => void;
   leaveStudio: () => void;
   setLandingStep: (step: 'brands' | 'models' | 'templates' | null) => void;
   setLandingBrandName: (name: string | null) => void;
   setLandingModelId: (id: number | null) => void;
 
-  // Actions - Import/Export
   exportJSON: () => string;
   importJSON: (json: string) => void;
   resetCanvas: () => void;
+
+  generatePrintFile: () => Promise<string | null>;
+  setPrintFile: (url: string | null) => void;
+  setPrintGenerating: (generating: boolean) => void;
+  toDesignDocument: () => DesignDocument;
 }
 
 export const useStudioStore = create<StudioState>()(
   subscribeWithSelector((set, get) => ({
-    // Initial state
     selectedProduct: null,
     brand: null,
     brands: [],
@@ -213,6 +201,8 @@ export const useStudioStore = create<StudioState>()(
     canvasContainerSize: { width: 300, height: 650 },
     templateOriginalWidth: 3000,
     templateOriginalHeight: 3000,
+
+    phoneTemplate: null,
 
     layers: [],
     selectedLayerIds: [],
@@ -240,7 +230,9 @@ export const useStudioStore = create<StudioState>()(
     landingBrandName: null,
     landingModelId: null,
 
-    // --- Device Actions ---
+    printFile: null,
+    printGenerating: false,
+
     setSelectedProduct: (product) => set({ selectedProduct: product }),
     setBrand: (brand) => set({ brand, modelId: null, materialId: null }),
     setBrands: (brands) => set({ brands, brandsLoading: false }),
@@ -258,9 +250,10 @@ export const useStudioStore = create<StudioState>()(
     setTemplateRegionsLoading: (templateRegionsLoading) => set({ templateRegionsLoading }),
     setActiveRegionId: (activeRegionId) => set({ activeRegionId }),
     setCanvasContainerSize: (canvasContainerSize) => set({ canvasContainerSize }),
-  setTemplateOriginalDimensions: (width: number, height: number) => set({ templateOriginalWidth: width, templateOriginalHeight: height }),
+    setTemplateOriginalDimensions: (width, height) => set({ templateOriginalWidth: width, templateOriginalHeight: height }),
 
-    // --- Layer Actions ---
+    setPhoneTemplate: (phoneTemplate) => set({ phoneTemplate }),
+
     addLayer: (layerData) => {
       const id = generateId();
       const layer = { ...layerData, id } as CanvasLayer;
@@ -332,7 +325,6 @@ export const useStudioStore = create<StudioState>()(
 
     setLayers: (layers) => set({ layers }),
 
-    // --- Selection ---
     selectLayer: (id, multi = false) => {
       set((state) => {
         if (id === null) return { selectedLayerIds: [] };
@@ -367,17 +359,14 @@ export const useStudioStore = create<StudioState>()(
       return state.layers.filter((l) => state.selectedLayerIds.includes(l.id));
     },
 
-    // --- Background ---
     setBackground: (patch) => set((state) => ({ background: { ...state.background, ...patch } })),
     setBackgroundColor: (color) => set((state) => ({ background: { ...state.background, fillType: 'solid', color, imageSrc: undefined } })),
     setBackgroundImage: (src) => set((state) => ({ background: { ...state.background, fillType: src ? 'image' : 'solid', imageSrc: src ?? undefined, color: src ? undefined : '#F4F4F5' } })),
     setBackgroundGradient: (start, end, angle) => set((state) => ({ background: { ...state.background, fillType: 'gradient', gradientStart: start, gradientEnd: end, gradientAngle: angle, imageSrc: undefined } })),
 
-    // --- Tool ---
     setActiveTool: (tool) => set({ activeTool: tool }),
     setActiveTab: (tab) => set({ activeTab: tab }),
 
-    // --- History ---
     undo: () => {
       const { historyIndex, history } = get();
       if (historyIndex < 0) return;
@@ -411,7 +400,6 @@ export const useStudioStore = create<StudioState>()(
     canUndo: () => get().historyIndex >= 0,
     canRedo: () => get().historyIndex < get().history.length - 2,
 
-    // --- Pricing ---
     setPrice: (price) => set((state) => ({ price: { ...state.price, ...price } })),
     calculatePrice: () => {
       const state = get();
@@ -443,7 +431,6 @@ export const useStudioStore = create<StudioState>()(
       });
     },
 
-    // --- Settings ---
     setSetting: (key, value) => set((state) => {
       const settings = { ...state.settings, [key]: value };
       saveToStorage(STUDIO_SETTINGS_KEY, settings);
@@ -461,18 +448,11 @@ export const useStudioStore = create<StudioState>()(
     toggleSnap: () => get().setSetting('snapToGrid', !get().settings.snapToGrid),
     setZoom: (zoom) => get().setSetting('zoom', clamp(zoom, 0.1, 5)),
     setPan: (x, y) => set((state) => ({ settings: { ...state.settings, panX: x, panY: y } })),
-    zoomIn: () => {
-      const state = get();
-      state.setZoom(state.settings.zoom + 0.1);
-    },
-    zoomOut: () => {
-      const state = get();
-      state.setZoom(state.settings.zoom - 0.1);
-    },
+    zoomIn: () => { const state = get(); state.setZoom(state.settings.zoom + 0.1); },
+    zoomOut: () => { const state = get(); state.setZoom(state.settings.zoom - 0.1); },
     fitToScreen: () => set((state) => ({ settings: { ...state.settings, zoom: 1, panX: 0, panY: 0 } })),
     resetView: () => set((state) => ({ settings: { ...state.settings, zoom: 1, panX: 0, panY: 0 } })),
 
-    // --- Saved Designs ---
     saveDesign: (name) => {
       const state = get();
       const design: SavedDesign = {
@@ -508,7 +488,6 @@ export const useStudioStore = create<StudioState>()(
       set({ savedDesigns: saved });
     },
 
-    // --- Capture ---
     setCaptureRef: (ref) => set({ captureRef: ref }),
     setCaptureThumbRef: (ref) => set({ captureThumbRef: ref }),
 
@@ -518,7 +497,6 @@ export const useStudioStore = create<StudioState>()(
     setLandingBrandName: (name) => set({ landingBrandName: name }),
     setLandingModelId: (id) => set({ landingModelId: id }),
 
-    // --- Import/Export ---
     exportJSON: () => {
       const state = get();
       return JSON.stringify({ layers: state.layers, background: state.background, brand: state.brand, modelId: state.modelId, materialId: state.materialId }, null, 2);
@@ -546,7 +524,63 @@ export const useStudioStore = create<StudioState>()(
         history: [],
         historyIndex: -1,
         activeRegionId: null,
+        phoneTemplate: null,
       });
+    },
+
+    setPrintFile: (url) => set({ printFile: url }),
+    setPrintGenerating: (generating) => set({ printGenerating: generating }),
+
+    generatePrintFile: async () => {
+      const state = get();
+      const captureFn = state.captureRef;
+      if (!captureFn) return null;
+      state.setPrintGenerating(true);
+      try {
+        const dataUrl = await captureFn();
+        if (dataUrl) {
+          state.setPrintFile(dataUrl);
+          return dataUrl;
+        }
+        return null;
+      } finally {
+        state.setPrintGenerating(false);
+      }
+    },
+
+    toDesignDocument: () => {
+      const state = get();
+      return {
+        id: generateId(),
+        templateId: state.phoneTemplate?.templateId || '',
+        templateVersion: '1.0',
+        layers: state.layers.map((l) => ({
+          type: l.type,
+          data: { ...l },
+          transform: matrixFromTransform(
+            (l as any).x || 0,
+            (l as any).y || 0,
+            (l as any).width || 100,
+            (l as any).height || 100,
+            (l as any).rotation || 0,
+            (l as any).flipX ? -1 : 1,
+            (l as any).flipY ? -1 : 1
+          ),
+          zIndex: state.layers.indexOf(l),
+          visible: l.visible,
+          locked: l.locked,
+          blendMode: (l as any).blendMode || 'normal',
+          opacity: (l as any).opacity || 1,
+        })),
+        background: state.background,
+        settings: {
+          materialId: state.materialId || '',
+          brand: state.brand || '',
+          modelId: state.modelId || '',
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
     },
   }))
 );

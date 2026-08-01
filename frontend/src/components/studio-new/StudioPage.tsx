@@ -20,7 +20,7 @@ import StickersTool from './tools/StickersTool';
 import {
   ArrowLeft, ShoppingBag, Check, Save, Download, Eye, Grid3X3, Moon, Sun,
   Undo2, Redo2, ZoomIn, ZoomOut, Upload, Type, Sticker, FolderHeart, Layers, X,
-  Tag, Percent, Ticket, Info, Package, Sparkles, Smartphone
+  Tag, Percent, Ticket, Info, Package, Sparkles, Smartphone, Printer
 } from 'lucide-react';
 import Tooltip from './shared/Tooltip';
 
@@ -66,6 +66,9 @@ function StudioHeader() {
   const leaveStudio = useStudioStore((s) => s.leaveStudio);
   const setLandingStep = useStudioStore((s) => s.setLandingStep);
   const saveDesign = useStudioStore((s) => s.saveDesign);
+  const generatePrintFile = useStudioStore((s) => s.generatePrintFile);
+  const printGenerating = useStudioStore((s) => s.printGenerating);
+  const printFile = useStudioStore((s) => s.printFile);
 
   const handleBack = () => {
     setLandingStep('templates');
@@ -91,6 +94,7 @@ function StudioHeader() {
         thumbnail: thumbDataUrl,
         productId: product?.id || null,
         productName: product?.name || '',
+        designDocument: store.getState().toDesignDocument(),
       };
       addItem(CUSTOM_PRODUCT_ID, 1, designData).catch((err: any) => {
         toast.error(err?.response?.data?.message || 'Failed to add to cart');
@@ -113,6 +117,19 @@ function StudioHeader() {
     a.href = dataUrl;
     a.download = 'phone-case-design.png';
     a.click();
+  };
+
+  const handleDownloadPrint = async () => {
+    let file = printFile;
+    if (!file) {
+      file = await generatePrintFile();
+    }
+    if (!file) { toast.error('Failed to generate print file'); return; }
+    const a = document.createElement('a');
+    a.href = file;
+    a.download = 'phone-case-print.png';
+    a.click();
+    toast.success('Print file downloaded');
   };
 
   const handleSave = () => {
@@ -203,9 +220,18 @@ function StudioHeader() {
             </div>
           )}
         </div>
-        <Tooltip content="Download">
+        <Tooltip content="Download Preview">
           <button onClick={handleDownload} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
             <Download className="h-4 w-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Generate Print File">
+          <button
+            onClick={handleDownloadPrint}
+            disabled={printGenerating}
+            className={cn('p-2 rounded-lg transition-colors', printGenerating ? 'opacity-50' : 'text-muted-foreground hover:text-foreground hover:bg-accent')}
+          >
+            <Printer className={cn('h-4 w-4', printGenerating && 'animate-pulse')} />
           </button>
         </Tooltip>
         <Tooltip content="Save Design">
@@ -223,7 +249,7 @@ function StudioHeader() {
           <span className="hidden md:inline">— {formatINR(product?.price || price.total)}</span>
         </button>
       </div>
-    </header >
+    </header>
   );
 }
 
@@ -236,11 +262,51 @@ function StudioMain() {
   const price = useStudioStore((s) => s.price);
   const brand = useStudioStore((s) => s.brand);
   const modelId = useStudioStore((s) => s.modelId);
+  const phoneTemplate = useStudioStore((s) => s.phoneTemplate);
   const [layersOpen, setLayersOpen] = useState(true);
   const [mobilePanel, setMobilePanel] = useState(false);
+  const [mobAdding, setMobAdding] = useState(false);
 
   const editableRegions = useStudioStore((s) => s.editableRegions);
   const templateRegionsLoading = useStudioStore((s) => s.templateRegionsLoading);
+
+  const { user } = useAuth();
+  const { addItem } = useCart() as any;
+  const toast = useToast();
+  const router = useRouter();
+
+  const handleMobileAddToBag = async () => {
+    if (!user) { router.push('/login?redirect=/customize'); return; }
+    setMobAdding(true);
+    try {
+      const thumbFn = useStudioStore.getState().captureThumbRef;
+      const rawDataUrl = thumbFn ? await thumbFn() : null;
+      if (!rawDataUrl) { toast.error('Canvas capture failed'); setMobAdding(false); return; }
+      const thumbDataUrl = await compressDataUrl(rawDataUrl, 1200, 0.82);
+      const designData = {
+        designId: `design_${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        brand: useStudioStore.getState().brand,
+        modelId: useStudioStore.getState().modelId,
+        materialId: product?.materialId || useStudioStore.getState().materialId,
+        totalPrice: product?.price || price.total,
+        thumbnail: thumbDataUrl,
+        productId: product?.id || null,
+        productName: product?.name || '',
+        designDocument: useStudioStore.getState().toDesignDocument(),
+      };
+      addItem(CUSTOM_PRODUCT_ID, 1, designData).catch((err: any) => {
+        toast.error(err?.response?.data?.message || 'Failed to add to cart');
+      });
+      useStudioStore.getState().resetCanvas();
+      localStorage.removeItem('dotbuild_recent_uploads');
+      useStudioStore.getState().leaveStudio();
+      toast.success('Added to bag');
+      router.push('/cart');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to capture design');
+    } finally { setMobAdding(false); }
+  };
 
   const renderMobileToolPanel = () => {
     switch (activeTool) {
@@ -287,7 +353,6 @@ function StudioMain() {
             </div>
           </div>
           <div className="flex-1 p-4 space-y-5 overflow-y-auto">
-            {/* Product Image Preview */}
             <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-accent/30 border border-border">
               <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
@@ -297,7 +362,6 @@ function StudioMain() {
               </div>
             </div>
 
-            {/* Product Name & Price */}
             <div className="space-y-2">
               <h4 className="text-sm font-bold leading-snug">{product.name}</h4>
               <div className="flex items-baseline gap-2.5">
@@ -314,7 +378,19 @@ function StudioMain() {
               )}
             </div>
 
-            {/* Material Badge */}
+            {/* Template Info */}
+            {phoneTemplate && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-accent/50 border border-border">
+                <div className="h-9 w-9 rounded-lg bg-background flex items-center justify-center shrink-0">
+                  <Printer className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Template</p>
+                  <p className="text-xs font-semibold">{phoneTemplate.width} x {phoneTemplate.height}px</p>
+                </div>
+              </div>
+            )}
+
             {product.Material && (
               <div className="flex items-center gap-3 p-3 rounded-xl bg-accent/50 border border-border">
                 <div className="h-9 w-9 rounded-lg bg-background flex items-center justify-center shrink-0">
@@ -327,7 +403,6 @@ function StudioMain() {
               </div>
             )}
 
-            {/* Description */}
             {product.description && (
               <div className="space-y-1.5">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Description</p>
@@ -335,7 +410,6 @@ function StudioMain() {
               </div>
             )}
 
-            {/* Discount / Coupon Section */}
             <div className="space-y-3 p-3.5 rounded-xl border-2 border-dashed border-border bg-accent/30">
               <div className="flex items-center gap-2">
                 <Ticket className="h-4 w-4 text-primary" />
@@ -356,7 +430,6 @@ function StudioMain() {
               </p>
             </div>
 
-            {/* Price Breakdown */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Tag className="h-3.5 w-3.5 text-muted-foreground" />
@@ -413,15 +486,16 @@ function StudioMain() {
             {editableRegions.length} editable {editableRegions.length === 1 ? 'region' : 'regions'} — customize within highlighted areas
           </div>
         )}
-        <div className="flex-1 flex items-center justify-center overflow-auto p-4">
-          <StudioCanvas />
+        <div className="flex-1 flex items-start justify-center overflow-auto p-4">
+          <div className="flex flex-col items-center w-full gap-4">
+            <StudioCanvas />
+            <MobileProductDetails mobAdding={mobAdding} onAddToBag={handleMobileAddToBag} />
+          </div>
         </div>
       </div>
 
-      {/* Right Properties / Product Info Panel */}
       <RightProperties />
 
-      {/* Layers Panel */}
       {layersOpen && (
         <div className="hidden lg:flex flex-col w-[240px] border-l border-border bg-background/95 backdrop-blur-xl shrink-0 animate-in slide-in-from-right">
           <div className="flex items-center justify-between p-3 border-b border-border">
@@ -434,14 +508,12 @@ function StudioMain() {
         </div>
       )}
 
-      {/* Mobile bottom toolbar */}
       <MobileToolbar
         onToggleLayers={() => setLayersOpen(!layersOpen)}
         layersOpen={layersOpen}
         onOpenPanel={() => setMobilePanel(true)}
       />
 
-      {/* Mobile tool panel */}
       {mobilePanel && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobilePanel(false)} />
@@ -459,7 +531,6 @@ function StudioMain() {
         </div>
       )}
 
-      {/* Mobile layers panel */}
       {layersOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setLayersOpen(false)} />
@@ -475,6 +546,67 @@ function StudioMain() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function MobileProductDetails({ mobAdding, onAddToBag }: { mobAdding: boolean; onAddToBag: () => Promise<void> }) {
+  const product = useStudioStore((s) => s.selectedProduct);
+  const price = useStudioStore((s) => s.price);
+  const brand = useStudioStore((s) => s.brand);
+  const modelId = useStudioStore((s) => s.modelId);
+
+  if (!product && !brand) return null;
+
+  return (
+    <div className="lg:hidden w-full space-y-4 pb-4">
+      {brand && (
+        <div className="flex items-center gap-2">
+          <Smartphone className="h-4 w-4 text-muted-foreground shrink-0" />
+          <h2 className="text-sm font-bold">{brand} {modelId}</h2>
+        </div>
+      )}
+      {product && (
+        <>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-2xl font-bold tabular-nums">{formatINR(price.total)}</span>
+            {product.compareAtPrice && product.compareAtPrice > product.price && (
+              <>
+                <span className="text-sm text-muted-foreground line-through tabular-nums">{formatINR(product.compareAtPrice)}</span>
+                <span className="text-[11px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                  -{Math.round((1 - product.price / product.compareAtPrice) * 100)}%
+                </span>
+              </>
+            )}
+          </div>
+          {price.discount > 0 && (
+            <div className="flex items-center gap-1.5 text-green-600 bg-green-500/10 px-3 py-2 rounded-lg border border-green-500/20">
+              <Percent className="h-3.5 w-3.5 shrink-0" />
+              <span className="text-xs font-semibold">You save {formatINR(price.discount)}</span>
+            </div>
+          )}
+          {product.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
+          )}
+          <button
+            onClick={onAddToBag}
+            disabled={mobAdding}
+            className="w-full h-12 rounded-xl bg-foreground text-background text-sm font-semibold shadow-lg hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {mobAdding ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-4 w-4" />
+                Add to Cart — {formatINR(price.total)}
+              </>
+            )}
+          </button>
+        </>
       )}
     </div>
   );

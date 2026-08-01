@@ -115,3 +115,20 @@ export const HISTORY_LIMIT = 100;
 export const AUTOSAVE_INTERVAL = 10000;
 export const SAVED_DESIGNS_KEY = 'dotbuild_saved_designs_v2';
 export const STUDIO_SETTINGS_KEY = 'dotbuild_studio_settings';
+
+export const PRINT = {
+  DPI: 300,
+  FORMAT: 'png',
+  QUALITY: 0.95,
+  CMYK: false,
+  SCALE: 1,
+};
+
+export const TEMPLATE_DEFAULTS = {
+  width: 2400,
+  height: 5200,
+  cornerRadius: 42,
+  bleedMm: 3,
+  safeAreaMm: 5,
+  dpi: 300,
+};
