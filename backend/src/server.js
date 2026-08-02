@@ -82,9 +82,6 @@ if (isProduction && allowedOrigins.length === 0) {
 const corsOptions = {
     origin(origin, callback) {
         if (!origin) {
-            if (isProduction) {
-                return callback(new Error('Not allowed by CORS'));
-            }
             return callback(null, true);
         }
         if (allowAnyOrigin) {
