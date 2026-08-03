@@ -6,9 +6,7 @@
   "scripts": {
     "start": "node --dns-result-order=ipv4first src/server.js",
     "dev": "nodemon --dns-result-order=ipv4first src/server.js",
-    "clean": "npx kill-port 5001",
-    "seed": "node seed/index.js",
-    "seed:legacy": "node seed-full.js"
+    "clean": "npx kill-port 5001"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
