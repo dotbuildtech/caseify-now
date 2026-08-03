@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const asyncHandler = require('../utils/asyncHandler');
 const { Op } = require('sequelize');
 const Material = require('../models/Material');
+const { computeStudioPrice } = require('../utils/studioPricing');
 const StudioBrand = require('../models/StudioBrand');
 const StudioModel = require('../models/StudioModel');
 const StudioProduct = require('../models/StudioProduct');
@@ -149,13 +150,8 @@ router.get('/materials', studioLimiter, asyncHandler(async (req, res) => {
 // POST /api/studio/calculate-price
 router.post('/calculate-price', priceLimiter, asyncHandler(async (req, res) => {
     const { materialId, layerCount } = req.body;
-    const byId = !isNaN(materialId) ? { id: parseInt(materialId) } : null;
-    const material = await Material.findOne({
-        where: { [Op.or]: [{ slug: materialId }, byId].filter(Boolean) }
-    });
-    const base = material ? material.price : 399;
-    const layerFee = layerCount > 2 ? (layerCount - 2) * 25 : 0;
-    res.json({ success: true, price: base + layerFee, base, layerFee, total: base + layerFee });
+    const { base, layerFee, perUnitPrice } = await computeStudioPrice({ materialId, layerCount });
+    res.json({ success: true, price: perUnitPrice, base, layerFee, total: perUnitPrice });
 }));
 
 // GET /api/studio/products?studioModelId=5

@@ -22,7 +22,8 @@ const orderLimiter = rateLimit({
 router.post('/', protect, orderLimiter, addOrderItems);
 router.get('/myorders', protect, getMyOrders);
 router.get('/:id', protect, getOrderById);
-router.put('/:id/pay', protect, updateOrderToPaid);
+// Marking an order paid (COD on delivery) is an admin action
+router.put('/:id/pay', protect, admin, updateOrderToPaid);
 
 // Admin routes
 router.get('/', protect, admin, getOrders);

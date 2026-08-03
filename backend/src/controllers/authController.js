@@ -28,7 +28,10 @@ const isProduction = () => process.env.NODE_ENV === 'production';
 const TOKEN_COOKIE_OPTS = {
     httpOnly: true,
     secure: isProduction(),
-    sameSite: 'Strict',
+    // Lax: cookies survive the cross-site top-level navigation PayU performs
+    // when it redirects back to /payment/success|failure, while still blocking
+    // cross-site POSTs (CSRF) alongside the origin check.
+    sameSite: 'Lax',
     path: '/'
 };
 

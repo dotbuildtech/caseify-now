@@ -1,80 +1,136 @@
-const razorpay = require('../config/razorpay');
-const crypto = require('crypto');
-const { Order } = require('../models/Order');
+const asyncHandler = require('../utils/asyncHandler');
+const { initiatePayuPayment, initiateForExistingOrder, processPayuCallback } = require('../services/payuService');
 
-// @desc    Create Razorpay order
-// @route   POST /api/payments/order
-// @access  Private
-exports.createRazorpayOrder = async (req, res) => {
-    const { amount, currency = 'INR', receipt } = req.body;
+const GATEWAY_FIELDS = [
+    'hash', 'key', 'txnid', 'amount', 'productinfo', 'firstname', 'email', 'phone',
+    'surl', 'furl', 'udf1', 'udf2', 'udf3', 'udf4', 'udf5', 'udf6', 'udf7', 'udf8', 'udf9', 'udf10',
+    'status', 'mihpayid', 'mode', 'error', 'error_message', 'bank_ref_num', 'payuMoneyId',
+    'unmappedstatus', 'net_amount_debit'
+];
 
-    try {
-        const options = {
-            amount: amount * 100, // amount in the smallest currency unit
-            currency,
-            receipt
-        };
-
-        const order = await razorpay.orders.create(options);
-        res.json(order);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+// Whitelist gateway response fields; never trust unlisted payload keys
+const cleanGatewayResponse = (body) => {
+    const out = {};
+    for (const key of GATEWAY_FIELDS) {
+        if (body[key] !== undefined && body[key] !== null) {
+            out[key] = String(body[key]);
+        }
     }
+    return out;
 };
 
-// @desc    Verify Razorpay payment
-// @route   POST /api/payments/verify
+const parsePositiveInt = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    const id = parseInt(value, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+        const err = new Error('Valid orderId is required');
+        err.status = 400;
+        throw err;
+    }
+    return id;
+};
+
+// @desc    Initiate a PayU payment
+// @route   POST /api/payments/payu/initiate
 // @access  Private
-exports.verifyPayment = async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, orderId } = req.body;
+// New flow: body carries the validated cart payload (orderItems, shippingAddress,
+// paymentMethod) — no order row is created yet. Alternatively body.txnid re-issues
+// a recent initiated session, and body.orderId pays a legacy order row.
+exports.payuInitiate = asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const orderId = parsePositiveInt(body.orderId);
+    const txnid = typeof body.txnid === 'string' && body.txnid.trim() ? body.txnid.trim() : null;
+    const hasPayload = Array.isArray(body.orderItems) && body.orderItems.length > 0;
 
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-
-    const expectedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(body.toString())
-        .digest('hex');
-
-    if (expectedSignature !== razorpay_signature) {
-        return res.status(400).json({ success: false, message: 'Invalid payment signature' });
-    }
-
-    try {
-        const order = await Order.findByPk(orderId);
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-        if (order.UserId !== req.user.id && req.user.role !== 'admin') {
-            return res.status(403).json({ message: 'Not authorized to update this order' });
-        }
-
-        order.isPaid = true;
-        order.paidAt = new Date();
-        order.paymentResult = {
-            id: razorpay_payment_id,
-            status: 'Paid',
-            update_time: new Date().toISOString(),
-            email_address: req.user.email
-        };
-        await order.save();
-
-        const Invoice = require('../models/Invoice');
-        const lastInvoice = await Invoice.findOne({ order: [['invoiceNumber', 'DESC']] });
-        const lastNum = lastInvoice ? parseInt(lastInvoice.invoiceNumber.split('-')[1]) : 0;
-        const newInvoiceNumber = `INV-${(lastNum + 1).toString().padStart(6, '0')}`;
-
-        await Invoice.create({
-            invoiceNumber: newInvoiceNumber,
-            subTotal: Number(order.itemsPrice || 0),
-            gstTotal: order.taxPrice,
-            grandTotal: order.totalPrice,
-            status: 'Paid',
-            OrderId: order.id,
-            UserId: order.UserId
+    let payment;
+    if (txnid) {
+        payment = await initiatePayuPayment({
+            userId: req.user.id,
+            txnid,
+            orderItems: [],
+            shippingAddress: {},
+            paymentMethod: 'online',
+            requestId: req.id
         });
-
-        res.json({ success: true, message: 'Payment verified and invoice generated' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    } else if (hasPayload) {
+        payment = await initiatePayuPayment({
+            userId: req.user.id,
+            orderItems: body.orderItems,
+            shippingAddress: body.shippingAddress,
+            paymentMethod: body.paymentMethod,
+            requestId: req.id
+        });
+    } else if (orderId) {
+        payment = await initiateForExistingOrder({ orderId, user: req.user, requestId: req.id });
+    } else {
+        res.status(400);
+        throw new Error('Provide orderItems, a txnid to reuse, or an orderId');
     }
+
+    res.json({ success: true, payment });
+});
+
+// @desc    PayU success callback (browser redirect) — verify hash, place the order
+// @route   POST /api/payments/payu/success
+// @access  Public (hash-verified; session resolved from txnid, session optional)
+exports.payuSuccess = asyncHandler(async (req, res) => {
+    const response = cleanGatewayResponse(req.body?.payuParams || req.body || {});
+
+    const outcome = await processPayuCallback({ response, user: req.user, requestId: req.id });
+    if (!outcome.valid) {
+        res.status(400);
+        throw new Error(outcome.reason || 'Payment verification failed');
+    }
+    if (!outcome.success && !outcome.alreadyPaid) {
+        res.status(400);
+        throw new Error(outcome.reason || 'Payment was not successful');
+    }
+
+    res.json({
+        success: true,
+        alreadyPaid: outcome.alreadyPaid,
+        orderId: outcome.order?.id || null,
+        transactionId: response.txnid,
+        mihpayid: response.mihpayid || null,
+        amount: Number(outcome.order?.totalPrice || 0)
+    });
+});
+
+// @desc    PayU failure callback (browser redirect) — verify hash, release reservation
+// @route   POST /api/payments/payu/failure
+// @access  Public (hash-verified; session resolved from txnid, session optional)
+exports.payuFailure = asyncHandler(async (req, res) => {
+    const response = cleanGatewayResponse(req.body?.payuParams || req.body || {});
+
+    const outcome = await processPayuCallback({ response, user: req.user, requestId: req.id });
+    if (!outcome.valid) {
+        res.status(400);
+        throw new Error(outcome.reason || 'Payment verification failed');
+    }
+    if (outcome.alreadyPaid || outcome.success) {
+        // User actually paid but landed on the failure page (e.g. browser killed the redirect)
+        return res.json({
+            success: true,
+            alreadyPaid: outcome.alreadyPaid,
+            orderId: outcome.order?.id || null,
+            transactionId: response.txnid,
+            mihpayid: response.mihpayid || null,
+            amount: Number(outcome.order?.totalPrice || 0)
+        });
+    }
+
+    res.json({
+        success: false,
+        transactionId: response.txnid,
+        reason: sanitizeReason(response.error_message || response.error) || 'Payment failed or was cancelled'
+    });
+});
+
+const sanitizeReason = (value) => {
+    if (value === undefined || value === null) return null;
+    return String(value)
+        .replace(/[\u0000-\u001F\u007F\u2028\u2029]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 500) || null;
 };

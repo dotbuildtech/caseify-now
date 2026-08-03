@@ -5,6 +5,9 @@ const unwrap = (r) => r?.data?.data || r?.data;
 export const createOrder = async (payload) => {
     const r = await api.post('/orders', payload);
     const d = r?.data || {};
+    if (d.order && typeof d.paymentRequired === 'boolean') {
+        d.order.paymentRequired = d.paymentRequired;
+    }
     return d.order || d.data?.order || d;
 };
 

@@ -8,9 +8,9 @@ const PaymentRecord = sequelize.define('PaymentRecord', {
         comment: 'Internal unique id (e.g. PAY-2026-000001)'
     },
     gateway: {
-        type: DataTypes.ENUM('Razorpay', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other'),
+        type: DataTypes.ENUM('PayU', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other'),
         allowNull: false,
-        defaultValue: 'Razorpay'
+        defaultValue: 'PayU'
     },
     gatewayTransactionId: {
         type: DataTypes.STRING(200),
@@ -20,6 +20,27 @@ const PaymentRecord = sequelize.define('PaymentRecord', {
     gatewayPaymentId: {
         type: DataTypes.STRING(200),
         allowNull: true
+    },
+    hashVerified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: 'Gateway response hash verification result'
+    },
+    gatewayResponse: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        comment: 'Full gateway callback response'
+    },
+    failureReason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Gateway failure reason (if any)'
+    },
+    payload: {
+        type: DataTypes.JSONB,
+        allowNull: true,
+        comment: 'Validated order payload held while payment is in flight (order is materialized only after gateway success)'
     },
     bankAccount: {
         type: DataTypes.STRING(100),
@@ -73,7 +94,7 @@ const PaymentRecord = sequelize.define('PaymentRecord', {
         comment: 'amount - fee - tax actually received'
     },
     status: {
-        type: DataTypes.ENUM('Initiated', 'Authorized', 'Captured', 'Failed', 'Refunded', 'Disputed'),
+        type: DataTypes.ENUM('Initiated', 'Authorized', 'Captured', 'Pending', 'Failed', 'Expired', 'Refunded', 'Disputed'),
         allowNull: false,
         defaultValue: 'Captured'
     },

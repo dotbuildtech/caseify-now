@@ -6,6 +6,8 @@ import { Lock } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { createOrder } from '@/services/orderApi';
+import { initiatePayuPayment } from '@/services/paymentApi';
+import { submitPayuForm } from '@/lib/payu';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
@@ -19,6 +21,8 @@ export default function CheckoutPage() {
     const { items, subtotal, summary, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, clear } = useCart();
     const toast = useToast();
     const [submitting, setSubmitting] = useState(false);
+    const [paying, setPaying] = useState(false);
+    const [pendingPayment, setPendingPayment] = useState(null);
     const [form, setForm] = useState({
         fullName: '',
         email: '',
@@ -77,20 +81,31 @@ export default function CheckoutPage() {
                 qty: getItemQty(i),
                 designMeta: i.designMeta || null
             }));
-            const order = await createOrder({
-                orderItems,
-                shippingAddress: {
-                    fullName: form.fullName,
-                    email: form.email,
-                    phone: form.phone,
-                    address: form.address,
-                    city: form.city,
-                    state: form.state,
-                    postalCode: form.postalCode,
-                    country: form.country
-                },
-                paymentMethod: form.paymentMethod
-            });
+            const shippingAddress = {
+                fullName: form.fullName,
+                email: form.email,
+                phone: form.phone,
+                address: form.address,
+                city: form.city,
+                state: form.state,
+                postalCode: form.postalCode,
+                country: form.country
+            };
+
+            if (form.paymentMethod === 'online') {
+                // Payment-first: validate the cart and create the PayU session.
+                // NO order exists yet — it is placed only after PayU confirms
+                // the payment, then the user is redirected to the confirmation.
+                const payment = await initiatePayuPayment({
+                    orderItems,
+                    shippingAddress,
+                    paymentMethod: 'online'
+                });
+                setPendingPayment(payment);
+                return;
+            }
+
+            const order = await createOrder({ orderItems, shippingAddress, paymentMethod: form.paymentMethod });
             const orderId = order?.id || order?._id || order?.data?.id;
             if (!orderId) {
                 toast.error('Order was placed but no ID returned. Check your orders.');
@@ -101,10 +116,22 @@ export default function CheckoutPage() {
             toast.success('Order placed successfully');
             router.push(`/order-confirmation/${orderId}`);
         } catch (err) {
-            toast.error(err.response?.data?.message || 'Order failed');
+            if (err.response?.data?.message?.includes('already paid')) {
+                try { await clear(); } catch { /* best-effort cart clear */ }
+                router.push('/orders');
+                return;
+            }
+            toast.error(err.response?.data?.message || 'Order failed. Your cart is still saved.');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const confirmPayment = () => {
+        if (!pendingPayment) return;
+        setPaying(true);
+        // Payment params were already created by the server (amount, hash, txnid)
+        submitPayuForm(pendingPayment);
     };
 
     if (items.length === 0) {
@@ -112,6 +139,40 @@ export default function CheckoutPage() {
             <div className="container-luxe py-20 text-center">
                 <h1 className="font-display text-3xl">Your cart is empty.</h1>
                 <Link href="/shop" className="btn-primary mt-6">Continue Shopping</Link>
+            </div>
+        );
+    }
+
+    if (pendingPayment) {
+        const totals = pendingPayment.totals || {};
+        const serverTotal = Number(totals.totalPrice || pendingPayment.amount || 0);
+        return (
+            <div className="container-luxe py-12 md:py-20">
+                <div className="mx-auto max-w-md border border-border bg-surface p-6 md:p-8">
+                    <h1 className="font-display text-3xl">Confirm <span className="italic-display">payment</span>.</h1>
+                    <p className="mt-2 text-sm text-text-light">
+                        No order is placed yet — your payment will be confirmed by PayU first, then your order is placed automatically.
+                    </p>
+                    <dl className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
+                        <div className="flex justify-between"><dt className="text-text-light">Items</dt><dd className="tabular-nums">{formatINR(Number(totals.itemsPrice || 0))}</dd></div>
+                        <div className="flex justify-between"><dt className="text-text-light">Shipping</dt><dd className="tabular-nums">{Number(totals.shippingPrice || 0) === 0 ? 'Free' : formatINR(totals.shippingPrice)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-text-light">Tax (GST)</dt><dd className="tabular-nums">{formatINR(Number(totals.taxPrice || 0))}</dd></div>
+                        <div className="flex justify-between border-t border-border pt-3">
+                            <dt className="font-display text-lg">Total</dt>
+                            <dd className="font-display text-2xl font-semibold tabular-nums">{formatINR(serverTotal)}</dd>
+                        </div>
+                    </dl>
+                    <button
+                        onClick={confirmPayment}
+                        disabled={paying}
+                        className="btn-primary mt-6 w-full disabled:opacity-50"
+                    >
+                        {paying ? 'Contacting PayU…' : `Proceed to PayU — ${formatINR(serverTotal)}`}
+                    </button>
+                    <p className="mt-3 text-xs text-text-light">
+                        Your order is placed only after the payment succeeds. If you cancel, nothing is charged and no order is created.
+                    </p>
+                </div>
             </div>
         );
     }
@@ -170,8 +231,7 @@ export default function CheckoutPage() {
                         <div className="mt-6 space-y-3">
                             {[
                                 { v: 'cod', l: 'Cash on Delivery', d: 'Pay when you receive' },
-                                { v: 'upi', l: 'UPI', d: 'Pay via UPI apps (Razorpay)' },
-                                { v: 'card', l: 'Credit/Debit Card', d: 'Visa, Mastercard, Rupay (Razorpay)' }
+                                { v: 'online', l: 'Pay Online', d: 'UPI, Cards & NetBanking (PayU)' }
                             ].map((m) => (
                                 <label
                                     key={m.v}

@@ -58,6 +58,24 @@ const connectDB = async () => {
         const assoTime = Date.now() - assoStart;
         if (assoTime > 100) console.log(`[startup] Associations loaded in ${assoTime}ms`);
 
+        // PayU migration: rename legacy Razorpay order columns.
+        // MUST run before sequelize.sync(), which creates the unique index on payuTxnId.
+        try {
+            await sequelize.query(`
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayOrderId') THEN
+                        ALTER TABLE "Orders" RENAME COLUMN "razorpayOrderId" TO "payuTxnId";
+                    END IF;
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayPaymentId') THEN
+                        ALTER TABLE "Orders" RENAME COLUMN "razorpayPaymentId" TO "payuPaymentId";
+                    END IF;
+                END $$;
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not rename legacy Razorpay order columns (non-critical):', e.message);
+        }
+
         const skipSync = process.env.SKIP_DB_SYNC === 'true' || process.env.NODE_ENV === 'production';
         if (skipSync) {
             console.log(`Skipping schema sync (${process.env.NODE_ENV === 'production' ? 'production' : 'SKIP_DB_SYNC=true'})`);
@@ -142,6 +160,48 @@ const connectDB = async () => {
             `).catch(() => {});
         } catch (e) {
             console.warn('[migration] Could not create idx_customdesigns_modelslug (non-critical):', e.message);
+        }
+
+        // PayU migration: new PaymentRecord columns
+        try {
+            await sequelize.query(`
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PaymentRecords' AND column_name = 'hashVerified') THEN
+                        ALTER TABLE "PaymentRecords" ADD COLUMN "hashVerified" BOOLEAN NOT NULL DEFAULT FALSE;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PaymentRecords' AND column_name = 'gatewayResponse') THEN
+                        ALTER TABLE "PaymentRecords" ADD COLUMN "gatewayResponse" JSONB;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PaymentRecords' AND column_name = 'failureReason') THEN
+                        ALTER TABLE "PaymentRecords" ADD COLUMN "failureReason" TEXT;
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'PaymentRecords' AND column_name = 'payload') THEN
+                        ALTER TABLE "PaymentRecords" ADD COLUMN "payload" JSONB;
+                    END IF;
+                END $$;
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not add PaymentRecord gateway fields (non-critical):', e.message);
+        }
+
+        // PayU migration: extend gateway/status enum values (name varies by DB)
+        try {
+            const enumRows = await sequelize.query(
+                `SELECT typname FROM pg_type WHERE typname ILIKE 'enum_%' AND (typname ILIKE '%paymentrecord%' OR typname ILIKE '%paymentrecords%')`,
+                { type: sequelize.QueryTypes.SELECT }
+            );
+            for (const row of enumRows) {
+                if (String(row.typname).includes('gateway')) {
+                    await sequelize.query(`ALTER TYPE "${row.typname}" ADD VALUE IF NOT EXISTS 'PayU'`).catch(() => {});
+                }
+                if (String(row.typname).includes('status')) {
+                    await sequelize.query(`ALTER TYPE "${row.typname}" ADD VALUE IF NOT EXISTS 'Pending'`).catch(() => {});
+                    await sequelize.query(`ALTER TYPE "${row.typname}" ADD VALUE IF NOT EXISTS 'Expired'`).catch(() => {});
+                }
+            }
+        } catch (e) {
+            console.warn('[migration] Could not extend payment enum values (non-critical):', e.message);
         }
 
         setInterval(async () => {

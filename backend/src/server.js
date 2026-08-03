@@ -263,6 +263,9 @@ if (require.main === module) {
             const elapsed = Date.now() - startTime;
             console.log(`[startup] Server started on port ${PORT} in ${elapsed}ms`);
         });
+
+        const { startUnpaidOrderExpiry } = require('./jobs/expireUnpaidOrders');
+        startUnpaidOrderExpiry();
     })();
 }
 

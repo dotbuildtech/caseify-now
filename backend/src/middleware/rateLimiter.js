@@ -57,10 +57,32 @@ const forgotPasswordLimiter = rateLimit({
     }
 });
 
+const paymentInitiateLimiter = rateLimit({
+    ...commonOpts,
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: {
+        success: false,
+        message: 'Too many payment attempts from this IP, please try again after 15 minutes'
+    }
+});
+
+const paymentCallbackLimiter = rateLimit({
+    ...commonOpts,
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: {
+        success: false,
+        message: 'Too many payment callbacks from this IP, please try again later'
+    }
+});
+
 module.exports = {
     authLimiter,
     loginLimiter,
     registerLimiter,
     otpLimiter,
-    forgotPasswordLimiter
+    forgotPasswordLimiter,
+    paymentInitiateLimiter,
+    paymentCallbackLimiter
 };

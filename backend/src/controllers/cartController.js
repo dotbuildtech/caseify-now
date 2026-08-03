@@ -7,6 +7,7 @@ const { Cart, CartItem } = require('../models/Cart');
 const { saveDataUrl } = require('../utils/saveDataUrl');
 const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
+const { MAX_DESIGN_LAYERS } = require('../utils/studioPricing');
 
 const MAX_QTY = Math.max(1, parseInt(process.env.CART_MAX_QTY_PER_ITEM, 10) || 99);
 const MAX_DISTINCT_ITEMS = Math.max(1, parseInt(process.env.CART_MAX_DISTINCT_ITEMS, 10) || 50);
@@ -173,6 +174,10 @@ exports.addItemToCart = asyncHandler(async (req, res) => {
 
         const { thumbnail: _thumb, layers: _rawLayers, ...designMetaRest } = designMeta;
         const hasDesignMeta = Object.keys(designMetaRest).length > 0 || (rawLayers && rawLayers.length > 0);
+        if (Array.isArray(rawLayers) && rawLayers.length > MAX_DESIGN_LAYERS) {
+            res.status(400);
+            throw new Error(`Design cannot exceed ${MAX_DESIGN_LAYERS} layers`);
+        }
         const designMetaForDb = { ...designMetaRest, layers: rawLayers };
 
         const existing = await CartItem.findOne({

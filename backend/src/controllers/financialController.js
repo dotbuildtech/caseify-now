@@ -89,7 +89,7 @@ const expenseSchema = z.object({
 });
 
 const paymentRecordSchema = z.object({
-    gateway: z.enum(['Razorpay', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other']).default('Razorpay'),
+    gateway: z.enum(['PayU', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other']).default('PayU'),
     gatewayTransactionId: z.string().max(200).optional(),
     gatewayPaymentId: z.string().max(200).optional(),
     bankAccount: z.string().max(100).optional(),

@@ -42,13 +42,13 @@ const Order = sequelize.define('Order', {
     paidAt: {
         type: DataTypes.DATE
     },
-    razorpayOrderId: {
-        type: DataTypes.STRING,
+    payuTxnId: {
+        type: DataTypes.STRING(40),
         allowNull: true,
         unique: true
     },
-    razorpayPaymentId: {
-        type: DataTypes.STRING,
+    payuPaymentId: {
+        type: DataTypes.STRING(100),
         allowNull: true
     },
     isDelivered: {
@@ -67,7 +67,7 @@ const Order = sequelize.define('Order', {
         { fields: ['UserId'] },
         { fields: ['orderStatus'] },
         { fields: ['createdAt'] },
-        { fields: ['razorpayOrderId'], unique: true }
+        { fields: ['payuTxnId'], unique: true }
     ]
 });
 

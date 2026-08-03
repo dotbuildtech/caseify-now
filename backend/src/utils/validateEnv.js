@@ -19,6 +19,12 @@ const validateEnv = () => {
         if (!process.env.CORS_ORIGIN) {
             warnings.push('CORS_ORIGIN is not set in production; using a strict default is recommended');
         }
+        if (!process.env.PAYU_MERCHANT_KEY || !process.env.PAYU_SALT) {
+            warnings.push('PAYU_MERCHANT_KEY / PAYU_SALT are not set in production; online payments will fail');
+        }
+        if (!process.env.PAYU_SUCCESS_URL || !process.env.PAYU_FAILURE_URL) {
+            warnings.push('PAYU_SUCCESS_URL / PAYU_FAILURE_URL are not set in production; PayU callbacks will fail');
+        }
     }
 
     if (errors.length > 0) {
