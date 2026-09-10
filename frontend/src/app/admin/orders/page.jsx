@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers, Zap, Shield, Headphones, Battery, Cable, Download } from 'lucide-react';
+import { Search, ChevronDown, ExternalLink, FileText, X, User, Package, MapPin, CreditCard, ImageIcon, Palette, Layers, Zap, Shield, Headphones, Battery, Cable, Download, Eye, FolderDown, Sparkles } from 'lucide-react';
 import { FORM_FIELD_LABELS } from '@/utils/constants';
 import { adminListOrders, adminUpdateOrderStatus, adminGetInvoiceByOrder, adminGenerateInvoice, adminDownloadInvoice } from '@/services/adminApi';
 import { formatINR, formatDate } from '@/utils/format';
@@ -36,7 +36,7 @@ const SectionHeading = ({ icon: Icon, title }) => (
     </div>
 );
 
-const ImagePreviewModal = ({ src, alt, onClose }) => {
+const ImagePreviewModal = ({ src, alt, title = 'Artwork Preview', onClose }) => {
     const ref = useRef(null);
     const [downloading, setDownloading] = useState(false);
     useEffect(() => {
@@ -53,27 +53,132 @@ const ImagePreviewModal = ({ src, alt, onClose }) => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = alt || 'image';
+            const ext = blob.type?.includes('jpeg') ? 'jpg' : blob.type?.includes('png') ? 'png' : 'png';
+            a.download = `${(alt || 'custom-artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${ext}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        } catch {} finally { setDownloading(false); }
+        } catch {
+            const a = document.createElement('a');
+            a.href = src;
+            a.download = `${(alt || 'custom-artwork').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } finally { setDownloading(false); }
     };
     return (
-        <div ref={ref} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === ref.current) onClose(); }}>
-            <div className="relative max-h-[90vh] max-w-[90vw]">
-                <div className="absolute -right-2 -top-2 flex gap-1.5">
-                    <button onClick={handleDownload} disabled={downloading} className="rounded-full bg-white p-1.5 shadow-lg hover:bg-stone-100 disabled:opacity-50">
-                        <Download className="h-4 w-4" />
-                    </button>
-                    <button onClick={onClose} className="rounded-full bg-white p-1.5 shadow-lg hover:bg-stone-100">
-                        <X className="h-4 w-4" />
-                    </button>
+        <div ref={ref} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4" onClick={(e) => { if (e.target === ref.current) onClose(); }}>
+            <div className="relative flex flex-col max-h-[92vh] max-w-[92vw] bg-surface rounded-xl border border-border shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between border-b border-border bg-background-light/90 px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-text-light" />
+                        <span className="text-xs font-semibold text-ink truncate max-w-xs sm:max-w-md">{title || alt || 'Custom Image'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleDownload}
+                            disabled={downloading}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-ink text-cream px-3 py-1 text-xs font-medium hover:bg-ink/90 transition-colors disabled:opacity-50"
+                        >
+                            <Download className="h-3.5 w-3.5" />
+                            <span>{downloading ? 'Downloading…' : 'Download Full Image'}</span>
+                        </button>
+                        <a
+                            href={src}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-text hover:bg-background-light transition-colors"
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Open in Tab</span>
+                        </a>
+                        <button onClick={onClose} className="rounded-lg p-1 text-text-light hover:text-ink hover:bg-background-light transition-colors">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
-                <img src={src} alt={alt} className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl" />
+                <div className="relative flex items-center justify-center p-4 bg-black/5 dark:bg-black/40 overflow-auto max-h-[80vh]">
+                    <img src={src} alt={alt} className="max-h-[75vh] max-w-[85vw] object-contain rounded shadow-md select-none" />
+                </div>
             </div>
         </div>
+    );
+};
+
+const CustomerAssetCard = ({ src, label, filename, orderId }) => {
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [downloading, setDownloading] = useState(false);
+
+    const onDownload = async (e) => {
+        e.stopPropagation();
+        if (downloading) return;
+        setDownloading(true);
+        try {
+            const res = await fetch(src);
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || `order-${orderId}-customer-asset.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch {
+            const a = document.createElement('a');
+            a.href = src;
+            a.download = filename || `order-${orderId}-customer-asset.png`;
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } finally {
+            setDownloading(false);
+        }
+    };
+
+    return (
+        <>
+            <div className="group relative flex flex-col rounded-lg border border-purple-200/80 bg-surface p-2 shadow-sm transition-all hover:border-purple-500 hover:shadow-md">
+                <div
+                    onClick={() => setPreviewOpen(true)}
+                    className="relative aspect-square w-24 overflow-hidden rounded-md bg-background-light cursor-zoom-in sm:w-28"
+                >
+                    <img
+                        src={src}
+                        alt={label}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
+                        <span className="flex items-center gap-1 rounded bg-black/60 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white opacity-0 transition-opacity group-hover:opacity-100">
+                            <Eye className="h-3 w-3" /> View
+                        </span>
+                    </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-1">
+                    <p className="truncate text-[11px] font-medium text-ink" title={label}>{label}</p>
+                    <button
+                        onClick={onDownload}
+                        disabled={downloading}
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border bg-background-light text-text-light hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700 transition-colors disabled:opacity-50"
+                        title="Download full resolution image"
+                    >
+                        <Download className="h-3 w-3" />
+                    </button>
+                </div>
+            </div>
+            {previewOpen && (
+                <ImagePreviewModal
+                    src={src}
+                    alt={label}
+                    title={`${label} (Order #${orderId})`}
+                    onClose={() => setPreviewOpen(false)}
+                />
+            )}
+        </>
     );
 };
 
@@ -312,45 +417,85 @@ export default function AdminOrdersPage() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Custom order additional details */}
+                                                    {/* Custom order Work Center & Artwork Section */}
                                                     {snap.isCustom && (
-                                                        <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg border border-purple-100 bg-purple-50/50 p-3 md:grid-cols-2">
-                                                            {snap.customText && (
-                                                                <div>
-                                                                    <SectionHeading icon={Palette} title="Custom Text" />
-                                                                    <p className="text-xs text-ink">{snap.customText}</p>
-                                                                </div>
-                                                            )}
-                                                            {snap.bgColor && (
+                                                        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50/40 p-4 space-y-3">
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-light">Background:</span>
-                                                                    <span className="h-5 w-5 rounded border border-border" style={{ backgroundColor: snap.bgColor }} />
-                                                                    <span className="font-mono text-[10px] text-text-light">{snap.bgColor}</span>
+                                                                    <Sparkles className="h-4 w-4 text-purple-600" />
+                                                                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-purple-900">
+                                                                        Work Center · Customization Assets
+                                                                    </span>
                                                                 </div>
-                                                            )}
-                                                            {snap.layerCount > 0 && (
+                                                                {snap.uploadedImages && snap.uploadedImages.length > 0 && (
+                                                                    <button
+                                                                        onClick={async () => {
+                                                                            for (let idx = 0; idx < snap.uploadedImages.length; idx++) {
+                                                                                const u = snap.uploadedImages[idx];
+                                                                                const a = document.createElement('a');
+                                                                                a.href = u;
+                                                                                a.download = `order-${o.id}-asset-${idx + 1}.png`;
+                                                                                a.target = '_blank';
+                                                                                document.body.appendChild(a);
+                                                                                a.click();
+                                                                                document.body.removeChild(a);
+                                                                                await new Promise(r => setTimeout(r, 300));
+                                                                            }
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-white px-2.5 py-1 text-[11px] font-medium text-purple-700 shadow-sm hover:bg-purple-50 transition-colors"
+                                                                    >
+                                                                        <FolderDown className="h-3.5 w-3.5 text-purple-600" />
+                                                                        <span>Download All Assets ({snap.uploadedImages.length})</span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Customer Uploaded Files Grid */}
+                                                            {snap.uploadedImages && snap.uploadedImages.length > 0 ? (
                                                                 <div>
-                                                                    <SectionHeading icon={Layers} title="Design Layers" />
-                                                                    <span className="text-xs text-ink">{snap.layerCount} layer(s)</span>
-                                                                </div>
-                                                            )}
-                                                            {snap.uploadedImages && snap.uploadedImages.length > 0 && (
-                                                                <div>
-                                                                    <SectionHeading icon={ImageIcon} title="Uploaded Images" />
-                                                                    <div className="flex gap-2 flex-wrap">
-                                                                        {snap.uploadedImages.slice(0, 4).map((url, i) => (
-                                                                            <div key={i} className="h-14 w-14 overflow-hidden rounded border border-border bg-background-light">
-                                                                                <img src={url} alt={`Upload ${i + 1}`} className="h-full w-full object-cover" />
-                                                                            </div>
+                                                                    <SectionHeading icon={ImageIcon} title={`Customer Uploaded Images (${snap.uploadedImages.length})`} />
+                                                                    <div className="flex flex-wrap gap-2.5">
+                                                                        {snap.uploadedImages.map((url, i) => (
+                                                                            <CustomerAssetCard
+                                                                                key={i}
+                                                                                src={url}
+                                                                                label={`Customer Asset #${i + 1}`}
+                                                                                filename={`order-${o.id}-item-${it.id}-customer-asset-${i + 1}.png`}
+                                                                                orderId={o.id}
+                                                                            />
                                                                         ))}
-                                                                        {snap.uploadedImages.length > 4 && (
-                                                                            <span className="flex h-14 w-14 items-center justify-center rounded border border-border bg-background-light text-[10px] text-text-light">
-                                                                                +{snap.uploadedImages.length - 4}
-                                                                            </span>
-                                                                        )}
                                                                     </div>
                                                                 </div>
+                                                            ) : (
+                                                                <div className="text-xs text-text-light italic">
+                                                                    No external image files attached by user for this item.
+                                                                </div>
                                                             )}
+
+                                                            {/* Custom Text / Specs / Background Grid */}
+                                                            <div className="grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-2 lg:grid-cols-3 text-xs">
+                                                                {snap.customText && (
+                                                                    <div className="rounded border border-purple-100 bg-white/70 p-2.5">
+                                                                        <SectionHeading icon={Palette} title="Custom Text" />
+                                                                        <p className="font-semibold text-ink break-words">{snap.customText}</p>
+                                                                    </div>
+                                                                )}
+                                                                {snap.bgColor && (
+                                                                    <div className="rounded border border-purple-100 bg-white/70 p-2.5">
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-light block mb-1">Canvas Background</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="h-5 w-5 rounded border border-border shadow-sm" style={{ backgroundColor: snap.bgColor }} />
+                                                                            <span className="font-mono text-xs text-ink">{snap.bgColor}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {snap.layerCount > 0 && (
+                                                                    <div className="rounded border border-purple-100 bg-white/70 p-2.5">
+                                                                        <SectionHeading icon={Layers} title="Design Complexity" />
+                                                                        <p className="font-medium text-ink">{snap.layerCount} layer(s) configured</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

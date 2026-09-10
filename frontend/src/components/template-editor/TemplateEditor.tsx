@@ -189,8 +189,9 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
         if (pts.length >= 3) {
           const first = pts[0];
           const dist = Math.sqrt((p.x - first.x) ** 2 + (p.y - first.y) ** 2);
-          if (dist < 15 / scale.current) {
-            // Close path and create area
+          const snapRadius = 22 / scale.current;
+          if (dist < snapRadius) {
+            // Snap to exact first point and close path
             const pathData = normalizePathData(pts);
             const { minX, minY, maxX, maxY } = computeBoundingBox(pts);
             nid.current -= 1;
@@ -198,7 +199,7 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
             const area: EditableAreaData = {
               id, name: `Path ${areasRef.current.length + 1}`,
               areaType: 'image', shapeType: 'custom',
-              x: minX, y: minY, width: maxX - minX, height: maxY - minY,
+              x: minX, y: minY, width: Math.max(maxX - minX, 10), height: Math.max(maxY - minY, 10),
               rotation: 0, borderRadius: 0, borderRadiusTop: 0, borderRadiusBottom: 0,
               pathData,
               allowRotation: true, allowFlip: true,
@@ -256,6 +257,15 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
       // Path drawing ghost line
       if (pathBtnRef.current) {
         const p = toCv(e.clientX, e.clientY);
+        const pts = pathPointsRef.current;
+        if (pts.length >= 3) {
+          const first = pts[0];
+          const dist = Math.sqrt((p.x - first.x) ** 2 + (p.y - first.y) ** 2);
+          if (dist < 22 / scale.current) {
+            setPathHover({ x: first.x, y: first.y });
+            return;
+          }
+        }
         setPathHover(p);
         return;
       }
@@ -322,7 +332,7 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
       const area: EditableAreaData = {
         id, name: `Path ${areasRef.current.length + 1}`,
         areaType: 'image', shapeType: 'custom',
-        x: minX, y: minY, width: maxX - minX, height: maxY - minY,
+        x: minX, y: minY, width: Math.max(maxX - minX, 10), height: Math.max(maxY - minY, 10),
         rotation: 0, borderRadius: 0, borderRadiusTop: 0, borderRadiusBottom: 0,
         pathData,
         allowRotation: true, allowFlip: true,
@@ -552,10 +562,14 @@ export default function TemplateEditor({ imageUrl, onAreasChange, initialAreas, 
         {/* Close hint on first point */}
         {pts.length >= 3 && hoverPt && (() => {
           const dist = Math.sqrt((hoverPt.x - pts[0].x) ** 2 + (hoverPt.y - pts[0].y) ** 2);
-          if (dist < 15 / scale.current) {
+          if (dist < 22 / scale.current) {
             return (
-              <circle cx={pts[0].x * s} cy={pts[0].y * s} r={8}
-                fill="none" stroke="#22c55e" strokeWidth={2} strokeDasharray="3 2" />
+              <g>
+                <circle cx={pts[0].x * s} cy={pts[0].y * s} r={10}
+                  fill="rgba(34, 197, 94, 0.2)" stroke="#22c55e" strokeWidth={2} />
+                <circle cx={pts[0].x * s} cy={pts[0].y * s} r={4}
+                  fill="#22c55e" />
+              </g>
             );
           }
           return null;

@@ -8,9 +8,9 @@ const PaymentRecord = sequelize.define('PaymentRecord', {
         comment: 'Internal unique id (e.g. PAY-2026-000001)'
     },
     gateway: {
-        type: DataTypes.ENUM('PayU', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other'),
+        type: DataTypes.ENUM('Razorpay', 'PayU', 'Stripe', 'PayPal', 'Bank Transfer', 'UPI', 'Cash on Delivery', 'Other'),
         allowNull: false,
-        defaultValue: 'PayU'
+        defaultValue: 'Razorpay'
     },
     gatewayTransactionId: {
         type: DataTypes.STRING(200),

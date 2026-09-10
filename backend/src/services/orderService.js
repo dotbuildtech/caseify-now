@@ -231,33 +231,40 @@ const materializeOrder = async ({ userId, payload, paidFields = {}, transaction 
             const dm = item.designMeta || {};
             const rawThumb = dm.thumbnail || dm.bgImage || '';
             const layerUrls = (dm.layers || [])
-                .filter((l) => l.type === 'image' && l.url)
-                .map((l) => l.url);
-            const allUrls = layerUrls.length > 0 ? [rawThumb, ...layerUrls] : [rawThumb];
-            const [orderImage, ...uploadedImages] = await saveDataUrlsConcurrent(allUrls.filter(Boolean));
+                .filter((l) => l.type === 'image' && (l.url || l.src || l.originalSrc))
+                .map((l) => l.originalSrc || l.src || l.url);
+            const explicitUploads = Array.isArray(dm.uploadedImages) ? dm.uploadedImages : [];
+            const userUploadedSources = Array.from(new Set([...explicitUploads, ...layerUrls].filter(Boolean)));
+            
+            const [savedThumb] = rawThumb ? await saveDataUrlsConcurrent([rawThumb]) : [''];
+            const savedUploadedImages = userUploadedSources.length > 0
+                ? await saveDataUrlsConcurrent(userUploadedSources)
+                : [];
+
+            const primaryImage = savedThumb || savedUploadedImages[0] || '';
 
             orderItemData.push({
                 OrderId: order.id,
                 ProductId: item.product,
-                name: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                name: dm.productName || (dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case'),
                 qty: item.qty,
-                image: orderImage || uploadedImages[0] || '',
+                image: primaryImage,
                 price: item.price,
                 productSnapshot: {
                     isCustom: true,
-                    productName: dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case',
+                    productName: dm.productName || (dm.materialLabel ? `${dm.materialLabel} Custom Phone Case` : 'Custom Phone Case'),
                     brand: dm.brand || null,
-                    model: dm.modelLabel || null,
-                    material: dm.materialLabel || null,
+                    model: dm.model || dm.modelLabel || dm.modelId || null,
+                    material: dm.materialLabel || dm.material || null,
                     materialId: dm.materialId || null,
-                    designPreview: orderImage || uploadedImages[0] || null,
-                    uploadedImages: uploadedImages.filter(Boolean),
-                    customText: dm.layers?.filter((l) => l.type === 'text').map((l) => l.text).join(', ') || null,
-                    customizationNotes: null,
+                    designPreview: savedThumb || primaryImage || null,
+                    uploadedImages: savedUploadedImages.filter(Boolean),
+                    customText: dm.customText || dm.layers?.filter((l) => l.type === 'text').map((l) => l.text).join(', ') || null,
+                    customizationNotes: dm.customizationNotes || null,
                     bgColor: dm.bgColor || null,
                     bgImage: dm.bgImage || null,
                     layers: dm.layers || [],
-                    layerCount: dm.layerCount || 0,
+                    layerCount: dm.layerCount || dm.layers?.length || 0,
                     designId: dm.designId || null
                 }
             });

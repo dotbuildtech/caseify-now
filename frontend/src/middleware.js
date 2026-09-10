@@ -4,7 +4,7 @@ const PUBLIC_PATHS = new Set([
     '/login', '/register', '/shop', '/product', '/products',
     '/contact', '/track', '/customize', '/forgot-password',
     '/payment/success', '/payment/failure',
-    '/', '/_not-found'
+    '/', '/_not-found', '/.well-known'
 ]);
 
 const AUTH_PATHS = new Set(['/login', '/register']);

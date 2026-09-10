@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Lock } from 'lucide-react';
+import { Lock, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { createOrder } from '@/services/orderApi';
-import { initiatePayuPayment } from '@/services/paymentApi';
-import { submitPayuForm } from '@/lib/payu';
+import { createRazorpayOrder, verifyRazorpayPayment } from '@/services/paymentApi';
+import { openRazorpayModal } from '@/lib/razorpay';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
 
@@ -21,8 +21,6 @@ export default function CheckoutPage() {
     const { items, subtotal, summary, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, clear } = useCart();
     const toast = useToast();
     const [submitting, setSubmitting] = useState(false);
-    const [paying, setPaying] = useState(false);
-    const [pendingPayment, setPendingPayment] = useState(null);
     const [form, setForm] = useState({
         fullName: '',
         email: '',
@@ -32,12 +30,19 @@ export default function CheckoutPage() {
         state: '',
         postalCode: '',
         country: 'India',
-        paymentMethod: 'cod'
+        paymentMethod: 'online'
     });
 
     useEffect(() => {
         if (!authLoading && !user) {
             router.replace('/login?redirect=/checkout');
+        } else if (user) {
+            setForm((prev) => ({
+                ...prev,
+                fullName: prev.fullName || user.name || '',
+                email: prev.email || user.email || '',
+                phone: prev.phone || user.phone || ''
+            }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [authLoading, user]);
@@ -74,6 +79,7 @@ export default function CheckoutPage() {
     const submit = async (e) => {
         e.preventDefault();
         if (items.length === 0) return;
+
         try {
             setSubmitting(true);
             const orderItems = items.map((i) => ({
@@ -92,19 +98,72 @@ export default function CheckoutPage() {
                 country: form.country
             };
 
+            // Online payment with Razorpay
             if (form.paymentMethod === 'online') {
-                // Payment-first: validate the cart and create the PayU session.
-                // NO order exists yet — it is placed only after PayU confirms
-                // the payment, then the user is redirected to the confirmation.
-                const payment = await initiatePayuPayment({
+                // 1. Calculate amount & create Razorpay session on backend
+                const rzpOrderData = await createRazorpayOrder({
                     orderItems,
                     shippingAddress,
                     paymentMethod: 'online'
                 });
-                setPendingPayment(payment);
+
+                if (!rzpOrderData || !rzpOrderData.orderId) {
+                    throw new Error('Could not initiate Razorpay payment session');
+                }
+
+                // 2. Open official Razorpay Checkout Modal
+                await openRazorpayModal({
+                    keyId: rzpOrderData.keyId,
+                    orderId: rzpOrderData.orderId,
+                    amount: rzpOrderData.amount,
+                    currency: rzpOrderData.currency || 'INR',
+                    name: 'Caseify Now',
+                    description: 'Custom Phone Case Purchase',
+                    prefill: {
+                        name: rzpOrderData.prefill?.name || form.fullName,
+                        email: rzpOrderData.prefill?.email || form.email,
+                        contact: rzpOrderData.prefill?.contact || form.phone
+                    },
+                    themeColor: '#111827',
+                    onSuccess: async (response) => {
+                        try {
+                            setSubmitting(true);
+                            // 3. Verify payment signature on backend
+                            const verified = await verifyRazorpayPayment({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            });
+
+                            if (verified?.success && verified?.orderId) {
+                                try { await clear(); } catch { /* best-effort cart clear */ }
+                                toast.success('Payment verified! Order placed successfully.');
+                                router.push(`/order-confirmation/${verified.orderId}`);
+                            } else {
+                                toast.error('Payment verification failed. Please contact support.');
+                            }
+                        } catch (verErr) {
+                            console.error('Verification error:', verErr);
+                            toast.error(verErr.response?.data?.message || 'Payment verification failed. Please check your orders.');
+                        } finally {
+                            setSubmitting(false);
+                        }
+                    },
+                    onFailure: (err) => {
+                        console.error('Razorpay payment error:', err);
+                        toast.error(err?.description || 'Payment was unsuccessful or cancelled.');
+                        setSubmitting(false);
+                    },
+                    onDismiss: () => {
+                        toast.info('Payment window closed. Your cart is preserved.');
+                        setSubmitting(false);
+                    }
+                });
+
                 return;
             }
 
+            // Cash on Delivery flow
             const order = await createOrder({ orderItems, shippingAddress, paymentMethod: form.paymentMethod });
             const orderId = order?.id || order?._id || order?.data?.id;
             if (!orderId) {
@@ -116,22 +175,10 @@ export default function CheckoutPage() {
             toast.success('Order placed successfully');
             router.push(`/order-confirmation/${orderId}`);
         } catch (err) {
-            if (err.response?.data?.message?.includes('already paid')) {
-                try { await clear(); } catch { /* best-effort cart clear */ }
-                router.push('/orders');
-                return;
-            }
-            toast.error(err.response?.data?.message || 'Order failed. Your cart is still saved.');
-        } finally {
+            console.error('Checkout error:', err);
+            toast.error(err.response?.data?.message || err.message || 'Order failed. Your cart is still saved.');
             setSubmitting(false);
         }
-    };
-
-    const confirmPayment = () => {
-        if (!pendingPayment) return;
-        setPaying(true);
-        // Payment params were already created by the server (amount, hash, txnid)
-        submitPayuForm(pendingPayment);
     };
 
     if (items.length === 0) {
@@ -139,40 +186,6 @@ export default function CheckoutPage() {
             <div className="container-luxe py-20 text-center">
                 <h1 className="font-display text-3xl">Your cart is empty.</h1>
                 <Link href="/shop" className="btn-primary mt-6">Continue Shopping</Link>
-            </div>
-        );
-    }
-
-    if (pendingPayment) {
-        const totals = pendingPayment.totals || {};
-        const serverTotal = Number(totals.totalPrice || pendingPayment.amount || 0);
-        return (
-            <div className="container-luxe py-12 md:py-20">
-                <div className="mx-auto max-w-md border border-border bg-surface p-6 md:p-8">
-                    <h1 className="font-display text-3xl">Confirm <span className="italic-display">payment</span>.</h1>
-                    <p className="mt-2 text-sm text-text-light">
-                        No order is placed yet — your payment will be confirmed by PayU first, then your order is placed automatically.
-                    </p>
-                    <dl className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
-                        <div className="flex justify-between"><dt className="text-text-light">Items</dt><dd className="tabular-nums">{formatINR(Number(totals.itemsPrice || 0))}</dd></div>
-                        <div className="flex justify-between"><dt className="text-text-light">Shipping</dt><dd className="tabular-nums">{Number(totals.shippingPrice || 0) === 0 ? 'Free' : formatINR(totals.shippingPrice)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-text-light">Tax (GST)</dt><dd className="tabular-nums">{formatINR(Number(totals.taxPrice || 0))}</dd></div>
-                        <div className="flex justify-between border-t border-border pt-3">
-                            <dt className="font-display text-lg">Total</dt>
-                            <dd className="font-display text-2xl font-semibold tabular-nums">{formatINR(serverTotal)}</dd>
-                        </div>
-                    </dl>
-                    <button
-                        onClick={confirmPayment}
-                        disabled={paying}
-                        className="btn-primary mt-6 w-full disabled:opacity-50"
-                    >
-                        {paying ? 'Contacting PayU…' : `Proceed to PayU — ${formatINR(serverTotal)}`}
-                    </button>
-                    <p className="mt-3 text-xs text-text-light">
-                        Your order is placed only after the payment succeeds. If you cancel, nothing is charged and no order is created.
-                    </p>
-                </div>
             </div>
         );
     }
@@ -230,8 +243,8 @@ export default function CheckoutPage() {
                         <h2 className="font-display text-2xl">Payment Method</h2>
                         <div className="mt-6 space-y-3">
                             {[
-                                { v: 'cod', l: 'Cash on Delivery', d: 'Pay when you receive' },
-                                { v: 'online', l: 'Pay Online', d: 'UPI, Cards & NetBanking (PayU)' }
+                                { v: 'online', l: 'Pay Online (Razorpay)', d: 'UPI, Cards, NetBanking, Wallets — 100% Encrypted & Instant' },
+                                { v: 'cod', l: 'Cash on Delivery', d: 'Pay with cash upon package delivery' }
                             ].map((m) => (
                                 <label
                                     key={m.v}
@@ -251,6 +264,10 @@ export default function CheckoutPage() {
                                     </div>
                                 </label>
                             ))}
+                        </div>
+                        <div className="mt-4 flex items-center gap-2 text-xs text-text-light">
+                            <ShieldCheck className="h-4 w-4 text-success" />
+                            <span>Payments secured by 256-bit SSL encryption & Razorpay.</span>
                         </div>
                     </section>
                 </div>
@@ -284,8 +301,11 @@ export default function CheckoutPage() {
                         disabled={submitting}
                         className="btn-primary mt-6 w-full disabled:opacity-50"
                     >
-                        {submitting ? 'Processing...' : 'Place Order'}
+                        {submitting ? 'Processing Payment…' : (form.paymentMethod === 'online' ? `Pay with Razorpay — ${formatINR(total)}` : 'Place Order')}
                     </button>
+                    <p className="mt-3 text-center text-xs text-text-light">
+                        Items are reserved safely while completing checkout.
+                    </p>
                 </aside>
             </form>
         </div>

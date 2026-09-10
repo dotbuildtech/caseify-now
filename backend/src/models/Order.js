@@ -51,6 +51,18 @@ const Order = sequelize.define('Order', {
         type: DataTypes.STRING(100),
         allowNull: true
     },
+    razorpayOrderId: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    razorpayPaymentId: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    razorpaySignature: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+    },
     isDelivered: {
         type: DataTypes.BOOLEAN,
         defaultValue: false
@@ -67,7 +79,9 @@ const Order = sequelize.define('Order', {
         { fields: ['UserId'] },
         { fields: ['orderStatus'] },
         { fields: ['createdAt'] },
-        { fields: ['payuTxnId'], unique: true }
+        { fields: ['payuTxnId'], unique: true },
+        { fields: ['razorpayOrderId'] },
+        { fields: ['razorpayPaymentId'] }
     ]
 });
 

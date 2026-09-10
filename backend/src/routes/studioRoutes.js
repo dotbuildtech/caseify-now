@@ -9,7 +9,8 @@ const StudioBrand = require('../models/StudioBrand');
 const StudioModel = require('../models/StudioModel');
 const StudioProduct = require('../models/StudioProduct');
 const Brand = require('../models/Brand');
-const prisma = require('../services/prismaClient');
+const DeviceModel = require('../models/DeviceModel');
+const CustomDesign = require('../models/CustomDesign');
 
 const studioLimiter = rateLimit({
     windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false
@@ -20,17 +21,39 @@ const priceLimiter = rateLimit({
 
 // GET /api/studio/brands - from StudioBrand if configured, fallback to all active brands
 router.get('/brands', studioLimiter, asyncHandler(async (req, res) => {
-    const studioBrands = await StudioBrand.findAll({
-        where: { showOnStudio: true },
-        include: [{ model: Brand, attributes: ['id', 'name', 'slug', 'logo'] }],
-        order: [['createdAt', 'DESC']]
-    });
-    const data = studioBrands.map(sb => ({
-        id: String(sb.Brand.id),
-        name: sb.Brand.name,
-        slug: sb.Brand.slug,
-        logo: sb.logo || sb.Brand.logo
-    }));
+    let data = [];
+    try {
+        const studioBrands = await StudioBrand.findAll({
+            where: { showOnStudio: true },
+            include: [{ model: Brand, attributes: ['id', 'name', 'slug', 'logo'] }],
+            order: [['createdAt', 'DESC']]
+        });
+        if (studioBrands && studioBrands.length > 0) {
+            data = studioBrands
+                .filter(sb => sb && sb.Brand)
+                .map(sb => ({
+                    id: String(sb.Brand.id),
+                    name: sb.Brand.name,
+                    slug: sb.Brand.slug,
+                    logo: sb.logo || sb.Brand.logo
+                }));
+        }
+    } catch (e) {
+        console.warn('Failed to query StudioBrand, falling back to Brand table:', e.message);
+    }
+
+    if (data.length === 0) {
+        const activeBrands = await Brand.findAll({
+            where: { isActive: true },
+            order: [['name', 'ASC']]
+        });
+        data = activeBrands.map(b => ({
+            id: String(b.id),
+            name: b.name,
+            slug: b.slug,
+            logo: b.logo
+        }));
+    }
     res.json({ success: true, data });
 }));
 
@@ -38,31 +61,47 @@ router.get('/brands', studioLimiter, asyncHandler(async (req, res) => {
 router.get('/models', studioLimiter, asyncHandler(async (req, res) => {
     const { brand } = req.query;
     if (!brand) return res.json({ success: true, data: [] });
+    
     const brandRecord = await Brand.findOne({
-        where: { name: { [Op.iLike]: brand }, isActive: true }
+        where: {
+            [Op.or]: [
+                { name: { [Op.iLike]: brand } },
+                { slug: { [Op.iLike]: brand } },
+                ...(isNaN(Number(brand)) ? [] : [{ id: Number(brand) }])
+            ],
+            isActive: true
+        }
     });
     if (!brandRecord) return res.json({ success: true, data: [] });
-    const studioBrand = await StudioBrand.findOne({
-        where: { brandId: brandRecord.id, showOnStudio: true }
-    });
-    if (studioBrand) {
-        const studioModels = await StudioModel.findAll({
-            where: { studioBrandId: studioBrand.id, showOnStudio: true },
-            order: [['name', 'ASC']]
+
+    // 1. Try StudioModel if configured
+    try {
+        const studioBrand = await StudioBrand.findOne({
+            where: { brandId: brandRecord.id, showOnStudio: true }
         });
-        if (studioModels.length > 0) {
-            const data = studioModels.map(m => ({
-                id: m.id,
-                name: m.name,
-                slug: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-                image: m.image || null
-            }));
-            return res.json({ success: true, data });
+        if (studioBrand) {
+            const studioModels = await StudioModel.findAll({
+                where: { studioBrandId: studioBrand.id, showOnStudio: true },
+                order: [['name', 'ASC']]
+            });
+            if (studioModels && studioModels.length > 0) {
+                const data = studioModels.map(m => ({
+                    id: m.id,
+                    name: m.name,
+                    slug: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                    image: m.image || null
+                }));
+                return res.json({ success: true, data });
+            }
         }
+    } catch (e) {
+        console.warn('StudioModel lookup skipped:', e.message);
     }
-    const models = await prisma.deviceModel.findMany({
+
+    // 2. Fallback to DeviceModel
+    const models = await DeviceModel.findAll({
         where: { BrandId: brandRecord.id, isActive: true },
-        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }]
+        order: [['name', 'ASC']]
     });
     const data = models.map(m => ({
         id: m.id,
@@ -77,29 +116,40 @@ router.get('/models', studioLimiter, asyncHandler(async (req, res) => {
 router.get('/models/search', studioLimiter, asyncHandler(async (req, res) => {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json({ success: true, data: [] });
-    const studioModels = await StudioModel.findAll({
-        where: { name: { [Op.iLike]: `%${q}%` }, showOnStudio: true },
-        include: [{ model: StudioBrand, where: { showOnStudio: true }, include: [{ model: Brand, attributes: ['name'] }] }],
-        limit: 15
-    });
-    if (studioModels.length > 0) {
-        const data = studioModels.map(m => ({
-            id: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
-            label: m.name,
-            brand: m.StudioBrand?.Brand?.name || '',
-            size: ''
-        }));
-        return res.json({ success: true, data });
+
+    try {
+        const studioModels = await StudioModel.findAll({
+            where: { name: { [Op.iLike]: `%${q}%` }, showOnStudio: true },
+            include: [{ model: StudioBrand, where: { showOnStudio: true }, include: [{ model: Brand, attributes: ['name'] }] }],
+            limit: 15
+        });
+        if (studioModels && studioModels.length > 0) {
+            const data = studioModels.map(m => ({
+                id: m.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+                label: m.name,
+                brand: m.StudioBrand?.Brand?.name || '',
+                size: ''
+            }));
+            return res.json({ success: true, data });
+        }
+    } catch (e) {
+        // Fallback to DeviceModel below
     }
-    const models = await prisma.deviceModel.findMany({
-        where: { name: { contains: q, mode: 'insensitive' }, isActive: true },
-        include: { Brands: { select: { name: true } } },
-        orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-        take: 15
+
+    const models = await DeviceModel.findAll({
+        where: { name: { [Op.iLike]: `%${q}%` }, isActive: true },
+        include: [{ model: Brand, attributes: ['name'] }],
+        order: [['name', 'ASC']],
+        limit: 15
     });
     res.json({
         success: true,
-        data: models.map(m => ({ id: m.slug, label: m.name, brand: m.Brands?.name || '', size: '' }))
+        data: models.map(m => ({
+            id: m.slug,
+            label: m.name,
+            brand: m.Brand?.name || '',
+            size: ''
+        }))
     });
 }));
 
@@ -107,31 +157,46 @@ router.get('/models/search', studioLimiter, asyncHandler(async (req, res) => {
 router.get('/templates', studioLimiter, asyncHandler(async (req, res) => {
     const { modelId } = req.query;
     if (!modelId) return res.json({ success: true, data: null });
-    const model = await prisma.deviceModel.findUnique({
-        where: { slug: modelId },
-        include: { DeviceTemplate: true, Brands: { select: { name: true } } }
-    });
-    if (!model || !model.DeviceTemplate) return res.json({ success: true, data: null });
-    const t = model.DeviceTemplate;
-    res.json({
-        success: true,
-        data: {
-            id: t.id,
-            brandName: model.Brands?.name || '',
-            modelName: model.name,
-            modelSlug: model.slug,
-            caseWidth: t.caseWidth,
-            caseHeight: t.caseHeight,
-            safeZone: { top: t.safeAreaTop, bottom: t.safeAreaBottom, left: t.safeAreaLeft, right: t.safeAreaRight },
-            bleedArea: t.bleedArea,
-            cornerRadius: t.cornerRadius,
-            cameraCutout: { x: t.cameraX, y: t.cameraY, w: t.cameraWidth, h: t.cameraHeight },
-            previewImage: t.previewImage,
-            svgMask: t.svgMask,
-            thumbnail: t.thumbnail,
-            basePrice: t.basePrice
-        }
-    });
+    
+    try {
+        const model = await DeviceModel.findOne({
+            where: {
+                [Op.or]: [
+                    { slug: modelId },
+                    { name: { [Op.iLike]: modelId } },
+                    ...(isNaN(Number(modelId)) ? [] : [{ id: Number(modelId) }])
+                ],
+                isActive: true
+            },
+            include: [{ model: Brand, attributes: ['name'] }]
+        });
+        if (!model) return res.json({ success: true, data: null });
+        
+        return res.json({
+            success: true,
+            data: {
+                id: model.id,
+                brandName: model.Brand?.name || '',
+                modelName: model.name,
+                modelSlug: model.slug,
+                previewImage: model.image || null
+            }
+        });
+    } catch (e) {
+        return res.json({ success: true, data: null });
+    }
+}));
+
+// GET /api/studio/phone-template-legacy?modelId=...
+router.get('/phone-template-legacy', studioLimiter, asyncHandler(async (req, res) => {
+    const { modelId } = req.query;
+    res.json({ success: true, data: null });
+}));
+
+// GET /api/studio/phone-template/:modelId
+router.get('/phone-template/:modelId', studioLimiter, asyncHandler(async (req, res) => {
+    const { modelId } = req.params;
+    res.json({ success: true, data: null });
 }));
 
 // GET /api/studio/materials
@@ -158,14 +223,18 @@ router.post('/calculate-price', priceLimiter, asyncHandler(async (req, res) => {
 router.get('/products', studioLimiter, asyncHandler(async (req, res) => {
     const { studioModelId } = req.query;
     if (!studioModelId) return res.json({ success: true, data: [] });
-    const products = await StudioProduct.findAll({
-        where: { studioModelId, isActive: true },
-        include: [
-            { model: Material, attributes: ['id', 'name', 'slug', 'price'] }
-        ],
-        order: [['createdAt', 'DESC']]
-    });
-    res.json({ success: true, data: products });
+    try {
+        const products = await StudioProduct.findAll({
+            where: { studioModelId, isActive: true },
+            include: [
+                { model: Material, attributes: ['id', 'name', 'slug', 'price'] }
+            ],
+            order: [['createdAt', 'DESC']]
+        });
+        res.json({ success: true, data: products });
+    } catch (e) {
+        res.json({ success: true, data: [] });
+    }
 }));
 
 // GET /api/studio/designs?modelSlug=iphone-16-pro
@@ -173,17 +242,21 @@ router.get('/designs', studioLimiter, asyncHandler(async (req, res) => {
     const { modelSlug } = req.query;
     if (!modelSlug) return res.json({ success: true, data: [] });
     const slugified = modelSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const designs = await prisma.customDesign.findMany({
-        where: {
-            isActive: true,
-            OR: [
-                { modelSlug: { contains: slugified, mode: 'insensitive' } },
-                { modelSlug: { contains: modelSlug, mode: 'insensitive' } },
-            ]
-        },
-        orderBy: { createdAt: 'desc' }
-    });
-    res.json({ success: true, data: designs });
+    try {
+        const designs = await CustomDesign.findAll({
+            where: {
+                isActive: true,
+                [Op.or]: [
+                    { modelSlug: { [Op.iLike]: `%${slugified}%` } },
+                    { modelSlug: { [Op.iLike]: `%${modelSlug}%` } }
+                ]
+            },
+            order: [['createdAt', 'DESC']]
+        });
+        res.json({ success: true, data: designs });
+    } catch (e) {
+        res.json({ success: true, data: [] });
+    }
 }));
 
 module.exports = router;

@@ -58,22 +58,30 @@ const connectDB = async () => {
         const assoTime = Date.now() - assoStart;
         if (assoTime > 100) console.log(`[startup] Associations loaded in ${assoTime}ms`);
 
-        // PayU migration: rename legacy Razorpay order columns.
-        // MUST run before sequelize.sync(), which creates the unique index on payuTxnId.
+        // Razorpay migration: ensure columns exist before sequelize.sync creates indexes
         try {
             await sequelize.query(`
                 DO $$
                 BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayOrderId') THEN
-                        ALTER TABLE "Orders" RENAME COLUMN "razorpayOrderId" TO "payuTxnId";
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayOrderId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpayOrderId" VARCHAR(100);
                     END IF;
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayPaymentId') THEN
-                        ALTER TABLE "Orders" RENAME COLUMN "razorpayPaymentId" TO "payuPaymentId";
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayPaymentId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpayPaymentId" VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpaySignature') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpaySignature" VARCHAR(255);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'payuTxnId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "payuTxnId" VARCHAR(40);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'payuPaymentId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "payuPaymentId" VARCHAR(100);
                     END IF;
                 END $$;
             `);
         } catch (e) {
-            console.warn('[migration] Could not rename legacy Razorpay order columns (non-critical):', e.message);
+            console.warn('[migration] Pre-sync column verification warning (non-critical):', e.message);
         }
 
         const skipSync = process.env.SKIP_DB_SYNC === 'true' || process.env.NODE_ENV === 'production';
@@ -185,7 +193,27 @@ const connectDB = async () => {
             console.warn('[migration] Could not add PaymentRecord gateway fields (non-critical):', e.message);
         }
 
-        // PayU migration: extend gateway/status enum values (name varies by DB)
+        // Razorpay migration: add Razorpay columns to Orders
+        try {
+            await sequelize.query(`
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayOrderId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpayOrderId" VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpayPaymentId') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpayPaymentId" VARCHAR(100);
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Orders' AND column_name = 'razorpaySignature') THEN
+                        ALTER TABLE "Orders" ADD COLUMN "razorpaySignature" VARCHAR(255);
+                    END IF;
+                END $$;
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not add Razorpay columns to Orders (non-critical):', e.message);
+        }
+
+        // Extend gateway/status enum values (name varies by DB)
         try {
             const enumRows = await sequelize.query(
                 `SELECT typname FROM pg_type WHERE typname ILIKE 'enum_%' AND (typname ILIKE '%paymentrecord%' OR typname ILIKE '%paymentrecords%')`,
@@ -193,6 +221,7 @@ const connectDB = async () => {
             );
             for (const row of enumRows) {
                 if (String(row.typname).includes('gateway')) {
+                    await sequelize.query(`ALTER TYPE "${row.typname}" ADD VALUE IF NOT EXISTS 'Razorpay'`).catch(() => {});
                     await sequelize.query(`ALTER TYPE "${row.typname}" ADD VALUE IF NOT EXISTS 'PayU'`).catch(() => {});
                 }
                 if (String(row.typname).includes('status')) {

@@ -78,7 +78,7 @@ exports.updateOrderToPaid = asyncHandler(async (req, res) => {
     order.paidAt = new Date();
     order.paymentResult = {
         ...(order.paymentResult || {}),
-        id: order.payuPaymentId || `cod_${order.id}`,
+        id: order.razorpayPaymentId || order.payuPaymentId || `cod_${order.id}`,
         status: isCod ? 'pending_cod' : (order.paymentResult?.status || 'Captured'),
         update_time: new Date().toISOString()
     };
@@ -91,20 +91,20 @@ exports.updateOrderToPaid = asyncHandler(async (req, res) => {
         if (!exists) {
             await PaymentRecord.create({
                 transactionId: `PAY-${order.id}-${Date.now().toString().slice(-6)}`,
-                gateway: isCod ? 'COD' : 'PayU',
-                gatewayTransactionId: order.payuTxnId || `cod_${order.id}`,
-                gatewayPaymentId: order.payuPaymentId || `cod_${order.id}`,
+                gateway: isCod ? 'Cash on Delivery' : (order.paymentResult?.gateway || 'Razorpay'),
+                gatewayTransactionId: order.razorpayOrderId || order.payuTxnId || `cod_${order.id}`,
+                gatewayPaymentId: order.razorpayPaymentId || order.payuPaymentId || `cod_${order.id}`,
                 amount: Number(order.totalPrice),
                 fee: 0,
                 tax: 0,
                 netAmount: Number(order.totalPrice),
                 currency: 'INR',
-                paymentMethod: order.paymentMethod || (isCod ? 'COD' : 'PayU'),
+                paymentMethod: order.paymentMethod || (isCod ? 'Cash on Delivery' : 'Razorpay'),
                 status: isCod ? 'Pending' : 'Captured',
                 paidAt: new Date(),
                 OrderId: order.id,
                 UserId: order.UserId,
-                bankAccount: isCod ? 'Cash on Delivery' : 'PayU Primary'
+                bankAccount: isCod ? 'Cash on Delivery' : 'Razorpay Primary'
             });
         }
     } catch (e) {

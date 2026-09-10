@@ -4,112 +4,75 @@ interface Point {
 }
 
 export interface SmoothingConfig {
-  cornerThreshold: number;
-  curveThreshold: number;
-  minSegmentLength: number;
+  /**
+   * Angle deflection threshold in degrees (0 to 180).
+   * Turns with deflection > solidAngleThreshold are treated as solid/sharp corners.
+   * Turns with deflection <= solidAngleThreshold are smoothly curved.
+   * Default: 55 degrees (e.g. 90-deg box corners remain sharp, gentle curves stay smooth).
+   */
+  solidAngleThreshold?: number;
+  /**
+   * Minimum distance in pixels between consecutive points to filter out jitter/noise.
+   * Default: 3
+   */
+  minSegmentLength?: number;
+  /**
+   * Smoothing strength factor (0.1 to 0.45).
+   * Default: 0.33 (standard 1/3 Catmull-Rom Bézier factor).
+   */
+  tension?: number;
 }
 
-const DEFAULT_CONFIG: SmoothingConfig = {
-  cornerThreshold: 135,
-  curveThreshold: 165,
-  minSegmentLength: 4,
+const DEFAULT_CONFIG: Required<SmoothingConfig> = {
+  solidAngleThreshold: 55,
+  minSegmentLength: 3,
+  tension: 0.33,
 };
 
-type PointType = 'corner' | 'transitional' | 'curve';
-
-function preprocessPoints(points: Point[], tolerance: number): Point[] {
-  if (points.length < 2) return [...points];
-  const result: Point[] = [points[0]];
-  for (let i = 1; i < points.length; i++) {
-    const prev = result[result.length - 1];
-    const dx = points[i].x - prev.x;
-    const dy = points[i].y - prev.y;
-    if (dx * dx + dy * dy > tolerance * tolerance) {
-      result.push(points[i]);
-    }
-  }
-  return result;
+function distSq(p1: Point, p2: Point): number {
+  const dx = p1.x - p2.x;
+  const dy = p1.y - p2.y;
+  return dx * dx + dy * dy;
 }
 
-function normalize(v: Point): Point {
+function dist(p1: Point, p2: Point): number {
+  return Math.sqrt(distSq(p1, p2));
+}
+
+function cleanPoints(points: Point[], minDist: number): Point[] {
+  if (points.length < 3) return [...points];
+  const minDistSq = minDist * minDist;
+  const res: Point[] = [points[0]];
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = res[res.length - 1];
+    if (distSq(points[i], prev) >= minDistSq) {
+      res.push(points[i]);
+    }
+  }
+
+  // Check if last point is too close to first point
+  if (res.length > 3 && distSq(res[res.length - 1], res[0]) < minDistSq) {
+    res.pop();
+  }
+
+  return res;
+}
+
+function normalizeVec(v: Point): Point {
   const len = Math.sqrt(v.x * v.x + v.y * v.y);
-  if (len < 1e-10) return { x: 0, y: 0 };
+  if (len < 1e-9) return { x: 0, y: 0 };
   return { x: v.x / len, y: v.y / len };
 }
 
-function angleBetween(v1: Point, v2: Point): number {
-  const dot = Math.max(-1, Math.min(1, v1.x * v2.x + v1.y * v2.y));
+function computeDeflectionAngle(pPrev: Point, pCurr: Point, pNext: Point): number {
+  const vIn = normalizeVec({ x: pCurr.x - pPrev.x, y: pCurr.y - pPrev.y });
+  const vOut = normalizeVec({ x: pNext.x - pCurr.x, y: pNext.y - pCurr.y });
+  const dot = Math.max(-1, Math.min(1, vIn.x * vOut.x + vIn.y * vOut.y));
   return Math.acos(dot) * (180 / Math.PI);
 }
 
-function computeAngle(points: Point[], i: number, n: number): number {
-  const prev = points[(i - 1 + n) % n];
-  const curr = points[i];
-  const next = points[(i + 1) % n];
-  const incoming = normalize({ x: curr.x - prev.x, y: curr.y - prev.y });
-  const outgoing = normalize({ x: next.x - curr.x, y: next.y - curr.y });
-  return angleBetween(incoming, outgoing);
-}
-
-function classifyPoint(points: Point[], i: number, n: number, config: SmoothingConfig): PointType {
-  const angle = computeAngle(points, i, n);
-  const prev = points[(i - 1 + n) % n];
-  const curr = points[i];
-  const next = points[(i + 1) % n];
-  const prevLen = Math.sqrt((curr.x - prev.x) ** 2 + (curr.y - prev.y) ** 2);
-  const nextLen = Math.sqrt((next.x - curr.x) ** 2 + (next.y - curr.y) ** 2);
-  if (angle < config.cornerThreshold) return 'corner';
-  if (angle >= config.curveThreshold && prevLen > config.minSegmentLength && nextLen > config.minSegmentLength) return 'curve';
-  return 'transitional';
-}
-
-function classifyPoints(points: Point[], config: SmoothingConfig): PointType[] {
-  const n = points.length;
-  return points.map((_, i) => classifyPoint(points, i, n, config));
-}
-
-interface Section {
-  type: 'corner' | 'curve';
-  start: number;
-  end: number;
-}
-
-function findSections(types: PointType[]): Section[] {
-  const n = types.length;
-  const sections: Section[] = [];
-  let i = 0;
-  while (i < n) {
-    if (types[i] === 'curve') {
-      const start = i;
-      while (i < n && types[i] === 'curve') i++;
-      sections.push({ type: 'curve', start, end: i - 1 });
-    } else {
-      const start = i;
-      while (i < n && types[i] !== 'curve') i++;
-      sections.push({ type: 'corner', start, end: i - 1 });
-    }
-  }
-  return sections;
-}
-
-interface BezierSegment {
-  c1x: number; c1y: number;
-  c2x: number; c2y: number;
-  x: number; y: number;
-}
-
-function catmullRomSegment(p0: Point, p1: Point, p2: Point, p3: Point): BezierSegment {
-  return {
-    c1x: p1.x + (p2.x - p0.x) / 6,
-    c1y: p1.y + (p2.y - p0.y) / 6,
-    c2x: p2.x - (p3.x - p1.x) / 6,
-    c2y: p2.y - (p3.y - p1.y) / 6,
-    x: p2.x,
-    y: p2.y,
-  };
-}
-
-function computeBoundingBox(points: Point[]): { minX: number; minY: number; maxX: number; maxY: number } {
+export function computeBoundingBox(points: Point[]): { minX: number; minY: number; maxX: number; maxY: number } {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const p of points) {
     if (p.x < minX) minX = p.x;
@@ -120,45 +83,117 @@ function computeBoundingBox(points: Point[]): { minX: number; minY: number; maxX
   return { minX, minY, maxX, maxY };
 }
 
+/**
+ * Adaptive path normalizer:
+ * 1. Guarantees first and last points meet exactly at closed loop P0.
+ * 2. Solid/sharp angles (> solidAngleThreshold, e.g. 90° box corners) remain crisp straight edges.
+ * 3. Gentle angle contours (<= solidAngleThreshold) are smoothly interpolated without overshoot.
+ * 4. Outputs normalized 0..1 SVG path data compatible with viewBox="0 0 1 1".
+ */
 export function normalizePathAdaptive(
   rawPoints: Point[],
-  config: SmoothingConfig = DEFAULT_CONFIG
+  customConfig?: SmoothingConfig
 ): string {
-  if (rawPoints.length < 2) return '';
+  if (!rawPoints || rawPoints.length < 3) return '';
 
-  const cleaned = preprocessPoints(rawPoints, config.minSegmentLength);
-  if (cleaned.length < 2) return '';
+  const config: Required<SmoothingConfig> = {
+    solidAngleThreshold: customConfig?.solidAngleThreshold ?? DEFAULT_CONFIG.solidAngleThreshold,
+    minSegmentLength: customConfig?.minSegmentLength ?? DEFAULT_CONFIG.minSegmentLength,
+    tension: customConfig?.tension ?? DEFAULT_CONFIG.tension,
+  };
 
-  const n = cleaned.length;
-  const types = classifyPoints(cleaned, config);
-  const sections = findSections(types);
+  const pts = cleanPoints(rawPoints, config.minSegmentLength);
+  const n = pts.length;
+  if (n < 3) return '';
 
-  const cmds: string[] = [];
-  cmds.push(`M ${cleaned[0].x} ${cleaned[0].y}`);
+  // 1. Classify each vertex as solid/sharp (true) or smooth (false)
+  const isSharp: boolean[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const pPrev = pts[(i - 1 + n) % n];
+    const pCurr = pts[i];
+    const pNext = pts[(i + 1) % n];
+    const angle = computeDeflectionAngle(pPrev, pCurr, pNext);
+    // If deflection is sharp (> threshold) or near-collinear (< 2 deg)
+    isSharp[i] = angle > config.solidAngleThreshold || angle < 2.0;
+  }
 
-  for (const sec of sections) {
-    if (sec.type === 'curve') {
-      if (sec.start > 0) {
-        cmds.push(`L ${cleaned[sec.start].x} ${cleaned[sec.start].y}`);
-      }
-      for (let j = sec.start + 1; j <= sec.end; j++) {
-        const p0 = j >= 2 ? cleaned[j - 2] : (sec.start > 0 ? cleaned[sec.start - 1] : cleaned[0]);
-        const p1 = cleaned[j - 1];
-        const p2 = cleaned[j];
-        const p3 = j + 1 < n ? cleaned[j + 1] : cleaned[sec.end];
-        const seg = catmullRomSegment(p0, p1, p2, p3);
-        cmds.push(`C ${seg.c1x} ${seg.c1y}, ${seg.c2x} ${seg.c2y}, ${seg.x} ${seg.y}`);
-      }
+  // 2. Compute smooth unit tangent vectors for smooth vertices
+  const tangents: Point[] = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (isSharp[i]) {
+      tangents[i] = { x: 0, y: 0 };
     } else {
-      for (let j = sec.start + 1; j <= sec.end; j++) {
-        cmds.push(`L ${cleaned[j].x} ${cleaned[j].y}`);
-      }
+      const pPrev = pts[(i - 1 + n) % n];
+      const pNext = pts[(i + 1) % n];
+      tangents[i] = normalizeVec({ x: pNext.x - pPrev.x, y: pNext.y - pPrev.y });
     }
   }
 
+  // 3. Build SVG Path Commands with exact loop closure
+  const cmds: string[] = [];
+  cmds.push(`M ${pts[0].x} ${pts[0].y}`);
+
+  for (let i = 0; i < n; i++) {
+    const p1 = pts[i];
+    const nextIdx = (i + 1) % n;
+    const p2 = pts[nextIdx];
+    const segLen = dist(p1, p2);
+
+    const sharp1 = isSharp[i];
+    const sharp2 = isSharp[nextIdx];
+
+    if (sharp1 && sharp2) {
+      // Both ends sharp -> straight line
+      cmds.push(`L ${p2.x} ${p2.y}`);
+    } else {
+      // At least one end is smooth -> cubic Bezier curve with clamped tension
+      const prevIdx = (i - 1 + n) % n;
+      const nextNextIdx = (i + 2) % n;
+
+      const lenPrev = dist(pts[prevIdx], p1);
+      const lenNext = dist(p2, pts[nextNextIdx]);
+
+      // Outgoing control handle at p1
+      let c1: Point;
+      if (sharp1) {
+        const dir = normalizeVec({ x: p2.x - p1.x, y: p2.y - p1.y });
+        c1 = {
+          x: p1.x + dir.x * (segLen * config.tension * 0.5),
+          y: p1.y + dir.y * (segLen * config.tension * 0.5),
+        };
+      } else {
+        const handleLen = Math.min(segLen * config.tension, lenPrev * 0.4);
+        c1 = {
+          x: p1.x + tangents[i].x * handleLen,
+          y: p1.y + tangents[i].y * handleLen,
+        };
+      }
+
+      // Incoming control handle at p2
+      let c2: Point;
+      if (sharp2) {
+        const dir = normalizeVec({ x: p1.x - p2.x, y: p1.y - p2.y });
+        c2 = {
+          x: p2.x + dir.x * (segLen * config.tension * 0.5),
+          y: p2.y + dir.y * (segLen * config.tension * 0.5),
+        };
+      } else {
+        const handleLen = Math.min(segLen * config.tension, lenNext * 0.4);
+        c2 = {
+          x: p2.x - tangents[nextIdx].x * handleLen,
+          y: p2.y - tangents[nextIdx].y * handleLen,
+        };
+      }
+
+      cmds.push(`C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${p2.x} ${p2.y}`);
+    }
+  }
+
+  // Exact closure
   cmds.push('Z');
 
-  const bb = computeBoundingBox(cleaned);
+  // 4. Normalize coordinates to 0..1 bounding box for responsive SVG template scaling
+  const bb = computeBoundingBox(pts);
   const w = bb.maxX - bb.minX || 1;
   const h = bb.maxY - bb.minY || 1;
 
@@ -171,15 +206,17 @@ export function normalizePathAdaptive(
     } else if (op === 'M' || op === 'L') {
       const x = (parseFloat(tokens[1]) - bb.minX) / w;
       const y = (parseFloat(tokens[2]) - bb.minY) / h;
-      normalizedParts.push(`${op} ${x} ${y}`);
+      normalizedParts.push(`${op} ${Number(x.toFixed(5))} ${Number(y.toFixed(5))}`);
     } else if (op === 'C') {
-      const parts: string[] = ['C'];
-      for (let k = 1; k < tokens.length; k += 2) {
-        const x = (parseFloat(tokens[k]) - bb.minX) / w;
-        const y = (parseFloat(tokens[k + 1]) - bb.minY) / h;
-        parts.push(`${x} ${y}`);
-      }
-      normalizedParts.push(parts.join(' '));
+      const c1x = (parseFloat(tokens[1]) - bb.minX) / w;
+      const c1y = (parseFloat(tokens[2]) - bb.minY) / h;
+      const c2x = (parseFloat(tokens[3]) - bb.minX) / w;
+      const c2y = (parseFloat(tokens[4]) - bb.minY) / h;
+      const ex = (parseFloat(tokens[5]) - bb.minX) / w;
+      const ey = (parseFloat(tokens[6]) - bb.minY) / h;
+      normalizedParts.push(
+        `C ${Number(c1x.toFixed(5))} ${Number(c1y.toFixed(5))}, ${Number(c2x.toFixed(5))} ${Number(c2y.toFixed(5))}, ${Number(ex.toFixed(5))} ${Number(ey.toFixed(5))}`
+      );
     }
   }
 

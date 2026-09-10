@@ -52,14 +52,39 @@ export default function TopBar() {
       if (!rawDataUrl) { toast.error('Canvas capture failed'); setAdding(false); return; }
       const thumbDataUrl = await compressDataUrl(rawDataUrl, 1200, 0.82);
 
+      const state = store.getState();
+      const layers = state.layers || [];
+      const uploadedImages: string[] = [];
+      if (state.background?.imageSrc) {
+        uploadedImages.push(state.background.imageSrc);
+      }
+      layers.forEach((l: any) => {
+        if (l.type === 'image') {
+          const src = l.originalSrc || l.src || l.url;
+          if (src && !uploadedImages.includes(src)) {
+            uploadedImages.push(src);
+          }
+        }
+      });
+      const customText = layers
+        .filter((l: any) => l.type === 'text' && l.text)
+        .map((l: any) => l.text)
+        .join(', ');
+
       const designData = {
         designId: `design_${Date.now()}`,
         createdAt: new Date().toISOString(),
-        brand: store.getState().brand,
-        modelId: store.getState().modelId,
-        materialId: store.getState().materialId,
+        brand: state.brand,
+        modelId: state.modelId,
+        modelLabel: state.modelId,
+        materialId: state.materialId,
         totalPrice: price.total,
         thumbnail: thumbDataUrl,
+        layers: layers,
+        layerCount: layers.length,
+        uploadedImages: uploadedImages,
+        customText: customText || null,
+        designDocument: state.toDesignDocument ? state.toDesignDocument() : undefined,
       };
 
       addItem(CUSTOM_PRODUCT_ID, 1, designData).catch((err: any) => {

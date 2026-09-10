@@ -104,7 +104,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+        req.rawBody = buf;
+    }
+}));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 morgan.token('id', (req) => req.id);
@@ -239,7 +244,7 @@ app.use((err, req, res, next) => {
     }
 
     const status = err.status || (res.statusCode >= 400 ? res.statusCode : 500);
-    const message = status >= 500 ? 'Internal server error' : (err.message || 'Bad request');
+    const message = (status === 500 && isProduction) ? 'Internal server error' : (err.message || 'Bad request');
 
     res.status(status).json({ requestId, message });
 });
