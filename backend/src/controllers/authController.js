@@ -194,7 +194,11 @@ exports.loginUser = asyncHandler(async (req, res) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const user = await User.findOne({ where: { email: normalizedEmail } });
+    const user = await User.findOne({
+        where: {
+            email: { [Op.iLike]: normalizedEmail }
+        }
+    });
 
     if (!user) {
         await equalizeTimingWithDummyHash(password);

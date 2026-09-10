@@ -93,7 +93,23 @@ const User = sequelize.define('User', {
 
 User.prototype.comparePassword = async function (enteredPassword) {
     if (!this.password) return false;
-    return await bcrypt.compare(enteredPassword, this.password);
+    const strPassword = String(enteredPassword);
+    try {
+        if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$') || this.password.startsWith('$2y$')) {
+            const isMatch = await bcrypt.compare(strPassword, this.password);
+            if (isMatch) return true;
+        }
+    } catch {
+        // Continue to fallback
+    }
+    // Fallback: If legacy/direct SQL password matches plain-text, upgrade it to bcrypt
+    if (this.password === strPassword) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        await this.save();
+        return true;
+    }
+    return false;
 };
 
 const MAX_FAILED_ATTEMPTS = 5;

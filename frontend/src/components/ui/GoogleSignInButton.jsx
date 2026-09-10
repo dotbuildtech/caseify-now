@@ -9,7 +9,7 @@ export default function GoogleSignInButton({ onSuccess, onError, text = 'continu
 
     useEffect(() => {
         if (!GOOGLE_CLIENT_ID) {
-            console.error('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set');
+            console.warn('NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set; Google Sign-In is disabled.');
             return;
         }
 
