@@ -5,45 +5,37 @@ const originCheck = (req, res, next) => {
     const origin = req.headers.origin;
     const referer = req.headers.referer;
 
-    const allowed = (process.env.CORS_ORIGIN || '')
-        .split(',')
+    const rawOrigins = [
+        ...(process.env.CORS_ORIGIN || '').split(','),
+        process.env.FRONTEND_URL || ''
+    ]
         .map((o) => o.trim())
         .filter(Boolean);
-
-    if (allowed.length === 0) {
-        if (SAFE_METHODS.has(req.method)) {
-            return next();
-        }
-        if (req.app.get('env') !== 'production') {
-            return next();
-        }
-        return res.status(403).json({
-            requestId: req.id,
-            message: 'Forbidden: CORS not configured'
-        });
-    }
-
-    if (allowed.includes('*') && process.env.CORS_ALLOW_WILDCARD !== 'true') {
-        if (STATE_CHANGING_METHODS.has(req.method)) {
-            return res.status(403).json({
-                requestId: req.id,
-                message: 'Forbidden: wildcard origin not permitted for state-changing requests'
-            });
-        }
-    }
 
     const isAllowed = (value) => {
         if (!value) return false;
         try {
             const url = new URL(value);
-            return allowed.includes(`${url.protocol}//${url.host}`);
+            const originStr = `${url.protocol}//${url.host}`.toLowerCase().replace(/\/+$/, '');
+            if (rawOrigins.length === 0 && req.app.get('env') !== 'production') return true;
+            return rawOrigins.some((allowed) => {
+                const normA = allowed.toLowerCase().replace(/\/+$/, '');
+                if (normA === '*' || normA === originStr) return true;
+                if (normA.includes('vercel.app') && originStr.endsWith('.vercel.app')) return true;
+                if (normA.startsWith('*.') && originStr.endsWith(normA.slice(1))) return true;
+                return false;
+            });
         } catch {
             return false;
         }
     };
 
     if (STATE_CHANGING_METHODS.has(req.method)) {
-        if (isAllowed(origin) || isAllowed(referer)) {
+        const forwardedHost = req.headers['x-forwarded-host'];
+        const forwardedProto = req.headers['x-forwarded-proto'] || 'https';
+        const forwardedOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : null;
+
+        if (isAllowed(origin) || isAllowed(referer) || isAllowed(forwardedOrigin)) {
             return next();
         }
         return res.status(403).json({

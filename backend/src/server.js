@@ -65,32 +65,29 @@ app.use(helmet({
     frameguard: { action: 'deny' }
 }));
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
-    .split(',')
+const rawOrigins = [
+    ...(process.env.CORS_ORIGIN || '').split(','),
+    process.env.FRONTEND_URL || ''
+]
     .map((o) => o.trim())
     .filter(Boolean);
 
-const allowAnyOrigin = isProduction
-    ? false
-    : (allowedOrigins.length === 0 || allowedOrigins.includes('*'));
-
-if (isProduction && allowedOrigins.length === 0) {
-    console.error('[fatal] CORS_ORIGIN must be set in production');
-    process.exit(1);
-}
+const isOriginAllowed = (origin) => {
+    if (!origin) return true;
+    const cleanOrigin = origin.toLowerCase().replace(/\/+$/, '');
+    if (rawOrigins.length === 0 && !isProduction) return true;
+    return rawOrigins.some((allowed) => {
+        const normAllowed = allowed.toLowerCase().replace(/\/+$/, '');
+        if (normAllowed === '*' || normAllowed === cleanOrigin) return true;
+        if (normAllowed.includes('vercel.app') && cleanOrigin.endsWith('.vercel.app')) return true;
+        if (normAllowed.startsWith('*.') && cleanOrigin.endsWith(normAllowed.slice(1))) return true;
+        return false;
+    });
+};
 
 const corsOptions = {
     origin(origin, callback) {
-        if (!origin) {
-            return callback(null, true);
-        }
-        if (allowAnyOrigin) {
-            if (isProduction && process.env.CORS_ALLOW_WILDCARD !== 'true') {
-                return callback(new Error('Not allowed by CORS'));
-            }
-            return callback(null, true);
-        }
-        if (allowedOrigins.includes(origin)) {
+        if (isOriginAllowed(origin)) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
