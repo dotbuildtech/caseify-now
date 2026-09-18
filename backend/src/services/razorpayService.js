@@ -356,6 +356,34 @@ const processRazorpayWebhook = async ({ rawBody, signature, eventData, requestId
             return { processed: true, message: 'Payment record not found for webhook event' };
         }
 
+        // Assert payment amount and currency match recorded expectation
+        const webhookAmountPaise = paymentEntity?.amount;
+        const expectedAmountPaise = Math.round(Number(record.amount) * 100);
+        const webhookCurrency = (paymentEntity?.currency || 'INR').toUpperCase();
+        const expectedCurrency = (record.currency || 'INR').toUpperCase();
+
+        if (webhookAmountPaise && webhookAmountPaise !== expectedAmountPaise) {
+            logSecurityEvent('razorpay_webhook_amount_mismatch', {
+                requestId: requestId || null,
+                recordId: record.id,
+                expectedAmount: expectedAmountPaise,
+                webhookAmount: webhookAmountPaise,
+                message: 'Razorpay webhook payment amount does not match expected order amount'
+            });
+            return { processed: false, reason: 'Amount mismatch detected' };
+        }
+
+        if (webhookCurrency && webhookCurrency !== expectedCurrency) {
+            logSecurityEvent('razorpay_webhook_currency_mismatch', {
+                requestId: requestId || null,
+                recordId: record.id,
+                expectedCurrency,
+                webhookCurrency,
+                message: 'Razorpay webhook payment currency does not match expected order currency'
+            });
+            return { processed: false, reason: 'Currency mismatch detected' };
+        }
+
         // Idempotent capture & order materialization
         await sequelize.transaction(async (t) => {
             const fresh = await PaymentRecord.findByPk(record.id, {
@@ -407,6 +435,66 @@ const processRazorpayWebhook = async ({ rawBody, signature, eventData, requestId
         return { processed: true, event };
     }
 
+    if (event === 'refund.processed') {
+        const refundEntity = payload?.refund?.entity;
+        const rzpPaymentId = refundEntity?.payment_id;
+        if (rzpPaymentId) {
+            const record = await PaymentRecord.findOne({
+                where: { gatewayPaymentId: rzpPaymentId }
+            });
+            if (record) {
+                await sequelize.transaction(async (t) => {
+                    const fresh = await PaymentRecord.findByPk(record.id, { transaction: t, lock: t.LOCK.UPDATE });
+                    if (fresh) {
+                        fresh.status = 'Refunded';
+                        fresh.gatewayResponse = eventData;
+                        await fresh.save({ transaction: t });
+
+                        if (fresh.OrderId) {
+                            const order = await Order.findByPk(fresh.OrderId, { transaction: t, lock: t.LOCK.UPDATE });
+                            if (order) {
+                                order.orderStatus = 'Cancelled';
+                                await order.save({ transaction: t });
+                            }
+                        }
+                    }
+                });
+                logSecurityEvent('razorpay_webhook_refund_processed', {
+                    requestId: requestId || null,
+                    paymentId: rzpPaymentId,
+                    recordId: record.id,
+                    amount: refundEntity?.amount
+                });
+            }
+        }
+        return { processed: true, event };
+    }
+
+    if (event === 'payment.dispute.created' || event === 'payment.dispute.lost' || event === 'payment.dispute.won') {
+        const disputeEntity = payload?.dispute?.entity;
+        const rzpPaymentId = disputeEntity?.payment_id;
+        if (rzpPaymentId) {
+            const record = await PaymentRecord.findOne({
+                where: { gatewayPaymentId: rzpPaymentId }
+            });
+            if (record) {
+                const disputeStatus = event === 'payment.dispute.created' ? 'Disputed' : (event === 'payment.dispute.lost' ? 'DisputeLost' : 'DisputeWon');
+                record.notes = `Dispute event ${event}: ${disputeEntity?.id || ''} - ${disputeEntity?.reason_code || ''}`;
+                if (event === 'payment.dispute.created' || event === 'payment.dispute.lost') {
+                    record.status = disputeStatus;
+                }
+                await record.save();
+                logSecurityEvent(`razorpay_webhook_${event.replace(/\./g, '_')}`, {
+                    requestId: requestId || null,
+                    disputeId: disputeEntity?.id,
+                    paymentId: rzpPaymentId,
+                    amount: disputeEntity?.amount
+                });
+            }
+        }
+        return { processed: true, event };
+    }
+
     if (event === 'payment.failed') {
         const paymentEntity = payload?.payment?.entity;
         const rzpOrderId = paymentEntity?.order_id;
@@ -439,8 +527,94 @@ const processRazorpayWebhook = async ({ rawBody, signature, eventData, requestId
     return { processed: true, ignored: true, event };
 };
 
+/**
+ * 4. Reconcile an Initiated Payment Record by querying Razorpay API directly
+ * Used by background reconciliation job if a webhook or client redirect was dropped.
+ */
+const reconcileInitiatedPayment = async (paymentRecordId) => {
+    assertConfigured();
+    const razorpay = getRazorpayInstance();
+
+    const record = await PaymentRecord.findByPk(paymentRecordId);
+    if (!record || record.status !== 'Initiated' || !record.gatewayTransactionId) {
+        return { reconciled: false, reason: 'Record not eligible for reconciliation' };
+    }
+
+    try {
+        const rzpOrder = await razorpay.orders.fetch(record.gatewayTransactionId);
+        if (!rzpOrder) return { reconciled: false, reason: 'Order not found in Razorpay' };
+
+        if (rzpOrder.status === 'paid') {
+            const payments = await razorpay.orders.fetchPayments(record.gatewayTransactionId);
+            const capturedPayment = (payments?.items || []).find((p) => p.status === 'captured');
+
+            if (capturedPayment) {
+                let resultOrder = null;
+                await sequelize.transaction(async (t) => {
+                    const freshRecord = await PaymentRecord.findByPk(record.id, { transaction: t, lock: t.LOCK.UPDATE });
+                    if (freshRecord.status === 'Captured') return;
+
+                    const payload = freshRecord.payload || {};
+                    const order = await materializeOrder({
+                        userId: freshRecord.UserId,
+                        payload,
+                        transaction: t,
+                        paidFields: {
+                            isPaid: true,
+                            paidAt: new Date(),
+                            razorpayOrderId: rzpOrder.id,
+                            razorpayPaymentId: capturedPayment.id,
+                            paymentResult: {
+                                gateway: 'Razorpay',
+                                status: 'Captured',
+                                verified: true,
+                                orderId: rzpOrder.id,
+                                paymentId: capturedPayment.id,
+                                source: 'reconciliation_job',
+                                update_time: new Date().toISOString()
+                            }
+                        }
+                    });
+
+                    freshRecord.OrderId = order.id;
+                    freshRecord.status = 'Captured';
+                    freshRecord.hashVerified = true;
+                    freshRecord.gatewayPaymentId = capturedPayment.id;
+                    freshRecord.paidAt = new Date();
+                    await freshRecord.save({ transaction: t });
+
+                    resultOrder = order;
+                });
+
+                if (resultOrder) {
+                    try {
+                        await createInvoiceForOrder(resultOrder);
+                    } catch (e) {
+                        console.error('[reconciliation] Invoice error:', e.message);
+                    }
+                }
+
+                logSecurityEvent('razorpay_payment_reconciled', {
+                    recordId: record.id,
+                    rzpOrderId: rzpOrder.id,
+                    paymentId: capturedPayment.id,
+                    message: 'Payment reconciled via Razorpay API fallback worker'
+                });
+
+                return { reconciled: true, status: 'Captured', orderId: resultOrder?.id };
+            }
+        }
+        return { reconciled: false, rzpStatus: rzpOrder.status };
+    } catch (err) {
+        const errorDetail = err?.error?.description || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+        console.error(`[razorpay-reconciliation] Failed for record ${record.id}:`, errorDetail);
+        return { reconciled: false, error: errorDetail };
+    }
+};
+
 module.exports = {
     initiateRazorpayOrder,
     verifyRazorpayPayment,
-    processRazorpayWebhook
+    processRazorpayWebhook,
+    reconcileInitiatedPayment
 };

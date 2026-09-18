@@ -48,11 +48,11 @@ app.use(helmet({
         useDefaults: true,
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", 'https://accounts.google.com'],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://accounts.google.com'],
-            frameSrc: ["'self'", 'https://accounts.google.com'],
+            scriptSrc: ["'self'", 'https://accounts.google.com', 'https://checkout.razorpay.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://checkout.razorpay.com'],
+            imgSrc: ["'self'", 'data:', 'https:', 'https://*.razorpay.com'],
+            connectSrc: ["'self'", 'https://accounts.google.com', 'https://lumberjack.razorpay.com', 'https://api.razorpay.com'],
+            frameSrc: ["'self'", 'https://accounts.google.com', 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"]
         }
@@ -267,7 +267,9 @@ if (require.main === module) {
         });
 
         const { startUnpaidOrderExpiry } = require('./jobs/expireUnpaidOrders');
+        const { startRazorpayReconciliation } = require('./jobs/reconcileRazorpayPayments');
         startUnpaidOrderExpiry();
+        startRazorpayReconciliation();
     })();
 }
 

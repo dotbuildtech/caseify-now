@@ -5,7 +5,7 @@ const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
 const { issueTokenPair, sanitizeUser, setTokenCookies } = require('./authController');
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const getGoogleClient = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.googleLogin = asyncHandler(async (req, res) => {
     const { credential } = req.body;
@@ -17,15 +17,23 @@ exports.googleLogin = asyncHandler(async (req, res) => {
 
     let payload;
     try {
-        const ticket = await googleClient.verifyIdToken({
+        const allowedAudiences = Array.from(new Set([
+            process.env.GOOGLE_CLIENT_ID,
+            '950275589035-nle4422bufcpqk19fjvr3hfqi3fhs13j.apps.googleusercontent.com',
+            '749458900134-ms0lvuptvcep1ltrrns2vm50om9det7r.apps.googleusercontent.com'
+        ].filter(Boolean)));
+
+        const client = getGoogleClient();
+        const ticket = await client.verifyIdToken({
             idToken: credential,
-            audience: process.env.GOOGLE_CLIENT_ID
+            audience: allowedAudiences.length === 1 ? allowedAudiences[0] : allowedAudiences
         });
         payload = ticket.getPayload();
     } catch (err) {
+        console.error('Google token verification failed:', err.message);
         logSecurityEvent('google.verify_failed', { ip: req.ip, error: err.message });
         res.status(401);
-        throw new Error('Invalid Google token');
+        throw new Error(`Invalid Google token: ${err.message}`);
     }
 
     const googleId = payload.sub;

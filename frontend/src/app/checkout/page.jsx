@@ -41,7 +41,7 @@ export default function CheckoutPage() {
                 ...prev,
                 fullName: prev.fullName || user.name || '',
                 email: prev.email || user.email || '',
-                phone: prev.phone || user.phone || ''
+                phone: (prev.phone || user.phone || '').replace(/\D/g, '').slice(0, 10)
             }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,11 +74,46 @@ export default function CheckoutPage() {
     const tax = Math.round(computedSubtotal * TAX_RATE);
     const total = computedSubtotal + shipping + tax;
 
-    const update = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+    const update = (k) => (e) => {
+        let val = e.target.value;
+        if (k === 'phone') {
+            val = val.replace(/\D/g, '').slice(0, 10);
+        } else if (k === 'postalCode') {
+            val = val.replace(/\D/g, '').slice(0, 6);
+        } else if (k === 'city' || k === 'state' || k === 'country') {
+            val = val.replace(/[^a-zA-Z\s]/g, '');
+        }
+        setForm((f) => ({ ...f, [k]: val }));
+    };
 
     const submit = async (e) => {
         e.preventDefault();
         if (items.length === 0) return;
+
+        if (form.phone.length !== 10) {
+            toast.error('Phone number must be exactly 10 digits.');
+            return;
+        }
+
+        if (form.postalCode.length !== 6) {
+            toast.error('Postal code must be exactly 6 digits.');
+            return;
+        }
+
+        if (!form.city.trim() || !/^[A-Za-z\s]+$/.test(form.city.trim())) {
+            toast.error('City must contain letters only.');
+            return;
+        }
+
+        if (!form.state.trim() || !/^[A-Za-z\s]+$/.test(form.state.trim())) {
+            toast.error('State must contain letters only.');
+            return;
+        }
+
+        if (!form.country.trim() || !/^[A-Za-z\s]+$/.test(form.country.trim())) {
+            toast.error('Country must contain letters only.');
+            return;
+        }
 
         try {
             setSubmitting(true);
@@ -141,25 +176,35 @@ export default function CheckoutPage() {
                                 router.push(`/order-confirmation/${verified.orderId}`);
                             } else {
                                 toast.error('Payment verification failed. Please contact support.');
+                                setSubmitting(false);
                             }
                         } catch (verErr) {
                             console.error('Verification error:', verErr);
                             toast.error(verErr.response?.data?.message || 'Payment verification failed. Please check your orders.');
-                        } finally {
                             setSubmitting(false);
                         }
                     },
                     onFailure: (err) => {
-                        console.error('Razorpay payment error:', err);
-                        toast.error(err?.description || 'Payment was unsuccessful or cancelled.');
+                        console.warn('Razorpay payment cancelled or failed:', err);
                         setSubmitting(false);
+                        const isUserCancel =
+                            err?.reason === 'payment_cancelled' ||
+                            err?.source === 'customer' ||
+                            /cancel|closed|dismissed/i.test(err?.description || '') ||
+                            /cancel|closed|dismissed/i.test(err?.reason || '');
+
+                        // Do not show an error popup if the customer cancelled the payment
+                        if (!isUserCancel && err?.description) {
+                            toast.error(err.description);
+                        }
                     },
                     onDismiss: () => {
-                        toast.info('Payment window closed. Your cart is preserved.');
                         setSubmitting(false);
                     }
                 });
 
+                // Reset submitting state once the payment modal is active on screen
+                setSubmitting(false);
                 return;
             }
 
@@ -206,35 +251,107 @@ export default function CheckoutPage() {
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">
                             <div>
                                 <label className="label-luxe">Full Name *</label>
-                                <input required value={form.fullName} onChange={update('fullName')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    value={form.fullName}
+                                    onChange={update('fullName')}
+                                    placeholder="e.g. Rahul Sharma"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">Phone *</label>
-                                <input required value={form.phone} onChange={update('phone')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="tel"
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    minLength={10}
+                                    pattern="[0-9]{10}"
+                                    title="Phone number must be exactly 10 digits"
+                                    value={form.phone}
+                                    onChange={update('phone')}
+                                    placeholder="e.g. 9876543210"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">Email *</label>
-                                <input required type="email" value={form.email} onChange={update('email')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="email"
+                                    value={form.email}
+                                    onChange={update('email')}
+                                    placeholder="e.g. rahul@example.com"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div className="sm:col-span-2">
                                 <label className="label-luxe">Address *</label>
-                                <input required value={form.address} onChange={update('address')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    value={form.address}
+                                    onChange={update('address')}
+                                    placeholder="e.g. Flat 402, Sunshine Apartments, Main Street"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">City *</label>
-                                <input required value={form.city} onChange={update('city')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    pattern="[A-Za-z\s]+"
+                                    title="City must contain letters only"
+                                    value={form.city}
+                                    onChange={update('city')}
+                                    placeholder="e.g. Mumbai"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">State *</label>
-                                <input required value={form.state} onChange={update('state')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    pattern="[A-Za-z\s]+"
+                                    title="State must contain letters only"
+                                    value={form.state}
+                                    onChange={update('state')}
+                                    placeholder="e.g. Maharashtra"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">Postal Code *</label>
-                                <input required value={form.postalCode} onChange={update('postalCode')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    minLength={6}
+                                    pattern="[0-9]{6}"
+                                    title="Postal code must be exactly 6 digits"
+                                    value={form.postalCode}
+                                    onChange={update('postalCode')}
+                                    placeholder="e.g. 400001"
+                                    className="input-luxe"
+                                />
                             </div>
                             <div>
                                 <label className="label-luxe">Country *</label>
-                                <input required value={form.country} onChange={update('country')} className="input-luxe" />
+                                <input
+                                    required
+                                    type="text"
+                                    pattern="[A-Za-z\s]+"
+                                    title="Country must contain letters only"
+                                    value={form.country}
+                                    onChange={update('country')}
+                                    placeholder="e.g. India"
+                                    className="input-luxe"
+                                />
                             </div>
                         </div>
                     </section>

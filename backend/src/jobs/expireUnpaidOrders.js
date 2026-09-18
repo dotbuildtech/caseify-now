@@ -7,8 +7,8 @@ const { releaseReservedStock } = require('../services/orderService');
 const { logSecurityEvent } = require('../utils/securityLog');
 
 const EXPIRY_HOURS = Math.max(1, parseInt(process.env.UNPAID_ORDER_EXPIRY_HOURS, 10) || 48);
-const INITIATION_EXPIRY_MINUTES = Math.max(10, parseInt(process.env.INITIATION_EXPIRY_MINUTES, 10) || 60);
-const RUN_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const INITIATION_EXPIRY_MINUTES = Math.max(10, parseInt(process.env.INITIATION_EXPIRY_MINUTES, 10) || 30);
+const RUN_INTERVAL_MS = 15 * 60 * 1000;
 
 // Cancels online-payment orders that were never paid and restores their stock.
 // COD orders are intentionally excluded (stock is held until delivery).

@@ -72,7 +72,13 @@ exports.razorpayVerify = asyncHandler(async (req, res) => {
  */
 exports.razorpayWebhook = asyncHandler(async (req, res) => {
     const signature = req.headers['x-razorpay-signature'];
-    const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body);
+    const rawBody = req.rawBody
+        ? (Buffer.isBuffer(req.rawBody) ? req.rawBody.toString('utf8') : String(req.rawBody))
+        : (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0 ? JSON.stringify(req.body) : '');
+
+    if (!rawBody || !signature) {
+        return res.status(400).json({ status: 'error', message: 'Missing webhook payload or x-razorpay-signature header' });
+    }
 
     const result = await processRazorpayWebhook({
         rawBody,
