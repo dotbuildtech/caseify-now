@@ -110,7 +110,9 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 morgan.token('id', (req) => req.id);
-app.use(morgan(isProduction ? ':id :remote-addr :method :url :status :res[content-length] - :response-time ms' : 'dev'));
+app.use(morgan(isProduction ? ':id :remote-addr :method :url :status :res[content-length] - :response-time ms' : 'dev', {
+    skip: (req) => req.url === '/health' || req.url === '/api/health'
+}));
 
 app.use((req, res, next) => {
     res.setTimeout(25000, () => {
@@ -120,6 +122,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
+    if (req.path === '/health' || req.path === '/api/health') return next();
     const start = Date.now();
     res.on('finish', () => {
         const duration = Date.now() - start;
@@ -187,8 +190,16 @@ app.use('/api/studio-templates', require('./routes/studioTemplateV2Routes'));
 
 app.use('/uploads', express.static('uploads'));
 
-app.get('/', (req, res) => res.send('Caseify Now API is running...'));
-app.get('/health', async (req, res, next) => {
+// Ultra-lightweight healthcheck endpoint for UptimeRobot / Keep-Alive monitors (zero DB queries)
+app.all(['/health', '/api/health'], (req, res) => {
+    if (req.method === 'GET' || req.method === 'HEAD') {
+        return res.status(200).send('OK');
+    }
+    return res.status(405).send('Method Not Allowed');
+});
+
+// Deep diagnostic healthcheck (authenticates database connectivity on-demand)
+app.get('/health/db', async (req, res) => {
     try {
         const { sequelize: db } = require('./config/db');
         await db.authenticate();
