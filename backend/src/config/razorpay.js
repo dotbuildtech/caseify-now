@@ -10,6 +10,7 @@ const config = {
 };
 
 let razorpayInstance = null;
+let hasWarnedKey = false;
 
 const isConfigured = () =>
     config.keyId.length > 0 &&
@@ -23,11 +24,9 @@ const assertConfigured = () => {
         err.status = 503;
         throw err;
     }
-    if (config.keySecret.startsWith('rzp_') || (!config.keyId.startsWith('rzp_test_') && !config.keyId.startsWith('rzp_live_'))) {
+    if (!hasWarnedKey && (config.keySecret.startsWith('rzp_') || (!config.keyId.startsWith('rzp_test_') && !config.keyId.startsWith('rzp_live_')))) {
+        hasWarnedKey = true;
         console.warn('[Razorpay Warning] RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in backend/.env appear to be swapped or invalid. Key ID should start with rzp_test_ or rzp_live_.');
-    }
-    if (process.env.NODE_ENV === 'production' && (!config.webhookSecret || isPlaceholder(config.webhookSecret))) {
-        console.warn('[Razorpay Security Warning] RAZORPAY_WEBHOOK_SECRET is missing or using a placeholder in production. Webhooks will be rejected.');
     }
 };
 
