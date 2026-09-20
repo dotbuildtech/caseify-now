@@ -24,12 +24,23 @@ const htmlTemplate = (otp) => `
     </html>
 `;
 
-const getFromAddress = () => process.env.SMTP_FROM || 'Caseify Now <noreply@caseifynow.com>';
+const getFromAddress = () => {
+    if (process.env.SMTP_USER) {
+        return `Caseify Now <${process.env.SMTP_USER}>`;
+    }
+    if (process.env.SMTP_FROM && process.env.SMTP_FROM.includes('@') && !process.env.SMTP_FROM.includes('vercel.app')) {
+        return process.env.SMTP_FROM;
+    }
+    return 'Caseify Now <noreply@caseifynow.com>';
+};
 
 const sendViaResend = async (email, otp) => {
     const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-        from: getFromAddress(),
+    const fromAddr = (process.env.RESEND_FROM && process.env.RESEND_FROM.includes('@'))
+        ? process.env.RESEND_FROM
+        : 'onboarding@resend.dev';
+    return await resend.emails.send({
+        from: fromAddr,
         to: email,
         subject: 'Password Reset OTP - Caseify Now',
         html: htmlTemplate(otp),
@@ -54,7 +65,7 @@ const getTransporter = () => {
 };
 
 const sendViaNodemailer = async (email, otp) => {
-    await getTransporter().sendMail({
+    return await getTransporter().sendMail({
         from: getFromAddress(),
         to: email,
         subject: 'Password Reset OTP - Caseify Now',
@@ -63,11 +74,41 @@ const sendViaNodemailer = async (email, otp) => {
 };
 
 const sendOTPEmail = async (email, otp) => {
-    if (process.env.RESEND_API_KEY) {
-        await sendViaResend(email, otp);
-    } else {
-        await sendViaNodemailer(email, otp);
+    let lastError = null;
+
+    // 1. Prioritize Gmail SMTP if configured (delivers reliably to all inbox domains)
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        try {
+            const info = await sendViaNodemailer(email, otp);
+            console.log(`[emailService] OTP email successfully sent via SMTP to ${email} (messageId: ${info.messageId})`);
+            return info;
+        } catch (smtpErr) {
+            console.warn(`[emailService] SMTP send failed to ${email}: ${smtpErr.message}. Trying fallback...`);
+            lastError = smtpErr;
+        }
     }
+
+    // 2. Try Resend if configured
+    if (process.env.RESEND_API_KEY) {
+        try {
+            const result = await sendViaResend(email, otp);
+            if (result?.error) {
+                console.warn(`[emailService] Resend returned error for ${email}: ${result.error.message}`);
+                lastError = new Error(result.error.message);
+            } else {
+                console.log(`[emailService] OTP email successfully sent via Resend to ${email}`);
+                return result;
+            }
+        } catch (resendErr) {
+            console.warn(`[emailService] Resend exception for ${email}: ${resendErr.message}`);
+            lastError = resendErr;
+        }
+    }
+
+    if (lastError) {
+        throw lastError;
+    }
+    throw new Error('No email transport configured (neither SMTP nor Resend)');
 };
 
 module.exports = { sendOTPEmail };
