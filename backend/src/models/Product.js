@@ -62,6 +62,16 @@ const Product = sequelize.define('Product', {
             }
         }
     },
+    gstRate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 18.00,
+        get() {
+            const v = this.getDataValue('gstRate');
+            return v == null ? 18 : Number(v);
+        },
+        validate: { min: 0, max: 100 }
+    },
     category: {
         type: DataTypes.STRING(80),
         allowNull: false,

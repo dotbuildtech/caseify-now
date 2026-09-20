@@ -38,6 +38,7 @@ export default function StudioProductForm({ product = null }) {
     const [image, setImage] = useState(product?.image || '');
     const [price, setPrice] = useState(product?.price || '');
     const [compareAtPrice, setCompareAtPrice] = useState(product?.compareAtPrice || '');
+    const [gstRate, setGstRate] = useState(product?.gstRate ?? 18);
     const [materialId, setMaterialId] = useState(product?.materialId || '');
     const [isActive, setIsActive] = useState(product?.isActive !== false);
 
@@ -132,6 +133,7 @@ export default function StudioProductForm({ product = null }) {
                 image,
                 price: Number(price),
                 compareAtPrice: compareAtPrice ? Number(compareAtPrice) : null,
+                gstRate: gstRate !== '' && gstRate != null ? Number(gstRate) : 18,
                 materialId: materialId ? Number(materialId) : null,
                 isActive
             };
@@ -214,9 +216,9 @@ export default function StudioProductForm({ product = null }) {
                         className="input-luxe text-sm" placeholder="e.g. iPhone 16 Pro Glossy Case" />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                     <div>
-                        <label className="label-luxe text-[10px]">Price ({'\u20B9'})</label>
+                        <label className="label-luxe text-[10px]">Price ({'\u20B9'}) *</label>
                         <input type="number" value={price} onChange={(e) => setPrice(e.target.value)}
                             className="input-luxe text-sm" placeholder="399" min="0" />
                     </div>
@@ -224,6 +226,11 @@ export default function StudioProductForm({ product = null }) {
                         <label className="label-luxe text-[10px]">Compare at Price ({'\u20B9'})</label>
                         <input type="number" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)}
                             className="input-luxe text-sm" placeholder="599" min="0" />
+                    </div>
+                    <div>
+                        <label className="label-luxe text-[10px]">GST Rate (%) *</label>
+                        <input type="number" value={gstRate} onChange={(e) => setGstRate(e.target.value)}
+                            className="input-luxe text-sm" placeholder="18" min="0" max="100" step="0.1" />
                     </div>
                 </div>
 

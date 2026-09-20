@@ -131,6 +131,7 @@ function AdminProductsPageContent() {
                                         <div className="text-right font-display text-sm tabular-nums md:self-center">
                                             {formatINR(p.price)}
                                             {p.compareAtPrice ? <span className="block text-[10px] text-text-light line-through">{formatINR(p.compareAtPrice)}</span> : null}
+                                            <span className="block text-[10px] text-text-light">{p.gstRate != null ? `${Number(p.gstRate)}% GST` : '18% GST'}</span>
                                         </div>
                                         <div className={`text-right text-sm font-medium tabular-nums md:self-center ${low ? 'text-error' : ''}`}>
                                             {p.stock}

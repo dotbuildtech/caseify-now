@@ -32,6 +32,16 @@ const StudioProduct = sequelize.define('StudioProduct', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
+    gstRate: {
+        type: DataTypes.DECIMAL(5, 2),
+        allowNull: false,
+        defaultValue: 18.00,
+        get() {
+            const v = this.getDataValue('gstRate');
+            return v == null ? 18 : Number(v);
+        },
+        validate: { min: 0, max: 100 }
+    },
     materialId: {
         type: DataTypes.INTEGER,
         allowNull: true

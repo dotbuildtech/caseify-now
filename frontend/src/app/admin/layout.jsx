@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal, Menu, X, SwatchBook } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, BarChart3, Boxes, Tag, Smartphone, Image, Link2, Layers, MessagesSquare, ChevronRight, LogOut, ShieldCheck, SlidersHorizontal, Menu, X, SwatchBook, Settings } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getUnreadCount } from '@/services/contactApi';
 
@@ -57,6 +57,7 @@ const NAV = [
     { href: '/admin/filter-options', label: 'Filter Options', Icon: SlidersHorizontal },
     { href: '/admin/hero-slides', label: 'Hero Slides', Icon: Image },
     { href: '/admin/studio-templates', label: 'Studio Templates', Icon: SwatchBook },
+    { href: '/admin/settings', label: 'Settings', Icon: Settings },
 ];
 
 export default function AdminLayout({ children }) {

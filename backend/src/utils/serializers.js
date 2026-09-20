@@ -1,5 +1,5 @@
 const PUBLIC_PRODUCT_FIELDS = new Set([
-    'id', 'name', 'slug', 'description', 'price', 'compareAtPrice',
+    'id', 'name', 'slug', 'description', 'price', 'compareAtPrice', 'gstRate',
     'category', 'phoneModel', 'brand', 'image', 'images', 'isFeatured',
     'isDeviceSpecific', 'tags', 'materials', 'attributes', 'variants',
     'stock', 'lowStockThreshold'

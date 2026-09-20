@@ -187,6 +187,7 @@ app.use('/api/admin/studio-models', require('./routes/studioModelRoutes'));
 app.use('/api/admin/studio-products', require('./routes/studioProductRoutes'));
 app.use('/api/admin/studio-templates', require('./routes/studioTemplateRoutes'));
 app.use('/api/studio-templates', require('./routes/studioTemplateV2Routes'));
+app.use('/api', require('./routes/settingRoutes'));
 
 app.use('/uploads', express.static('uploads'));
 

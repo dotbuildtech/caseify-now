@@ -327,3 +327,14 @@ export const adminUpdateCustomDesign = (id, payload) =>
 
 export const adminDeleteCustomDesign = (id) =>
     api.delete(`/custom-designs/${id}`).then((r) => { clearApiCache(); return r.data; });
+
+// ---------- Store Settings & Policies (admin & public) ----------
+export const adminGetSettings = () =>
+    api.get('/admin/settings').then((r) => r.data);
+
+export const adminUpdateSettings = (payload) =>
+    api.put('/admin/settings', payload).then((r) => { clearApiCache(); return r.data; });
+
+export const fetchPublicStorePolicy = () =>
+    api.get('/config/store-policy').then((r) => r.data);
+

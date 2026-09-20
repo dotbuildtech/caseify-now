@@ -1,23 +1,29 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Minus, Plus, X, ShoppingBag, Lock } from 'lucide-react';
+import { Minus, Plus, X, ShoppingBag, Lock, ShieldCheck } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { formatINR } from '@/utils/format';
 import { FORM_FIELD_LABELS } from '@/utils/constants';
 import SmartImage from '@/components/ui/SmartImage';
+import { fetchPublicStorePolicy } from '@/services/adminApi';
 
-const SHIPPING_THRESHOLD = 500;
-const SHIPPING_FEE = 49;
 const DEBOUNCE_MS = 400;
 
 export default function CartPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { items, subtotal, summary, updateItem, removeItem, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, getItemCategory, getItemAttributes } = useCart();
+    const { items, subtotal, summary, updateItem, removeItem, getItemQty, getItemPrice, getItemProductId, getItemGstRate, getItemImage, getItemName, getItemCategory, getItemAttributes } = useCart();
     const debounceTimers = useRef({});
+    const [policy, setPolicy] = useState({ shippingFee: 49, freeShippingThreshold: 500, defaultGstRate: 18 });
+
+    useEffect(() => {
+        fetchPublicStorePolicy()
+            .then(p => { if (p) setPolicy(p); })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -58,9 +64,15 @@ export default function CartPage() {
     }
 
     const computedSubtotal = subtotal || summary?.subtotal || 0;
-    const shipping = computedSubtotal === 0 ? 0 : computedSubtotal >= SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
-    const total = computedSubtotal + shipping;
-    const remaining = Math.max(0, SHIPPING_THRESHOLD - computedSubtotal);
+    const computedGst = items.reduce((s, i) => {
+        const qty = getItemQty(i);
+        const price = getItemPrice(i);
+        const rate = getItemGstRate(i);
+        return s + (qty * price * (rate / 100));
+    }, 0);
+    const shipping = computedSubtotal === 0 ? 0 : (computedSubtotal >= policy.freeShippingThreshold ? 0 : policy.shippingFee);
+    const total = computedSubtotal + computedGst + shipping;
+    const remaining = Math.max(0, policy.freeShippingThreshold - computedSubtotal);
 
     return (
         <div className="container-luxe py-12 md:py-20">
@@ -158,17 +170,26 @@ export default function CartPage() {
                                                 <div className="text-right shrink-0">
                                                     {(() => {
                                                         const cap = item.Product?.compareAtPrice;
+                                                        const itemGst = getItemGstRate(item);
                                                         if (cap && Number(cap) > price) {
                                                             const pct = Math.round((1 - price / Number(cap)) * 100);
                                                             return (
                                                                 <>
                                                                     <p className="text-xs text-text-light line-through tabular-nums">{formatINR(cap)}</p>
                                                                     <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
-                                                                    <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-bronze">-{pct}%</p>
+                                                                    <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                                                        <span className="text-[9px] font-medium uppercase tracking-[0.12em] text-bronze">-{pct}%</span>
+                                                                        <span className="text-[10px] text-text-light font-medium bg-background-light px-1.5 py-0.5 rounded">+{itemGst}% GST</span>
+                                                                    </div>
                                                                 </>
                                                             );
                                                         }
-                                                        return <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>;
+                                                        return (
+                                                            <>
+                                                                <p className="text-sm font-semibold tabular-nums">{formatINR(lineTotal)}</p>
+                                                                <span className="inline-block mt-0.5 text-[10px] text-text-light font-medium bg-background-light px-1.5 py-0.5 rounded">+{itemGst}% GST</span>
+                                                            </>
+                                                        );
                                                     })()}
                                                 </div>
                                             </div>
@@ -179,20 +200,33 @@ export default function CartPage() {
                         </ul>
                     </div>
 
-                    <aside className="h-fit border border-border bg-surface p-6 md:p-8">
+                    <aside className="h-fit border border-border bg-surface p-6 md:p-8 rounded-xl shadow-sm">
                         <h2 className="font-display text-2xl">Order Summary</h2>
                         <dl className="mt-6 space-y-3 text-sm">
                             <div className="flex justify-between">
-                                <dt className="text-text-light">Items</dt>
+                                <dt className="text-text-light">Bag Subtotal</dt>
                                 <dd className="font-medium tabular-nums">{formatINR(computedSubtotal)}</dd>
                             </div>
                             <div className="flex justify-between">
+                                <dt className="text-text-light flex items-center gap-1.5">
+                                    <span>Estimated GST</span>
+                                    <span className="text-[10px] text-text-light/70 font-mono">(Product-wise)</span>
+                                </dt>
+                                <dd className="font-medium tabular-nums text-ink">{formatINR(computedGst)}</dd>
+                            </div>
+                            <div className="flex justify-between">
                                 <dt className="text-text-light">Shipping</dt>
-                                <dd className="font-medium tabular-nums">{shipping === 0 ? 'Free' : formatINR(shipping)}</dd>
+                                <dd className="font-medium tabular-nums">
+                                    {shipping === 0 ? (
+                                        <span className="text-emerald-700 font-semibold uppercase tracking-wider text-xs">Free</span>
+                                    ) : (
+                                        formatINR(shipping)
+                                    )}
+                                </dd>
                             </div>
                             <div className="flex justify-between border-t border-border pt-3">
-                                <dt className="font-display text-lg">Total</dt>
-                                <dd className="font-display text-2xl font-semibold tabular-nums">{formatINR(total)}</dd>
+                                <dt className="font-display text-lg">Total Amount</dt>
+                                <dd className="font-display text-2xl font-semibold tabular-nums text-ink">{formatINR(total)}</dd>
                             </div>
                         </dl>
                         <Link href="/checkout" prefetch={true} className="btn-primary mt-6 w-full">Proceed to Checkout</Link>

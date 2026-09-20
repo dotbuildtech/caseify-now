@@ -16,6 +16,7 @@ const blank = {
     description: '',
     price: '',
     compareAtPrice: '',
+    gstRate: 18,
     category: '',
     phoneModel: '',
     brand: '',
@@ -37,6 +38,7 @@ const normalize = (p) => {
     return {
         ...blank,
         ...p,
+        gstRate: p.gstRate != null ? Number(p.gstRate) : 18,
         images: imgs,
         tags: Array.isArray(p.tags) ? p.tags : [],
         attributes: p.attributes || {}
@@ -221,6 +223,7 @@ export default function ProductForm({ initial, mode = 'create' }) {
             description: form.description.trim(),
             price,
             compareAtPrice,
+            gstRate: form.gstRate !== '' && form.gstRate != null ? Number(form.gstRate) : 18,
             category: form.category.trim(),
             phoneModel: form.phoneModel?.trim() || undefined,
             brand: form.brand?.trim() || undefined,
@@ -332,12 +335,15 @@ export default function ProductForm({ initial, mode = 'create' }) {
 
             <div className="border border-border bg-surface p-5 md:p-6">
                 <h3 className="mb-4 font-display text-lg">Pricing & inventory</h3>
-                <div className="grid gap-5 md:grid-cols-4">
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
                     <Field label="Price (INR) *" error={errors.price}>
                         <input type="number" min="0" step="0.01" value={form.price} onChange={set('price')} className="input-luxe tabular-nums" />
                     </Field>
-                    <Field label="MRP / Compare-at price *" hint="Must be ≥ Price. Shows strikethrough & discount badge" error={errors.compareAtPrice}>
+                    <Field label="MRP / Compare-at price *" hint="Must be ≥ Price. Shows discount badge" error={errors.compareAtPrice}>
                         <input type="number" min="0" step="0.01" value={form.compareAtPrice} onChange={set('compareAtPrice')} className="input-luxe tabular-nums" />
+                    </Field>
+                    <Field label="GST Rate (%) *" hint="Product GST (e.g. 18 for 18%)" error={errors.gstRate}>
+                        <input type="number" min="0" max="100" step="0.1" value={form.gstRate} onChange={set('gstRate')} className="input-luxe tabular-nums" placeholder="18" />
                     </Field>
                     <Field label="Stock" error={errors.stock}>
                         <input type="number" min="0" step="1" value={form.stock} onChange={set('stock')} className="input-luxe tabular-nums" />

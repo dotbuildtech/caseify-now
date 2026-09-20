@@ -1,7 +1,7 @@
 'use client';
 import { memo } from 'react';
 import Link from 'next/link';
-import { ShoppingBag, Package } from 'lucide-react';
+import { ShoppingBag, ArrowUpRight } from 'lucide-react';
 import { formatINR } from '@/utils/format';
 import SmartImage from '@/components/ui/SmartImage';
 
@@ -37,45 +37,83 @@ export default memo(function ProductCard({ p }) {
     const discount = getProductDiscountPercent(p);
     const img = getProductImage(p);
     const outOfStock = p.stock != null && p.stock <= 0;
+    const gstRate = p.gstRate != null ? Number(p.gstRate) : 18;
+
     return (
-        <Link href={`/product/${p.slug || p.id}`} className="group block">
-            <div className="relative aspect-[3/4] overflow-hidden bg-background-light border border-border">
+        <Link
+            href={`/product/${p.slug || p.id}`}
+            className="group block relative rounded-2xl border border-border/70 bg-surface p-3 transition-all duration-300 hover:border-ink/30 hover:shadow-xl hover:shadow-black/[0.04]"
+        >
+            {/* Image Container with Luxury Badges */}
+            <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-background-light">
                 <SmartImage
                     src={img}
                     alt={p.name}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                 />
-                {discount && (
-                    <span className="absolute left-3 top-3 z-10 bg-bronze px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-cream">
-                        -{discount}%
-                    </span>
-                )}
-                {outOfStock && (
-                    <span className="absolute left-3 bottom-3 z-10 bg-ink/80 px-2 py-1 text-[10px] font-medium text-cream">
-                        Out of Stock
-                    </span>
-                )}
+
+                {/* Badges */}
+                <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-10">
+                    {discount && (
+                        <span className="inline-flex items-center rounded-md bg-bronze px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-cream shadow-sm">
+                            -{discount}%
+                        </span>
+                    )}
+                    {outOfStock && (
+                        <span className="inline-flex items-center rounded-md bg-ink/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-cream shadow-sm">
+                            Sold Out
+                        </span>
+                    )}
+                </div>
+
                 {p.brand && (
-                    <span className="absolute right-3 bottom-3 z-10 bg-cream/90 px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-ink font-medium">
+                    <span className="absolute top-2.5 right-2.5 z-10 rounded-md bg-surface/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-ink border border-border/60 shadow-sm">
                         {p.brand}
                     </span>
                 )}
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/0 opacity-0 transition-all duration-500 group-hover:bg-ink/10 group-hover:opacity-100">
-                    <span className="flex h-10 w-10 items-center justify-center bg-cream text-ink shadow-sm">
-                        <ShoppingBag className="h-4 w-4" />
+
+                {/* Hover Quick View Overlay */}
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-ink/15 opacity-0 backdrop-blur-[2px] transition-all duration-300 group-hover:opacity-100">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-cream px-4 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-ink shadow-lg transform translate-y-2 transition-transform duration-300 group-hover:translate-y-0">
+                        <span>View Details</span>
+                        <ArrowUpRight size={14} />
                     </span>
                 </div>
             </div>
-            <div className="mt-3 flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <h3 className="truncate text-sm font-medium leading-tight text-ink group-hover:text-bronze transition-colors">{p.name}</h3>
-                    <p className="mt-0.5 truncate text-[11px] text-text-light">{p.category}</p>
+
+            {/* Content & Clear Pricing Details */}
+            <div className="mt-3.5 px-1 pb-1">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-display text-sm font-medium text-ink transition-colors group-hover:text-bronze">
+                            {p.name}
+                        </h3>
+                        <p className="mt-0.5 truncate text-[11px] uppercase tracking-[0.14em] text-text-light font-medium">
+                            {p.category || 'Atelier'} {p.phoneModel ? `• ${p.phoneModel}` : ''}
+                        </p>
+                    </div>
                 </div>
-                <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold tabular-nums text-ink">{formatINR(sale)}</p>
-                    {original && (
-                        <p className="text-xs text-text-light line-through tabular-nums">{formatINR(original)}</p>
-                    )}
+
+                {/* Price & GST Transparency Block */}
+                <div className="mt-3 pt-2.5 border-t border-border/50 flex items-end justify-between">
+                    <div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-base font-semibold tabular-nums text-ink">
+                                {formatINR(sale)}
+                            </span>
+                            {original && (
+                                <span className="text-xs text-text-light/70 line-through tabular-nums">
+                                    {formatINR(original)}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="text-right">
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 bg-background-light/80 border border-border/60 text-[10px] font-medium tracking-tight text-text-light">
+                            +{gstRate}% GST
+                        </span>
+                    </div>
                 </div>
             </div>
         </Link>

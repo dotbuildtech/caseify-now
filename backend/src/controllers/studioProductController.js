@@ -35,7 +35,7 @@ exports.getStudioProduct = asyncHandler(async (req, res) => {
 });
 
 exports.createStudioProduct = asyncHandler(async (req, res) => {
-    const { studioBrandId, studioModelId, name, description, image, price, compareAtPrice, materialId, isActive } = req.body;
+    const { studioBrandId, studioModelId, name, description, image, price, compareAtPrice, gstRate, materialId, isActive } = req.body;
     if (!studioBrandId) { res.status(400); throw new Error('studioBrandId is required'); }
     if (!studioModelId) { res.status(400); throw new Error('studioModelId is required'); }
     if (!name || !name.trim()) { res.status(400); throw new Error('Name is required'); }
@@ -52,6 +52,7 @@ exports.createStudioProduct = asyncHandler(async (req, res) => {
         image,
         price: price || 399,
         compareAtPrice: compareAtPrice || null,
+        gstRate: gstRate !== undefined ? Number(gstRate) : 18.00,
         materialId: materialId || null,
         isActive: isActive !== false
     });
@@ -61,13 +62,14 @@ exports.createStudioProduct = asyncHandler(async (req, res) => {
 exports.updateStudioProduct = asyncHandler(async (req, res) => {
     const product = await StudioProduct.findByPk(req.params.id);
     if (!product) { res.status(404); throw new Error('Studio product not found'); }
-    const { name, description, image, price, compareAtPrice, materialId, isActive } = req.body;
+    const { name, description, image, price, compareAtPrice, gstRate, materialId, isActive } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name.trim();
     if (description !== undefined) updates.description = description;
     if (image !== undefined) updates.image = image;
     if (price !== undefined) updates.price = price;
     if (compareAtPrice !== undefined) updates.compareAtPrice = compareAtPrice;
+    if (gstRate !== undefined) updates.gstRate = Number(gstRate);
     if (materialId !== undefined) updates.materialId = materialId;
     if (isActive !== undefined) updates.isActive = isActive;
     await product.update(updates);

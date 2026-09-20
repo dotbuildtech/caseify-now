@@ -6,10 +6,9 @@ const Product = require('../models/Product');
 const ProductVariant = require('../models/ProductVariant');
 const { saveDataUrl } = require('../utils/saveDataUrl');
 const { computeStudioPrice, MAX_DESIGN_LAYERS } = require('../utils/studioPricing');
+const { getStoreSettings } = require('../utils/storeSettings');
+const Material = require('../models/Material');
 
-const TAX_RATE = (() => { const r = parseFloat(process.env.TAX_RATE || '0'); return Number.isFinite(r) ? r : 0; })();
-const SHIPPING_FEE = parseFloat(process.env.SHIPPING_FEE || '0');
-const FREE_SHIPPING_THRESHOLD = parseFloat(process.env.FREE_SHIPPING_THRESHOLD || '0');
 const MAX_QTY_PER_ITEM = 99;
 const CUSTOM_PRODUCT_ID = 9999;
 
@@ -84,32 +83,69 @@ const buildOrderPayload = async ({ orderItems, shippingAddress, paymentMethod })
         : [];
     const variantMap = new Map(variants.map((v) => [v.id, v]));
 
+    const settings = await getStoreSettings();
+
     const items = [];
     let itemsPrice = 0;
+    let totalTax = 0;
+
     for (const item of orderItems) {
         const product = productMap.get(item.product);
         if (!product && item.product === CUSTOM_PRODUCT_ID) {
             const dm = item.designMeta || {};
             const pricing = await computeStudioPrice({ materialId: dm.materialId, layerCount: dm.layerCount });
             const unitPrice = Math.max(0, pricing.perUnitPrice);
-            itemsPrice += unitPrice * item.qty;
+
+            let customGstRate = Number(settings.defaultGstRate || 18);
+            if (dm.materialId) {
+                const mat = await Material.findOne({
+                    where: { [Op.or]: [{ slug: String(dm.materialId) }, (!isNaN(dm.materialId) ? { id: parseInt(dm.materialId, 10) } : null)].filter(Boolean) }
+                });
+                if (mat && mat.gstRate != null) {
+                    customGstRate = Number(mat.gstRate);
+                }
+            }
+
+            const lineItemPrice = unitPrice * item.qty;
+            const lineTax = +(lineItemPrice * (customGstRate / 100)).toFixed(2);
+            itemsPrice += lineItemPrice;
+            totalTax += lineTax;
+
             items.push({
                 type: 'custom',
                 product: item.product,
                 qty: item.qty,
                 price: unitPrice,
-                designMeta: dm
+                designMeta: dm,
+                gstRate: customGstRate,
+                gstAmount: lineTax,
+                snapshot: {
+                    isCustom: true,
+                    productName: 'Custom Designed Case',
+                    price: unitPrice,
+                    materialId: dm.materialId || null,
+                    gstRate: customGstRate,
+                    gstAmount: lineTax
+                }
             });
         } else {
             const variant = variantMap.get(item.selectedVariant?.id);
             const unitPrice = Math.max(0, variant && variant.price != null ? Number(variant.price) : Number(product.price));
-            itemsPrice += unitPrice * item.qty;
+            const itemGstRate = Number(product.gstRate ?? settings.defaultGstRate ?? 18);
+            const lineItemPrice = unitPrice * item.qty;
+            const lineTax = +(lineItemPrice * (itemGstRate / 100)).toFixed(2);
+
+            itemsPrice += lineItemPrice;
+            totalTax += lineTax;
+
             items.push({
                 type: 'product',
                 product: product.id,
                 qty: item.qty,
                 price: unitPrice,
                 variantId: variant ? variant.id : (item.selectedVariant?.id || null),
+                gstRate: itemGstRate,
+                gstAmount: lineTax,
                 snapshot: {
                     isCustom: false,
                     productName: product.name,
@@ -119,6 +155,8 @@ const buildOrderPayload = async ({ orderItems, shippingAddress, paymentMethod })
                     sku: product.sku || null,
                     image: product.image || null,
                     price: unitPrice,
+                    gstRate: itemGstRate,
+                    gstAmount: lineTax,
                     selectedVariant: variant
                         ? { id: variant.id, name: variant.name, price: variant.price, image: variant.image || null }
                         : (item.selectedVariant || null),
@@ -132,9 +170,9 @@ const buildOrderPayload = async ({ orderItems, shippingAddress, paymentMethod })
         }
     }
 
-    const taxPrice = +(itemsPrice * TAX_RATE).toFixed(2);
+    const taxPrice = +totalTax.toFixed(2);
     const shippingPrice = itemsPrice > 0
-        ? (itemsPrice >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE)
+        ? (itemsPrice >= settings.freeShippingThreshold ? 0 : settings.shippingFee)
         : 0;
     const totalPrice = +(itemsPrice + taxPrice + shippingPrice).toFixed(2);
 

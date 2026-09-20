@@ -26,6 +26,11 @@ const getItemImage = (i) => {
 const getItemName = (i) => i.Product?.name || i.nameAtAdd || i.name || '';
 const getItemCategory = (i) => i.Product?.category || i.variantLabel || i.designMeta?.brand || i.category || '';
 const getItemAttributes = (i) => i.Product?.attributes || i.attributes || {};
+const getItemGstRate = (i) => {
+    if (i.Product?.gstRate != null) return Number(i.Product.gstRate);
+    if (i.gstRate != null) return Number(i.gstRate);
+    return 18;
+};
 
 export function CartProvider({ children }) {
     const { user, loading: authLoading } = useAuth();
@@ -143,10 +148,17 @@ export function CartProvider({ children }) {
         const count = items.reduce((s, i) => s + getItemQty(i), 0) || summary.itemCount || 0;
         const computed = items.reduce((s, i) => s + getItemQty(i) * getItemPrice(i), 0);
         const subtotal = items.length > 0 ? computed : (summary?.subtotal ?? 0);
+        const gstTotal = items.reduce((s, i) => {
+            const qty = getItemQty(i);
+            const price = getItemPrice(i);
+            const rate = getItemGstRate(i);
+            return s + (qty * price * (rate / 100));
+        }, 0);
+
         return {
-            items, count, subtotal, summary, loading,
+            items, count, subtotal, gstTotal, summary, loading,
             addItem, updateItem, removeItem, clear, load,
-            getItemQty, getItemPrice, getItemProductId,
+            getItemQty, getItemPrice, getItemProductId, getItemGstRate,
             getItemImage, getItemName, getItemCategory, getItemAttributes,
             drawerOpen, setDrawerOpen
         };

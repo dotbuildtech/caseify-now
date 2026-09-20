@@ -233,6 +233,33 @@ const connectDB = async () => {
             console.warn('[migration] Could not extend payment enum values (non-critical):', e.message);
         }
 
+        // Auto-migration: GST rate columns and StoreSettings table
+        try {
+            await sequelize.query(`
+                ALTER TABLE "Products" ADD COLUMN IF NOT EXISTS "gstRate" DECIMAL(5,2) NOT NULL DEFAULT 18.00;
+                ALTER TABLE "StudioProducts" ADD COLUMN IF NOT EXISTS "gstRate" DECIMAL(5,2) NOT NULL DEFAULT 18.00;
+                ALTER TABLE "CustomDesigns" ADD COLUMN IF NOT EXISTS "gstRate" DECIMAL(5,2) NOT NULL DEFAULT 18.00;
+                ALTER TABLE "Materials" ADD COLUMN IF NOT EXISTS "gstRate" DECIMAL(5,2) NOT NULL DEFAULT 18.00;
+
+                CREATE TABLE IF NOT EXISTS "StoreSettings" (
+                    "key" VARCHAR(80) PRIMARY KEY,
+                    "value" TEXT NOT NULL,
+                    "description" VARCHAR(255),
+                    "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+                    "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                );
+
+                INSERT INTO "StoreSettings" ("key", "value", "description", "createdAt", "updatedAt")
+                VALUES 
+                    ('shippingFee', '49', 'Standard Shipping Fee in INR', NOW(), NOW()),
+                    ('freeShippingThreshold', '500', 'Order subtotal threshold in INR for free shipping', NOW(), NOW()),
+                    ('defaultGstRate', '18', 'Default GST percentage', NOW(), NOW())
+                ON CONFLICT ("key") DO NOTHING;
+            `);
+        } catch (e) {
+            console.warn('[migration] Could not complete GST & StoreSettings migration (non-critical):', e.message);
+        }
+
         setInterval(async () => {
             try {
                 await sequelize.authenticate();

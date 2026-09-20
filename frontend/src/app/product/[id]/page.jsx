@@ -151,7 +151,7 @@ export default function ProductPage() {
                         <p className="mt-2 text-[11px] text-text-light/60 italic">This product is designed for specific devices. Please ensure compatibility before purchasing.</p>
                     )}
 
-                    <div className="mt-6 flex items-baseline gap-3">
+                    <div className="mt-6 flex flex-wrap items-baseline gap-3">
                         <span className="font-display text-3xl font-semibold tabular-nums">{formatINR(sale)}</span>
                         {original && <span className="text-lg text-text-light line-through tabular-nums">{formatINR(original)}</span>}
                         {original && (
@@ -159,6 +159,9 @@ export default function ProductPage() {
                                 Save {Math.round((1 - sale / original) * 100)}%
                             </span>
                         )}
+                        <span className="rounded-full bg-surface-alt px-2.5 py-0.5 text-[11px] font-medium text-text-light border border-border">
+                            +{product.gstRate != null ? Number(product.gstRate) : 18}% GST
+                        </span>
                     </div>
 
                     <div className="mt-3 flex items-center gap-2 text-xs">

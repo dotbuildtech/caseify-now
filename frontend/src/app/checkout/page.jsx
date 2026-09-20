@@ -10,17 +10,15 @@ import { createRazorpayOrder, verifyRazorpayPayment } from '@/services/paymentAp
 import { openRazorpayModal } from '@/lib/razorpay';
 import { formatINR } from '@/utils/format';
 import { useToast } from '@/components/ui/Toast';
-
-const TAX_RATE = 0.18;
-const SHIPPING_FEE = 49;
-const FREE_SHIPPING_THRESHOLD = 500;
+import { fetchPublicStorePolicy } from '@/services/adminApi';
 
 export default function CheckoutPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { items, subtotal, summary, getItemQty, getItemPrice, getItemProductId, getItemImage, getItemName, clear } = useCart();
+    const { items, subtotal, summary, getItemQty, getItemPrice, getItemProductId, getItemGstRate, getItemImage, getItemName, clear } = useCart();
     const toast = useToast();
     const [submitting, setSubmitting] = useState(false);
+    const [policy, setPolicy] = useState({ shippingFee: 49, freeShippingThreshold: 500, defaultGstRate: 18 });
     const [form, setForm] = useState({
         fullName: '',
         email: '',
@@ -32,6 +30,12 @@ export default function CheckoutPage() {
         country: 'India',
         paymentMethod: 'online'
     });
+
+    useEffect(() => {
+        fetchPublicStorePolicy()
+            .then(p => { if (p) setPolicy(p); })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -70,9 +74,15 @@ export default function CheckoutPage() {
     }
 
     const computedSubtotal = subtotal || summary?.subtotal || 0;
-    const shipping = computedSubtotal >= FREE_SHIPPING_THRESHOLD ? 0 : (computedSubtotal > 0 ? SHIPPING_FEE : 0);
-    const tax = Math.round(computedSubtotal * TAX_RATE);
-    const total = computedSubtotal + shipping + tax;
+    const computedGst = items.reduce((s, i) => {
+        const qty = getItemQty(i);
+        const price = getItemPrice(i);
+        const rate = getItemGstRate(i);
+        return s + (qty * price * (rate / 100));
+    }, 0);
+    const tax = Math.round(computedGst);
+    const shipping = computedSubtotal === 0 ? 0 : (computedSubtotal >= policy.freeShippingThreshold ? 0 : policy.shippingFee);
+    const total = computedSubtotal + tax + shipping;
 
     const update = (k) => (e) => {
         let val = e.target.value;
@@ -404,13 +414,31 @@ export default function CheckoutPage() {
                             );
                         })}
                     </ul>
-                    <dl className="mt-6 space-y-2 border-t border-border pt-4 text-sm">
-                        <div className="flex justify-between"><dt className="text-text-light">Subtotal</dt><dd className="tabular-nums">{formatINR(computedSubtotal)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-text-light">Shipping</dt><dd className="tabular-nums">{shipping === 0 ? 'Free' : formatINR(shipping)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-text-light">Tax (18% GST)</dt><dd className="tabular-nums">{formatINR(tax)}</dd></div>
+                    <dl className="mt-6 space-y-2.5 border-t border-border pt-4 text-sm">
+                        <div className="flex justify-between">
+                            <dt className="text-text-light">Bag Subtotal</dt>
+                            <dd className="font-medium tabular-nums">{formatINR(computedSubtotal)}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                            <dt className="text-text-light flex items-center gap-1.5">
+                                <span>GST</span>
+                                <span className="text-[10px] text-text-light/70 font-mono">(Product-wise)</span>
+                            </dt>
+                            <dd className="font-medium tabular-nums text-ink">{formatINR(tax)}</dd>
+                        </div>
+                        <div className="flex justify-between">
+                            <dt className="text-text-light">Shipping</dt>
+                            <dd className="font-medium tabular-nums">
+                                {shipping === 0 ? (
+                                    <span className="text-emerald-700 font-semibold uppercase tracking-wider text-xs">Free</span>
+                                ) : (
+                                    formatINR(shipping)
+                                )}
+                            </dd>
+                        </div>
                         <div className="flex justify-between border-t border-border pt-3">
-                            <dt className="font-display text-lg">Total</dt>
-                            <dd className="font-display text-2xl font-semibold tabular-nums">{formatINR(total)}</dd>
+                            <dt className="font-display text-lg">Total Payable</dt>
+                            <dd className="font-display text-2xl font-semibold tabular-nums text-ink">{formatINR(total)}</dd>
                         </div>
                     </dl>
                     <button

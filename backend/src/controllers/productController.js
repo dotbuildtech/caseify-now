@@ -35,6 +35,7 @@ const productCreateSchema = z.object({
     description: z.string().min(1),
     price: z.number().nonnegative(),
     compareAtPrice: z.number().nonnegative(),
+    gstRate: z.number().min(0).max(100).default(18).optional(),
     category: z.string().min(1).max(80),
     phoneModel: z.string().max(80).optional(),
     brand: z.string().max(80).optional(),

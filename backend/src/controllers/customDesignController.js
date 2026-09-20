@@ -17,19 +17,28 @@ exports.getCustomDesign = asyncHandler(async (req, res) => {
 });
 
 exports.createCustomDesign = asyncHandler(async (req, res) => {
-    const { name, description, modelSlug, image, price, compareAtPrice, isActive } = req.body;
+    const { name, description, modelSlug, image, price, compareAtPrice, gstRate, isActive } = req.body;
     if (!name || !modelSlug || !image) {
         res.status(400);
         throw new Error('Name, modelSlug, and image are required');
     }
-    const design = await CustomDesign.create({ name, description, modelSlug, image, price, compareAtPrice, isActive });
+    const design = await CustomDesign.create({
+        name,
+        description,
+        modelSlug,
+        image,
+        price,
+        compareAtPrice,
+        gstRate: gstRate !== undefined ? Number(gstRate) : 18.00,
+        isActive
+    });
     res.status(201).json(design);
 });
 
 exports.updateCustomDesign = asyncHandler(async (req, res) => {
     const design = await CustomDesign.findByPk(req.params.id);
     if (!design) { res.status(404); throw new Error('Custom design not found'); }
-    const { name, description, modelSlug, image, price, compareAtPrice, isActive } = req.body;
+    const { name, description, modelSlug, image, price, compareAtPrice, gstRate, isActive } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = name;
     if (description !== undefined) updates.description = description;
@@ -37,6 +46,7 @@ exports.updateCustomDesign = asyncHandler(async (req, res) => {
     if (image !== undefined) updates.image = image;
     if (price !== undefined) updates.price = price;
     if (compareAtPrice !== undefined) updates.compareAtPrice = compareAtPrice;
+    if (gstRate !== undefined) updates.gstRate = Number(gstRate);
     if (isActive !== undefined) updates.isActive = isActive;
     await design.update(updates);
     res.json(design);
