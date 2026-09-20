@@ -59,6 +59,10 @@ const getTransporter = () => {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS,
             },
+            // Fast timeouts so Render firewall port 587 blocks fail fast instead of freezing the request
+            connectionTimeout: 4000,
+            greetingTimeout: 4000,
+            socketTimeout: 8000,
         });
     }
     return transporter;
@@ -73,22 +77,48 @@ const sendViaNodemailer = async (email, otp) => {
     });
 };
 
+const sendViaBrevo = async (email, otp) => {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || 'caseifynow11@gmail.com';
+    const senderName = process.env.BREVO_SENDER_NAME || 'Caseify Now';
+
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'api-key': process.env.BREVO_API_KEY,
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            sender: { name: senderName, email: senderEmail },
+            to: [{ email }],
+            subject: 'Password Reset OTP - Caseify Now',
+            htmlContent: htmlTemplate(otp),
+        }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data?.message || `Brevo HTTP error ${response.status}`);
+    }
+    return data;
+};
+
 const sendOTPEmail = async (email, otp) => {
     let lastError = null;
 
-    // 1. Prioritize Gmail SMTP if configured (delivers reliably to all inbox domains)
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    // 1. Brevo HTTP API (Uses HTTPS Port 443 — NEVER blocked by Render)
+    if (process.env.BREVO_API_KEY) {
         try {
-            const info = await sendViaNodemailer(email, otp);
-            console.log(`[emailService] OTP email successfully sent via SMTP to ${email} (messageId: ${info.messageId})`);
-            return info;
-        } catch (smtpErr) {
-            console.warn(`[emailService] SMTP send failed to ${email}: ${smtpErr.message}. Trying fallback...`);
-            lastError = smtpErr;
+            const result = await sendViaBrevo(email, otp);
+            console.log(`[emailService] OTP email successfully sent via Brevo HTTP to ${email}`);
+            return result;
+        } catch (brevoErr) {
+            console.warn(`[emailService] Brevo HTTP send failed to ${email}: ${brevoErr.message}. Trying next provider...`);
+            lastError = brevoErr;
         }
     }
 
-    // 2. Try Resend if configured
+    // 2. Resend HTTP API (Uses HTTPS Port 443 — Works on Render, requires verified domain or test recipient)
     if (process.env.RESEND_API_KEY) {
         try {
             const result = await sendViaResend(email, otp);
@@ -105,10 +135,22 @@ const sendOTPEmail = async (email, otp) => {
         }
     }
 
+    // 3. SMTP / Nodemailer (Works on localhost; blocked on Render Free tier due to port 587 restriction)
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        try {
+            const info = await sendViaNodemailer(email, otp);
+            console.log(`[emailService] OTP email successfully sent via SMTP to ${email} (messageId: ${info.messageId})`);
+            return info;
+        } catch (smtpErr) {
+            console.warn(`[emailService] SMTP send failed to ${email}: ${smtpErr.message} (Note: Render Free Tier blocks port 587)`);
+            lastError = smtpErr;
+        }
+    }
+
     if (lastError) {
         throw lastError;
     }
-    throw new Error('No email transport configured (neither SMTP nor Resend)');
+    throw new Error('No working email provider configured (Brevo, Resend, or SMTP)');
 };
 
 module.exports = { sendOTPEmail };
