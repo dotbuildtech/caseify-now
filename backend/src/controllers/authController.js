@@ -530,10 +530,6 @@ exports.forgotPasswordOTP = asyncHandler(async (req, res) => {
         return res.json(genericResponse);
     }
 
-    if (user.role === 'admin') {
-        return res.json(genericResponse);
-    }
-
     const cacheKey = `forgot_otp_count:${normalizedEmail}`;
     const requestTimestamps = otpResetCache.get(cacheKey) || [];
     const recentRequests = requestTimestamps.filter((t) => Date.now() - t < FORGOT_OTP_WINDOW_MS);
@@ -594,7 +590,7 @@ exports.verifyResetOTP = asyncHandler(async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const user = await User.findOne({ where: { email: normalizedEmail } });
 
-    if (!user || user.role === 'admin') {
+    if (!user) {
         await equalizeTimingWithDummyHash(crypto.randomBytes(8).toString('hex'));
         res.status(400);
         throw new Error('Invalid or expired OTP');
@@ -656,7 +652,7 @@ exports.resetPasswordWithOTP = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findOne({ where: { email: normalizedEmail } });
-    if (!user || user.role === 'admin') {
+    if (!user) {
         res.status(400);
         throw new Error('Something went wrong. Please try again.');
     }
